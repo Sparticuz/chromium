@@ -1,12 +1,13 @@
 const { ok } = require('assert');
 const { createHash } = require('crypto');
-const chromium = require('@sparticuz/chrome-aws-lambda');
+const puppeteer = require("puppeteer-core");
+const chromium = require('@sparticuz/chromium');
 
 exports.handler = async (event, context) => {
   let browser = null;
 
   try {
-    const browser = await chromium.puppeteer.launch({
+    const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
@@ -24,7 +25,7 @@ exports.handler = async (event, context) => {
 
     for (let context of contexts) {
       const job = event.shift();
-      const page = await context.defaultPage();
+      const page = await context.newPage();
 
       if (job.hasOwnProperty('url') === true) {
         await page.goto(job.url, { waitUntil: ['domcontentloaded', 'load'] });
