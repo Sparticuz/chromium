@@ -10,8 +10,7 @@
   "types": "build/index.d.ts",
   "files": [
     "bin",
-    "build",
-    "typings"
+    "build"
   ],
   "engines": {
     "node": ">= 14"
@@ -27,11 +26,7 @@
     "@types/node": "^16.11.49",
     "@types/tar-fs": "^2.0.1",
     "clean-modules": "^2.0.6",
-    "puppeteer-core": "17.1.3",
     "typescript": "^4.6.4"
-  },
-  "peerDependencies": {
-    "puppeteer-core": "17.1.3"
   },
   "bugs": {
     "url": "https://github.com/Sparticuz/chrome-aws-lambda/issues"

@@ -1,11 +1,41 @@
-/// <reference path="../typings/chrome-aws-lambda.d.ts" />
-
 import { access, createWriteStream, existsSync, mkdirSync, readdirSync, symlink, unlinkSync } from 'fs';
 import { IncomingMessage } from 'http';
 import LambdaFS from './lambdafs';
 import { join } from 'path';
-import { PuppeteerNode, Viewport } from 'puppeteer-core';
 import { URL } from 'url';
+
+/** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
+interface Viewport {
+  /**
+   * The page width in pixels.
+   */
+  width: number;
+  /**
+   * The page height in pixels.
+   */
+  height: number;
+  /**
+   * Specify device scale factor.
+   * See {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio | devicePixelRatio} for more info.
+   * @defaultValue 1
+   */
+  deviceScaleFactor?: number;
+  /**
+   * Whether the `meta viewport` tag is taken into account.
+   * @defaultValue false
+   */
+  isMobile?: boolean;
+  /**
+   * Specifies if the viewport is in landscape mode.
+   * @defaultValue false
+   */
+  isLandscape?: boolean;
+  /**
+   * Specify if the viewport supports touch events.
+   * @defaultValue false
+   */
+  hasTouch?: boolean;
+}
 
 if (/^AWS_Lambda_nodejs(?:10|12|14|16)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
   if (process.env.FONTCONFIG_PATH === undefined) {
@@ -194,25 +224,6 @@ class Chromium {
     ];
 
     return environments.some((key) => process.env[key] !== undefined);
-  }
-
-  /**
-   * Overloads puppeteer with useful methods and returns the resolved package.
-   */
-  static get puppeteer(): PuppeteerNode {
-    for (const overload of ['Browser', 'BrowserContext', 'ElementHandle', 'Frame', 'Page']) {
-      require(`${__dirname}/puppeteer/lib/${overload}`);
-    }
-
-    try {
-      return require('puppeteer');
-    } catch (error: any) {
-      if (error.code !== 'MODULE_NOT_FOUND') {
-        throw error;
-      }
-
-      return require('puppeteer-core');
-    }
   }
 }
 
