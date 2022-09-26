@@ -23,13 +23,13 @@ jobs:
       run: npm install
 
     - name: Create Lambda Layer
-      run: make chrome_aws_lambda.zip
+      run: make chromium.zip
 
     - name: Upload Layer Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: chrome_aws_lambda
-        path: chrome_aws_lambda.zip
+        name: chromium
+        path: chromium.zip
 
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)
@@ -57,10 +57,13 @@ jobs:
     - name: Download Layer Artifact
       uses: actions/download-artifact@v3
       with:
-        name: chrome_aws_lambda
+        name: chromium
 
     - name: Provision Layer
-      run: unzip chrome_aws_lambda.zip -d _/amazon/code
+      run: unzip chromium.zip -d _/amazon/code
+
+    - name: Install test dependencies
+      run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
     - name: Invoke Lambda on SAM
       run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/${{ matrix.event }}.json node${{ matrix.version }} 2>&1 | (grep 'Error' && exit 1 || exit 0)
