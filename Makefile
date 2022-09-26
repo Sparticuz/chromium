@@ -1,10 +1,11 @@
 .PHONY: clean
 
 clean:
-	rm -rf chrome_aws_lambda.zip _/amazon/code/nodejs
+	rm -rf chromium.zip _/amazon/code/nodejs
 
 pretest:
-	unzip chrome_aws_lambda.zip -d _/amazon/code
+	unzip chromium.zip -d _/amazon/code
+	npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node16
@@ -17,11 +18,11 @@ test:
 	mkdir -p nodejs
 	npm install --prefix nodejs/ tar-fs@2.1.1 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	npm pack
-	mkdir -p nodejs/node_modules/@sparticuz/chrome-aws-lambda/
-	tar --directory nodejs/node_modules/@sparticuz/chrome-aws-lambda/ --extract --file sparticuz-chrome-aws-lambda-*.tgz --strip-components=1
+	mkdir -p nodejs/node_modules/@sparticuz/chromium/
+	tar --directory nodejs/node_modules/@sparticuz/chromium/ --extract --file sparticuz-chromium-*.tgz --strip-components=1
 	npx clean-modules --directory nodejs --include "**/*.d.ts" "**/@types/**" "**/*.@(yaml|yml)" --yes
-	rm sparticuz-chrome-aws-lambda-*.tgz
+	rm sparticuz-chromium-*.tgz
 	mkdir -p $(dir $@)
 	zip -9 --filesync --move --recurse-paths $@ nodejs
 
-.DEFAULT_GOAL := chrome_aws_lambda.zip
+.DEFAULT_GOAL := chromium.zip
