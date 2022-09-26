@@ -1,0 +1,28 @@
+# incrementVersion.sh OLD_VERSION NEW_VERSION
+# Example: incrementVersion 16.1.0 16.2.0
+
+OLD_VERSION=$1
+NEW_VERSION=$2
+
+sed -i "s/$OLD_VERSION/$NEW_VERSION/" _/ansible/inventory.ini
+sed -i "s/\"puppeteer-core\": \"$OLD_VERSION\"/\"puppeteer-core\": \"$NEW_VERSION\"/g" package.json
+sed -i "s/puppeteer-core@$OLD_VERSION/puppeteer-core@$NEW_VERSION/" Makefile
+
+echo "Version number incremented $OLD_VERSION -> $NEW_VERSION.
+
+1) Check for a new version of 'chromium' included with 'puppeteer':
+  a) https://github.com/puppeteer/puppeteer/blob/main/src/revisions.ts
+  b) https://cr-rev.appspot.com/_ah/api/crrev/v1/redirect/#######
+  c) https://omahaproxy.appspot.com/
+
+2) If the 'chromium' version has been incremented, please compile a new version of 'chromium':
+  a) cd _/ansible && make chromium
+  b) Rename the new chromium binary
+
+3) Please also update README.md#Versioning
+
+4) Merge the PR and deploy to npm
+  a) Test the new version using 'npm run test'
+  b) Push the PR to Github and merge it
+  c) Checkout the main branch
+  d) Run 'npm version $NEW_VERSION' to publish the package to npm."

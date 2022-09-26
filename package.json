@@ -1,0 +1,67 @@
+{
+  "name": "@sparticuz/chrome-aws-lambda",
+  "version": "17.1.3",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "license": "MIT",
+  "description": "Chromium Binary for AWS Lambda and Google Cloud Functions, forked from @alixaxel/chrome-aws-lambda",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "bin",
+    "build",
+    "typings"
+  ],
+  "engines": {
+    "node": ">= 14"
+  },
+  "scripts": {
+    "test": "make clean && make && make pretest && make test",
+    "build": "rm -rf build && tsc -p tsconfig.json",
+    "postversion": "git push && git push --tags && npm publish",
+    "prepack": "npm run build",
+    "preversion": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.49",
+    "@types/tar-fs": "^2.0.1",
+    "clean-modules": "^2.0.6",
+    "puppeteer-core": "17.1.3",
+    "typescript": "^4.6.4"
+  },
+  "peerDependencies": {
+    "puppeteer-core": "17.1.3"
+  },
+  "bugs": {
+    "url": "https://github.com/Sparticuz/chrome-aws-lambda/issues"
+  },
+  "homepage": "https://github.com/Sparticuz/chrome-aws-lambda",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Sparticuz/chrome-aws-lambda.git"
+  },
+  "keywords": [
+    "aws",
+    "browser",
+    "chrome",
+    "chromium",
+    "lambda",
+    "puppeteer",
+    "serverless"
+  ],
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "jsxBracketSameLine": false,
+    "printWidth": 140,
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "useTabs": false
+  },
+  "dependencies": {
+    "tar-fs": "^2.1.1"
+  }
+}
