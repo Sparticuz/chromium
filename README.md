@@ -41,63 +41,58 @@ The @sparticuz/chromium version schema is as follows:
 This package works with all the currently supported AWS Lambda Node.js runtimes out of the box.
 
 ```javascript
+const test = requie("node:test");
 const puppeteer = require("puppeteer-core");
-const chromium = require('@sparticuz/chromium');
+const chromium = require("@sparticuz/chromium");
 
-exports.handler = async (event, context, callback) => {
-  let result = null;
-  let browser = null;
+test("Check the page title of example.com", async (t) => {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath,
+    headless: chromium.headless,
+    ignoreHTTPSErrors: true,
+  });
 
-  try {
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
+  const page = await browser.newPage();
+  await page.goto("https://example.com");
+  const pageTitle = await page.title();
+  await browser.close();
 
-    let page = await browser.newPage();
-
-    await page.goto(event.url || 'https://example.com');
-
-    result = await page.title();
-  } catch (error) {
-    return callback(error);
-  } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
-  }
-
-  return callback(null, result);
-};
+  assert.strictEqual(pageTitle, "Example Domain");
+});
 ```
 
 ### Usage with Playwright
 
 ```javascript
-const playwright = require('playwright-core');
+const test = require("node:test");
+// Need to rename playwright's chromium object to something else
+const { chromium: playwright } = require('playwright-core');
 const chromium = require('@sparticuz/chromium');
 
-(async () => {
-  const browser = await playwright.chromium.launch({
+test("Check the page title of example.com", async (t) => {
+  const browser = await playwright.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath,
     headless: chromium.headless,
   });
 
-  // ...
-
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto("https://example.com");
+  const pageTitle = await page.title();
   await browser.close();
-})();
+
+  assert.strictEqual(pageTitle, "Example Domain");
+});
 ```
 
 You should allocate at least 512 MB of RAM to your Lambda, however 1600 MB (or more) is recommended.
 
 ### Running Locally
 
-Please refer to the [Local Development Wiki page](https://github.com/alixaxel/chrome-aws-lambda/wiki/HOWTO:-Local-Development) for instructions and troubleshooting.
+This package will run in headless mode when `NODE_ENV = "test"`. If you want to run using your own local binary, set `IS_LOCAL` to anything.
 
 ## API
 
