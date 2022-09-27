@@ -31,6 +31,11 @@ npm install --save-dev @sparticuz/chromium@$CHROMIUM_VERSION
 
 If you wish to install an older version of Chromium, take a look at [@sparticuz/chrome-aws-lambda](https://github.com/Sparticuz/chrome-aws-lambda#versioning) or [@alixaxel/chrome-aws-lambda](https://github.com/alixaxel/chrome-aws-lambda).
 
+## Versioning
+
+The @sparticuz/chromium version schema is as follows:
+`MajorChromiumVersion.MinorChromiumIncrement.@Sparticuz/chromiumPatchLevel`
+
 ## Usage
 
 This package works with all the currently supported AWS Lambda Node.js runtimes out of the box.
