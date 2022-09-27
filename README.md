@@ -13,7 +13,7 @@ as well as dropping that as a dependency. Due to some changes in WebGL, the file
 be extracted to `/tmp` instead of `/tmp/swiftshader`. This necessitated changes in lambdafs.
 
 However, it quickly became difficult to maintain because of the pace of `puppeteer` updates. This package, `@sparticuz/chromium`,
-is not chained to `puppeteer` versions. It is only `chromium`, as well as the special code needed to decompress the brotli package.
+is not chained to `puppeteer` versions, but also does not include the overrides and hooks that the original package contained. It is only `chromium`, as well as the special code needed to decompress the brotli package.
 
 ## Install
 
@@ -25,6 +25,7 @@ In order to figure out what version of `@sparticuz/chromium` you will need, plea
 ```shell
 # Puppeteer or Playwright is a production dependency
 npm install --save puppeteer-core@$PUPPETEER_VERSION
+# @sparticuz/chromium is a DEV dependency IF YOU ARE USING A LAYER, if not, use as a production dependency!
 npm install --save-dev @sparticuz/chromium@$CHROMIUM_VERSION
 ```
 
@@ -102,7 +103,6 @@ Please refer to the [Local Development Wiki page](https://github.com/alixaxel/ch
 | `defaultViewport` | `{!Object}`          | Returns more sensible default viewport settings.                                                                                                        |
 | `executablePath`  | `{?Promise<string>}` | Returns the path the Chromium binary was extracted to.                                                                                                  |
 | `headless`        | `{!boolean}`         | Returns `true` if we are running on AWS Lambda or GCF.                                                                                                  |
-| `puppeteer`       | `{!Object}`          | Overloads `puppeteer` and returns the resolved package.                                                                                                 |
 
 ## Fonts
 
@@ -153,7 +153,7 @@ To compile your own version of Chromium check the [Ansible playbook instructions
 
 ## AWS Lambda Layer
 
-[Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) is a new convenient way to manage common dependencies between different Lambda Functions.
+[Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) is a convenient way to manage common dependencies between different Lambda Functions.
 
 The following set of (Linux) commands will create a layer of this package:
 
@@ -165,7 +165,7 @@ make chromium.zip
 
 The above will create a `chromium.zip` file, which can be uploaded to your Layers console.
 
-Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster).
+Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster), however, they expire from Github after a certain time period.
 
 ## Google Cloud Functions
 
