@@ -23,10 +23,10 @@
     "preversion": "npm run build"
   },
   "devDependencies": {
-    "@types/node": "^16.11.49",
+    "@types/node": "^16.11.62",
     "@types/tar-fs": "^2.0.1",
     "clean-modules": "^2.0.6",
-    "typescript": "^4.6.4"
+    "typescript": "^4.8.3"
   },
   "bugs": {
     "url": "https://github.com/Sparticuz/chromium/issues"
