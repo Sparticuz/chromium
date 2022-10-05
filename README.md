@@ -173,6 +173,46 @@ Since version `1.11.2`, it's also possible to use this package on Google/Firebas
 
 According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
 
+## Migration from `chrome-aws-lambda`
+
+- Change the import or require to be `@sparticuz/chromium`
+- Add the import or require for `puppeteer-core`
+- Change the browser launch to use the native `puppeteer.launch()` function
+```diff
+-const chromium = require('@sparticuz/chrome-aws-lambda');
++const chromium = require("@sparticuz/chromium");
++const puppeteer = require("puppeteer-core");
+
+exports.handler = async (event, context, callback) => {
+  let result = null;
+  let browser = null;
+
+  try {
+-    browser = await chromium.puppeteer.launch({
++    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
+    });
+
+    let page = await browser.newPage();
+
+    await page.goto(event.url || 'https://example.com');
+
+    result = await page.title();
+  } catch (error) {
+    return callback(error);
+  } finally {
+    if (browser !== null) {
+      await browser.close();
+    }
+  }
+
+  return callback(null, result);
+};
+```
 ## Compression
 
 The Chromium binary is compressed using the Brotli algorithm.
