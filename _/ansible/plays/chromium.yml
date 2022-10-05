@@ -64,17 +64,15 @@
 
     - name: Registering Host
       add_host:
-        hostname: "{{ item.public_ip_address }}"
+        hostname: "{{ ec2.instances[0].public_ip_address }}"
         groupname: aws
-      with_items: "{{ ec2.instances }}"
 
     - name: Waiting for SSH
       wait_for:
-        host: "{{ item.public_ip_address }}"
+        host: "{{ ec2.instances[0].public_ip_address }}"
         port: 22
         timeout: 120
         state: started
-      with_items: "{{ ec2.instances }}"
 
 - name: AWS
   user: ec2-user
