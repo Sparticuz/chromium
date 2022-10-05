@@ -1,7 +1,7 @@
 .PHONY: clean
 
 clean:
-	rm -rf chromium.zip _/amazon/code/nodejs
+	rm -rf chromium.zip _/amazon/code/nodejs _/amazon/handlers/node_modules
 
 pretest:
 	unzip chromium.zip -d _/amazon/code
