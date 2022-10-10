@@ -163,7 +163,13 @@ cd chromium && \
 make chromium.zip
 ```
 
-The above will create a `chromium.zip` file, which can be uploaded to your Layers console.
+The above will create a `chromium.zip` file, which can be uploaded to your Layers console. You can and should upload using the `aws cli`. (Replace the variables with your own values)
+```shell
+bucketName="chromiumUploadBucket" && \
+versionNumber="107" && \
+aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumber}.zip" && \
+aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber.zip}" --compatible-runtimes nodejs --compatible-architectures x86_64
+```
 
 Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster), however, they expire from Github after a certain time period.
 
