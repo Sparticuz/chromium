@@ -7,14 +7,14 @@ labels: bug
 
 <!---
 For Chromium-specific bugs, please refer to: https://bugs.chromium.org/p/chromium
-For Puppeteer-specific bugs, please refer to: https://github.com/GoogleChrome/puppeteer/issues
+For Puppeteer-specific bugs, please refer to: https://github.com/puppeteer/puppeteer/issues
+For Playwright-specific bugs, please refer to: https://github.com/microsoft/playwright/issues
 -->
 
 ## Environment
-* `chrome-aws-lambda` Version:
+* `chromium` Version:
 * `puppeteer` / `puppeteer-core` Version:
-* OS: <!-- Linux | Mac | Windows -->
-* Node.js Version: <!-- 8.x | 10.x | 12.x | 14.x -->
+* Node.js Version: <!-- 14.x | 16.x -->
 * Lambda / GCF Runtime: <!-- `nodejs8.10` | `nodejs10.x` | `nodejs12.x` -->
 
 ## Expected Behavior
@@ -31,7 +31,7 @@ For Puppeteer-specific bugs, please refer to: https://github.com/GoogleChrome/pu
 
 <!--
 ```js
-const chromium = require('chrome-aws-lambda');
+const chromium = require('chromium');
 
 exports.handler = async (event, context, callback) => {
   let result = null;
