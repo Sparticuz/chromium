@@ -171,7 +171,7 @@ aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumbe
 aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
 ```
 
-Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster), however, they expire from Github after a certain time period.
+Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster). Use the `chromium.zip` INSIDE the artifact as the layer. Also, the artifact will expire from Github after a certain time period.
 
 ## Google Cloud Functions
 
