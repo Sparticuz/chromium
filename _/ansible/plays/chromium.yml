@@ -71,7 +71,7 @@
       wait_for:
         host: "{{ ec2.instances[0].public_ip_address }}"
         port: 22
-        timeout: 120
+        timeout: 240
         state: started
 
 - name: AWS
