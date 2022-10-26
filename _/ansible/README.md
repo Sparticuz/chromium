@@ -8,13 +8,11 @@ The whole process usually takes around 1 hour to on a `c6a.12xlarge` instance.
 
 ## Chromium Version
 
-To compile a specific version of Chromium, update the `puppeteer_version` variable in the Ansible inventory, i.e.:
+To compile a specific version of Chromium, update the `chromium_revision` variable in the Ansible inventory, i.e.:
 
 ```shell
-puppeteer_version=v1.9.0
+chromium_revision=1056772
 ```
-
-If not specified, the current `main` will be used.
 
 ## Usage
 
