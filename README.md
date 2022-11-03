@@ -41,7 +41,7 @@ The @sparticuz/chromium version schema is as follows:
 This package works with all the currently supported AWS Lambda Node.js runtimes out of the box.
 
 ```javascript
-const test = requie("node:test");
+const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
