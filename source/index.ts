@@ -180,10 +180,6 @@ class Chromium {
    * If not running on AWS Lambda nor Google Cloud Functions, `null` is returned instead.
    */
   static get executablePath(): Promise<string> {
-    if (Chromium.headless !== true) {
-      return Promise.resolve(null);
-    }
-
     if (existsSync('/tmp/chromium') === true) {
       for (const file of readdirSync('/tmp')) {
         if (file.startsWith('core.chromium') === true) {
