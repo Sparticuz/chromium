@@ -5,7 +5,7 @@ clean:
 
 pretest:
 	unzip chromium.zip -d _/amazon/code
-	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+	npm install --prefix _/amazon/handlers puppeteer-core@10.1.0 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node16
