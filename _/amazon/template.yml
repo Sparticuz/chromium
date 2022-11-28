@@ -37,3 +37,14 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
       Tracing: Active
+  node18:
+    Type: AWS::Serverless::Function
+    Properties:
+      Layers:
+        - !Ref layer
+      Handler: handlers/index.handler
+      Runtime: nodejs18.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess
+      Tracing: Active
