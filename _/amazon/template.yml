@@ -14,6 +14,7 @@ Resources:
         CompatibleRuntimes:
           - nodejs14.x
           - nodejs16.x
+          - nodejs18.x
 
   node14:
     Type: AWS::Serverless::Function
