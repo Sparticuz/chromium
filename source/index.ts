@@ -1,4 +1,4 @@
-import { access, createWriteStream, existsSync, mkdirSync, readdirSync, symlink, unlinkSync } from 'fs';
+import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'fs';
 import { IncomingMessage } from 'http';
 import LambdaFS from './lambdafs';
 import { join } from 'path';
@@ -176,38 +176,44 @@ class Chromium {
   }
 
   /**
-   * Inflates the current version of Chromium and returns the path to the binary.
-   * If not running on AWS Lambda nor Google Cloud Functions, `null` is returned instead.
+   * Inflates the included version of Chromium
+   * @param input The location of the `bin` folder
+   * @returns The path to the `chromium` binary
    */
-  static executablePath(input?: string): Promise<string> {
-   
-    if (existsSync('/tmp/chromium') === true && input === undefined) {
-      for (const file of readdirSync('/tmp')) {
-        if (file.startsWith('core.chromium') === true) {
-          unlinkSync(`/tmp/${file}`);
-        }
-      }
+  static async executablePath(input?: string): Promise<string> {
 
+    /**
+     * If the `chromium` binary already exists in /tmp/chromium, return it.
+     */
+    if (existsSync('/tmp/chromium') === true && input === undefined) {
       return Promise.resolve('/tmp/chromium');
     }
-    let _input = join(__dirname, '..', 'bin');
-    if (input !== undefined) {
-      if (existsSync(input)) {
-        _input = join(input, 'bin');
-      } else {
-        throw new Error(`The input directory "${input}" does not exist.`);
-      }
+
+    /**
+     * If input is defined, use that as the location of the brotli files,
+     * otherwise, the default location is ../bin.
+     * A custom location is needed for workflows that using custom packaging.
+     */
+    input ??= join(__dirname, '..', 'bin');
+
+    /**
+     * If the input directory doesn't exist, throw an error.
+     */
+    if (!existsSync(input)) {
+      throw new Error(`The input directory "${input}" does not exist.`);
     }
+
     const promises = [
-      LambdaFS.inflate(`${_input}/chromium.br`),
-      LambdaFS.inflate(`${_input}/swiftshader.tar.br`),
+      LambdaFS.inflate(`${input}/chromium.br`),
+      LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
 
     if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
-      promises.push(LambdaFS.inflate(`${_input}/aws.tar.br`));
+      promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
-    return Promise.all(promises).then((result) => result.shift());
+    const result = await Promise.all(promises);
+    return result.shift();
   }
 
   /**
