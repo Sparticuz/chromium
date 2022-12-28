@@ -49,7 +49,7 @@ test("Check the page title of example.com", async (t) => {
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
+    executablePath: await chromium.executablePath(),
     headless: chromium.headless,
     ignoreHTTPSErrors: true,
   });
@@ -74,7 +74,7 @@ const chromium = require('@sparticuz/chromium');
 test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
     args: chromium.args,
-    executablePath: await chromium.executablePath,
+    executablePath: await chromium.executablePath(),
     headless: chromium.headless,
   });
 
@@ -171,6 +171,30 @@ aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumbe
 aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
 ```
 
+Then you can specify custom Chromium location as following.
+```javascript
+const test = require("node:test");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
+
+test("Check the page title of example.com", async (t) => {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath('/opt/chromium'),
+    headless: chromium.headless,
+    ignoreHTTPSErrors: true,
+  });
+
+  const page = await browser.newPage();
+  await page.goto("https://example.com");
+  const pageTitle = await page.title();
+  await browser.close();
+
+  assert.strictEqual(pageTitle, "Example Domain");
+});
+```
+
 Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster). Use the `chromium.zip` INSIDE the artifact as the layer. Also, the artifact will expire from Github after a certain time period.
 
 ## Google Cloud Functions
@@ -198,7 +222,7 @@ exports.handler = async (event, context, callback) => {
 +    browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
