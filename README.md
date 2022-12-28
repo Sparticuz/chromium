@@ -88,6 +88,30 @@ test("Check the page title of example.com", async (t) => {
 });
 ```
 
+You can also specify a custom Chromium location as following.
+```javascript
+const test = require("node:test");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
+
+test("Check the page title of example.com", async (t) => {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath("/opt/chromium"),
+    headless: chromium.headless,
+    ignoreHTTPSErrors: true,
+  });
+
+  const page = await browser.newPage();
+  await page.goto("https://example.com");
+  const pageTitle = await page.title();
+  await browser.close();
+
+  assert.strictEqual(pageTitle, "Example Domain");
+});
+```
+
 You should allocate at least 512 MB of RAM to your Lambda, however 1600 MB (or more) is recommended.
 
 ### Running Locally
@@ -96,13 +120,13 @@ This package will run in headless mode when `NODE_ENV = "test"`. If you want to 
 
 ## API
 
-| Method / Property | Returns              | Description                                                                                                                                             |
-| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `font(url)`       | `{?Promise<string>}` | Provisions a custom font and returns its basename.                                                                                                      |
-| `args`            | `{!Array<string>}`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
-| `defaultViewport` | `{!Object}`          | Returns more sensible default viewport settings.                                                                                                        |
-| `executablePath`  | `{?Promise<string>}` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `headless`        | `{!boolean}`         | Returns `true` if we are running on AWS Lambda or GCF.                                                                                                  |
+| Method / Property           | Returns              | Description                                                                                                                                             |
+| --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `font(url)`                 | `{?Promise<string>}` | Provisions a custom font and returns its basename.                                                                                                      |
+| `args`                      | `{!Array<string>}`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
+| `defaultViewport`           | `{!Object}`          | Returns more sensible default viewport settings.                                                                                                        |
+| `executablePath(location)`  | `{?Promise<string>}` | Returns the path the Chromium binary was extracted to.                                                                                                  |
+| `headless`                  | `{!boolean}`         | Returns `true` if we are running on AWS Lambda or GCF.                                                                                                  |
 
 ## Fonts
 
@@ -171,35 +195,7 @@ aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumbe
 aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
 ```
 
-Then you can specify custom Chromium location as following.
-```javascript
-const test = require("node:test");
-const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium");
-
-test("Check the page title of example.com", async (t) => {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath('/opt/chromium'),
-    headless: chromium.headless,
-    ignoreHTTPSErrors: true,
-  });
-
-  const page = await browser.newPage();
-  await page.goto("https://example.com");
-  const pageTitle = await page.title();
-  await browser.close();
-
-  assert.strictEqual(pageTitle, "Example Domain");
-});
-```
-
 Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster). Use the `chromium.zip` INSIDE the artifact as the layer. Also, the artifact will expire from Github after a certain time period.
-
-## Google Cloud Functions
-
-Since version `1.11.2`, it's also possible to use this package on Google/Firebase Cloud Functions.
 
 According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
 
@@ -208,6 +204,7 @@ According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf
 - Change the import or require to be `@sparticuz/chromium`
 - Add the import or require for `puppeteer-core`
 - Change the browser launch to use the native `puppeteer.launch()` function
+- Change the `executablePath` to be a function.
 ```diff
 -const chromium = require('@sparticuz/chrome-aws-lambda');
 +const chromium = require("@sparticuz/chromium");
@@ -222,7 +219,8 @@ exports.handler = async (event, context, callback) => {
 +    browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+-      executablePath: await chromium.executablePath,
++      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
