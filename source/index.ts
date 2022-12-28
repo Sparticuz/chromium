@@ -179,8 +179,9 @@ class Chromium {
    * Inflates the current version of Chromium and returns the path to the binary.
    * If not running on AWS Lambda nor Google Cloud Functions, `null` is returned instead.
    */
-  static get executablePath(): Promise<string> {
-    if (existsSync('/tmp/chromium') === true) {
+  static executablePath(input?: string): Promise<string> {
+   
+    if (existsSync('/tmp/chromium') === true && input === undefined) {
       for (const file of readdirSync('/tmp')) {
         if (file.startsWith('core.chromium') === true) {
           unlinkSync(`/tmp/${file}`);
@@ -189,15 +190,21 @@ class Chromium {
 
       return Promise.resolve('/tmp/chromium');
     }
-
-    const input = join(__dirname, '..', 'bin');
+    let _input = join(__dirname, '..', 'bin');
+    if (input !== undefined) {
+      if (existsSync(input)) {
+        _input = join(input, 'bin');
+      } else {
+        throw new Error(`The input directory "${input}" does not exist.`);
+      }
+    }
     const promises = [
-      LambdaFS.inflate(`${input}/chromium.br`),
-      LambdaFS.inflate(`${input}/swiftshader.tar.br`),
+      LambdaFS.inflate(`${_input}/chromium.br`),
+      LambdaFS.inflate(`${_input}/swiftshader.tar.br`),
     ];
 
     if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
-      promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
+      promises.push(LambdaFS.inflate(`${_input}/aws.tar.br`));
     }
 
     return Promise.all(promises).then((result) => result.shift());
