@@ -1,8 +1,8 @@
-import { createReadStream, createWriteStream, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { basename, join } from 'path';
+import { createReadStream, createWriteStream, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import { extract } from 'tar-fs';
-import { createBrotliDecompress, createUnzip } from 'zlib';
+import { createBrotliDecompress, createUnzip } from 'node:zlib';
 
 class LambdaFS {
   /**

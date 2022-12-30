@@ -13,7 +13,7 @@
     "build"
   ],
   "engines": {
-    "node": ">= 14"
+    "node": ">= 14.18.0"
   },
   "scripts": {
     "test": "make clean && make && make pretest && make test",
@@ -23,7 +23,7 @@
     "preversion": "npm run build"
   },
   "devDependencies": {
-    "@types/node": "^16.11.62",
+    "@types/node": "^18.11.18",
     "@types/tar-fs": "^2.0.1",
     "clean-modules": "^2.0.6",
     "typescript": "^4.8.3"

@@ -1,8 +1,8 @@
-import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'fs';
-import { IncomingMessage } from 'http';
+import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'node:fs';
+import { IncomingMessage } from 'node:http';
 import LambdaFS from './lambdafs';
-import { join } from 'path';
-import { URL } from 'url';
+import { join } from 'node:path';
+import { URL } from 'node:url';
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -37,7 +37,7 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+if ( process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
   if (process.env.FONTCONFIG_PATH === undefined) {
     process.env.FONTCONFIG_PATH = '/tmp/aws';
   }
@@ -208,7 +208,7 @@ class Chromium {
       LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
 
-    if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+    if (process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
