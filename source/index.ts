@@ -52,11 +52,13 @@ if ( process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|
 class Chromium {
   /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   * If not running on AWS Lambda nor Google Cloud Functions, `null` is returned instead.
+   * If headless is not true, `null` is returned instead.
    */
-  static font(input: string): Promise<string> {
+  static font(input: string): Promise<string | null> {
     if (Chromium.headless !== true) {
-      return null;
+      return new Promise((resolve) => {
+        return resolve(null);
+      });
     }
 
     if (process.env.HOME === undefined) {
