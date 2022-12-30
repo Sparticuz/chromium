@@ -76,7 +76,7 @@ class Chromium {
       const output = `${process.env.HOME}/.fonts/${url.pathname.split('/').pop()}`;
 
       if (existsSync(output) === true) {
-        return resolve(output.split('/').pop());
+        return resolve(output.split('/').pop() as string);
       }
 
       if (url.protocol === 'file:') {
@@ -86,7 +86,7 @@ class Chromium {
           }
 
           symlink(url.pathname, output, (error) => {
-            return error != null ? reject(error) : resolve(url.pathname.split('/').pop());
+            return error != null ? reject(error) : resolve(url.pathname.split('/').pop() as string);
           });
         });
       } else {
@@ -109,7 +109,7 @@ class Chromium {
 
           response.once('end', () => {
             stream.end(() => {
-              return resolve(url.pathname.split('/').pop());
+              return resolve(url.pathname.split('/').pop() as string);
             });
           });
         });
@@ -213,7 +213,7 @@ class Chromium {
     }
 
     const result = await Promise.all(promises);
-    return result.shift();
+    return result.shift() as string;
   }
 
   /**
