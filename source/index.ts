@@ -1,8 +1,8 @@
-import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'fs';
-import { IncomingMessage } from 'http';
+import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'node:fs';
+import { IncomingMessage } from 'node:http';
 import LambdaFS from './lambdafs';
-import { join } from 'path';
-import { URL } from 'url';
+import { join } from 'node:path';
+import { URL } from 'node:url';
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -37,7 +37,7 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+if ( process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
   if (process.env.FONTCONFIG_PATH === undefined) {
     process.env.FONTCONFIG_PATH = '/tmp/aws';
   }
@@ -52,11 +52,13 @@ if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_E
 class Chromium {
   /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   * If not running on AWS Lambda nor Google Cloud Functions, `null` is returned instead.
+   * If headless is not true, `null` is returned instead.
    */
-  static font(input: string): Promise<string> {
+  static font(input: string): Promise<string | null> {
     if (Chromium.headless !== true) {
-      return null;
+      return new Promise((resolve) => {
+        return resolve(null);
+      });
     }
 
     if (process.env.HOME === undefined) {
@@ -76,7 +78,7 @@ class Chromium {
       const output = `${process.env.HOME}/.fonts/${url.pathname.split('/').pop()}`;
 
       if (existsSync(output) === true) {
-        return resolve(output.split('/').pop());
+        return resolve(output.split('/').pop() as string);
       }
 
       if (url.protocol === 'file:') {
@@ -86,7 +88,7 @@ class Chromium {
           }
 
           symlink(url.pathname, output, (error) => {
-            return error != null ? reject(error) : resolve(url.pathname.split('/').pop());
+            return error != null ? reject(error) : resolve(url.pathname.split('/').pop() as string);
           });
         });
       } else {
@@ -109,7 +111,7 @@ class Chromium {
 
           response.once('end', () => {
             stream.end(() => {
-              return resolve(url.pathname.split('/').pop());
+              return resolve(url.pathname.split('/').pop() as string);
             });
           });
         });
@@ -208,12 +210,12 @@ class Chromium {
       LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
 
-    if (/^AWS_Lambda_nodejs(?:10|12|14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+    if (process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
     const result = await Promise.all(promises);
-    return result.shift();
+    return result.shift() as string;
   }
 
   /**
