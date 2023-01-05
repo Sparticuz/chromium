@@ -3,6 +3,7 @@ import { IncomingMessage } from 'node:http';
 import LambdaFS from './lambdafs';
 import { join } from 'node:path';
 import { URL } from 'node:url';
+import { downloadAndExtract, isValidUrl } from './helper';
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -183,14 +184,16 @@ class Chromium {
    * @returns The path to the `chromium` binary
    */
   static async executablePath(input?: string): Promise<string> {
-
     /**
      * If the `chromium` binary already exists in /tmp/chromium, return it.
      */
-    if (existsSync('/tmp/chromium') === true && input === undefined) {
+    if (existsSync('/tmp/chromium') === true) {
       return Promise.resolve('/tmp/chromium');
     }
 
+    if (input && isValidUrl(input)) {
+      return this.executablePath(await downloadAndExtract(input));
+    }
     /**
      * If input is defined, use that as the location of the brotli files,
      * otherwise, the default location is ../bin.
