@@ -11,19 +11,20 @@ export const isValidUrl = (input: string) => {
     }
 }
 
-export const downloadAndExtract = async (url: string): Promise<string> => new Promise((resolve, reject) => {
-    const destDir = `${tmpdir()}/chromium-pack`
-    const extractObj = extract(destDir)
-    get(url, function (response) {
-        response.pipe(extractObj);
-        extractObj.on('finish', () => {
-            extractObj.end(() => {
-                resolve(destDir);
+export const downloadAndExtract = async (url: string) =>
+    new Promise<string>((resolve, reject) => {
+        const destDir = `${tmpdir()}/chromium-pack`
+        const extractObj = extract(destDir)
+        get(url, (response) => {
+            response.pipe(extractObj);
+            extractObj.on('finish', () => {
+                extractObj.end(() => {
+                    resolve(destDir);
+                });
+            });
+        }).on('error', (err) => {
+            unlink(destDir, (_) => {
+                reject(err)
             });
         });
-    }).on('error', (err) => {
-        unlink(destDir, (_) => {
-            reject(err)
-        });
-    });
-})
+    })
