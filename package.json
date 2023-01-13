@@ -8,6 +8,7 @@
   "description": "Chromium Binary for Serverless Platforms",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "type": "commonjs",
   "files": [
     "bin",
     "build"
@@ -17,12 +18,10 @@
   },
   "scripts": {
     "test": "make clean && make && make pretest && make test",
-    "build": "rm -rf build && tsc -p tsconfig.json",
-    "postversion": "git push && git push --tags && npm publish",
-    "prepack": "npm run build",
-    "preversion": "npm run build"
+    "build": "rm -rf build && tsc -p tsconfig.json"
   },
   "devDependencies": {
+    "@tsconfig/node14": "^1.0.3",
     "@types/node": "^18.11.18",
     "@types/tar-fs": "^2.0.1",
     "clean-modules": "^2.0.6",

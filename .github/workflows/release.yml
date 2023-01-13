@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+env:
+  NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    steps:
+
+      # Install jq so I can edit package.json from the command line
+    - run: apt install jq -y
+
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+
+    - run: npm ci
+
+    - run: npm run build
+
+    - name: Release chromium on npmjs
+      run: npm publish
+
+    # Change the package name to chromium-min,
+    # delete the bin folder from the files array
+    # so that it doesn't publish the binaries to -min
+    - name: Cleanup and prepare for chromium-min
+      run: |
+        jq '.name="@sparticuz/chromium-min"' package.json > .package.json
+        jq 'del(.files[] | select(. == "bin"))' .package.json > package.json
+        rm package-lock.json .package.json
+        npm install
+
+    - name: Release chromium-min on npmjs
+      run: npm publish
+
+    - name: Create Lambda Layer
+      run: make chromium-${{ github.ref_name }}-layer.zip
+
+    - name: Create Chromium Pack
+      run: |
+        cd bin
+        tar -cvf chromium-${{ github.ref_name }}-pack.tar *
+        mv chromium-${{ github.ref_name }}-pack.tar ..
+        cd ..
+
+    - name: Upload items to Github Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ github.ref_name }}
+        artifacts: "chromium-${{ github.ref_name }}-layer.zip,chromium-${{ github.ref_name }}-pack.tar"
+        prerelease: false
+        draft: true
+        token: ${{ github.token }}
+        owner: Sparticuz
+        repo: chromium
