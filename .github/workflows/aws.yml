@@ -20,7 +20,10 @@ jobs:
         node-version: 18.x
 
     - name: Install Packages
-      run: npm install
+      run: npm ci
+
+    - name: Compile Typescript
+      run: npm run build
 
     - name: Create Lambda Layer
       run: make chromium.zip
