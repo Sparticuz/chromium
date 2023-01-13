@@ -17,10 +17,7 @@
   },
   "scripts": {
     "test": "make clean && make && make pretest && make test",
-    "build": "rm -rf build && tsc -p tsconfig.json",
-    "postversion": "git push && git push --tags && npm publish",
-    "prepack": "npm run build",
-    "preversion": "npm run build"
+    "build": "rm -rf build && tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@tsconfig/node16-strictest": "^1.0.4",
