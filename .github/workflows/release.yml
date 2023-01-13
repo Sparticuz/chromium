@@ -31,6 +31,9 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
+    - name: Create Lambda Layer
+      run: make chromium-${{ github.ref_name }}-layer.zip
+
     # Change the package name to chromium-min,
     # delete the bin folder from the files array
     # so that it doesn't publish the binaries to -min
@@ -45,9 +48,6 @@ jobs:
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-
-    - name: Create Lambda Layer
-      run: make chromium-${{ github.ref_name }}-layer.zip
 
     - name: Create Chromium Pack
       run: |
