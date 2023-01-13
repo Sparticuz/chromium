@@ -60,6 +60,15 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ github.ref_name }}
+        body: |
+          # [@sparticuz/chromium ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium), [@sparticuz/chromium-min ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium-min)
+          The `chromium-${{ github.ref_name }}-layer.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
+          ```
+          bucketName="chromiumUploadBucket" && \
+          aws s3 cp chromium-${{ github.ref_name }}-layer.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" && \
+          aws lambda publish-layer-version --layer-name chromium --description "Chromium ${{ github.ref_name }}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
+          ```
+          The `chromium-${{ github.ref_name }}-pack.tar` file may be uploaded to any https endpoint and the remote location may be used as the `input` variable in the `chromium.executablePath(input)` function.
         artifacts: "chromium-${{ github.ref_name }}-layer.zip,chromium-${{ github.ref_name }}-pack.tar"
         prerelease: false
         draft: true
