@@ -40,7 +40,6 @@ jobs:
         event:
           - example.com
         version:
-          - 14
           - 16
           - 18
     steps:
