@@ -87,32 +87,53 @@ test("Check the page title of example.com", async (t) => {
   assert.strictEqual(pageTitle, "Example Domain");
 });
 ```
+You should allocate at least 512 MB of RAM to your Lambda, however 1600 MB (or more) is recommended.
 
-You can also specify a custom Chromium location as following.
+### -min package
+
+The -min package DOES NOT include the chromium brotli files. There are a few instances where this
+is useful. Primarily, this is useful when you have file size limits.
+
+To use the -min package please install the `@sparticuz/chromium-min` package.
+
+When using the -min package, you need to specify the location of the brotli files.
+
+In this example, /opt/chromium contains all the brotli files
+```
+/opt
+  /chromium
+    /aws.tar.br
+    /chromium.br
+    /swiftshader.tar.br
+```
 ```javascript
-const test = require("node:test");
-const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium");
-
-test("Check the page title of example.com", async (t) => {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath("/opt/chromium"),
-    headless: chromium.headless,
-    ignoreHTTPSErrors: true,
-  });
-
-  const page = await browser.newPage();
-  await page.goto("https://example.com");
-  const pageTitle = await page.title();
-  await browser.close();
-
-  assert.strictEqual(pageTitle, "Example Domain");
+const browser = await puppeteer.launch({
+  args: chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath: await chromium.executablePath("/opt/chromium"),
+  headless: chromium.headless,
+  ignoreHTTPSErrors: true,
 });
 ```
+In the following example, https://www.example.com/chromiumPack.tar contains all the brotli files.
+Generally, this would be a location on S3, or another very fast downloadable location,
+that is close to your function's execution location.
 
-You should allocate at least 512 MB of RAM to your Lambda, however 1600 MB (or more) is recommended.
+@sparticuz/chromium will download the pack tar file, untar the files to /tmp/chromium-pack,
+then will un-brotli the files to /tmp/chromium. The next iteration will have /tmp/chromium exist
+and will use the already downloaded files.
+
+The latest chromium-pack.tar file will be on the latest [release](https://github.com/Sparticuz/chromium/releases).
+
+```javascript
+const browser = await puppeteer.launch({
+  args: chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath: await chromium.executablePath("https://www.example.com/chromiumPack.tar"),
+  headless: chromium.headless,
+  ignoreHTTPSErrors: true,
+});
+```
 
 ### Running Locally
 
@@ -195,7 +216,7 @@ aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumbe
 aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
 ```
 
-Alternatively, you can also download the layer artifact from one of our [CI workflow runs](https://github.com/Sparticuz/chromium/actions/workflows/aws.yml?query=is%3Asuccess+branch%3Amaster). Use the `chromium.zip` INSIDE the artifact as the layer. Also, the artifact will expire from Github after a certain time period.
+Alternatively, you can also download the layer artifact from one of our [releases](https://github.com/Sparticuz/chromium/releases).
 
 According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
 
