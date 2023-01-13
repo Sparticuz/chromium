@@ -24,7 +24,7 @@ jobs:
       with:
         node-version: 18.x
 
-    - run: npm ci # will be npm ci after I publish package-lock.json
+    - run: npm ci
 
     - run: npm run build
 
