@@ -41,7 +41,9 @@ jobs:
       run: |
         jq '.name="@sparticuz/chromium-min"' package.json > .package.json
         jq 'del(.files[] | select(. == "bin"))' .package.json > package.json
-        rm package-lock.json .package.json
+        jq '.homepage="https://github.com/Sparticuz/chromium#-min-package"' package.json > .package.json
+        mv .package.json package.json
+        rm package-lock.json
         npm install
 
     - name: Release chromium-min on npmjs

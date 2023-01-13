@@ -25,8 +25,13 @@ In order to figure out what version of `@sparticuz/chromium` you will need, plea
 ```shell
 # Puppeteer or Playwright is a production dependency
 npm install --save puppeteer-core@$PUPPETEER_VERSION
-# @sparticuz/chromium is a DEV dependency IF YOU ARE USING A LAYER, if not, use as a production dependency!
+# @sparticuz/chromium can be a DEV dependency IF YOU ARE USING A LAYER, if you are not using a layer, use as a production dependency!
 npm install --save-dev @sparticuz/chromium@$CHROMIUM_VERSION
+```
+
+If your vendor does not allow large deploys (`chromium.br` is 50+ MB), you'll need to host the `chromium-v#-pack.tar` separatly and use the [`@sparticuz/chromium-min` package](https://github.com/Sparticuz/chromium#-min-package).
+```shell
+npm install --save @sparticuz/chromium-min@$CHROMIUM_VERSION
 ```
 
 If you wish to install an older version of Chromium, take a look at [@sparticuz/chrome-aws-lambda](https://github.com/Sparticuz/chrome-aws-lambda#versioning) or [@alixaxel/chrome-aws-lambda](https://github.com/alixaxel/chrome-aws-lambda).
