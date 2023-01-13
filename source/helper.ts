@@ -18,9 +18,7 @@ export const downloadAndExtract = async (url: string) =>
         get(url, (response) => {
             response.pipe(extractObj);
             extractObj.on('finish', () => {
-                extractObj.end(() => {
-                    resolve(destDir);
-                });
+                resolve(destDir);
             });
         }).on('error', (err) => {
             unlink(destDir, (_) => {
