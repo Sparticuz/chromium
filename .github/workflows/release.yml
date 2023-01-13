@@ -15,7 +15,7 @@ jobs:
     steps:
 
       # Install jq so I can edit package.json from the command line
-    - run: apt install jq -y
+    - run: sudo apt-get install jq -y
 
     - uses: actions/checkout@v3
 
