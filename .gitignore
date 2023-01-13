@@ -1,5 +1,4 @@
 .fonts
-*.log
 *.pem
 *.pem.pub
 *.zip
@@ -7,6 +6,7 @@ bin/chromium-*.br
 build
 node_modules
 nodejs
-package-lock.json
 _/amazon/samconfig.toml
 _/amazon/.aws-sam
+*.tar
+*.tgz
