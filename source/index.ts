@@ -1,5 +1,5 @@
 import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'node:fs';
-import { IncomingMessage } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import LambdaFS from './lambdafs';
 import { join } from 'node:path';
 import { URL } from 'node:url';
@@ -38,15 +38,15 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-if ( process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
-  if (process.env.FONTCONFIG_PATH === undefined) {
-    process.env.FONTCONFIG_PATH = '/tmp/aws';
+if ( process.env['AWS_EXECUTION_ENV'] !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env['AWS_EXECUTION_ENV']) === true) {
+  if (process.env['FONTCONFIG_PATH'] === undefined) {
+    process.env['FONTCONFIG_PATH'] = '/tmp/aws';
   }
 
-  if (process.env.LD_LIBRARY_PATH === undefined) {
-    process.env.LD_LIBRARY_PATH = '/tmp/aws/lib';
-  } else if (process.env.LD_LIBRARY_PATH.startsWith('/tmp/aws/lib') !== true) {
-    process.env.LD_LIBRARY_PATH = [...new Set(['/tmp/aws/lib', ...process.env.LD_LIBRARY_PATH.split(':')])].join(':');
+  if (process.env['LD_LIBRARY_PATH'] === undefined) {
+    process.env['LD_LIBRARY_PATH'] = '/tmp/aws/lib';
+  } else if (process.env['LD_LIBRARY_PATH'].startsWith('/tmp/aws/lib') !== true) {
+    process.env['LD_LIBRARY_PATH'] = [...new Set(['/tmp/aws/lib', ...process.env['LD_LIBRARY_PATH'].split(':')])].join(':');
   }
 }
 
@@ -62,12 +62,12 @@ class Chromium {
       });
     }
 
-    if (process.env.HOME === undefined) {
-      process.env.HOME = '/tmp';
+    if (process.env['HOME'] === undefined) {
+      process.env['HOME'] = '/tmp';
     }
 
-    if (existsSync(`${process.env.HOME}/.fonts`) !== true) {
-      mkdirSync(`${process.env.HOME}/.fonts`);
+    if (existsSync(`${process.env['HOME']}/.fonts`) !== true) {
+      mkdirSync(`${process.env['HOME']}/.fonts`);
     }
 
     return new Promise((resolve, reject) => {
@@ -76,7 +76,7 @@ class Chromium {
       }
 
       const url = new URL(input);
-      const output = `${process.env.HOME}/.fonts/${url.pathname.split('/').pop()}`;
+      const output = `${process.env['HOME']}/.fonts/${url.pathname.split('/').pop()}`;
 
       if (existsSync(output) === true) {
         return resolve(output.split('/').pop() as string);
@@ -213,7 +213,7 @@ class Chromium {
       LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
 
-    if (process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+    if (process.env['AWS_EXECUTION_ENV'] !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env['AWS_EXECUTION_ENV']) === true) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
@@ -227,10 +227,10 @@ class Chromium {
    * False is returned if Serverless environment variables `IS_LOCAL` or `IS_OFFLINE` are set.
    */
   static get headless() {
-    if (process.env.IS_LOCAL !== undefined || process.env.IS_OFFLINE !== undefined) {
+    if (process.env['IS_LOCAL'] !== undefined || process.env['IS_OFFLINE'] !== undefined) {
       return false;
     }
-    if (process.env.NODE_ENV === "test") {
+    if (process.env['NODE_ENV'] === "test") {
       return true;
     }
     const environments = [

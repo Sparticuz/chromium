@@ -13,7 +13,7 @@
     "build"
   ],
   "engines": {
-    "node": ">= 14.18.0"
+    "node": ">= 16"
   },
   "scripts": {
     "test": "make clean && make && make pretest && make test",
@@ -23,6 +23,7 @@
     "preversion": "npm run build"
   },
   "devDependencies": {
+    "@tsconfig/node16-strictest": "^1.0.4",
     "@types/node": "^18.11.18",
     "@types/tar-fs": "^2.0.1",
     "clean-modules": "^2.0.6",
