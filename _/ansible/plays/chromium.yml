@@ -88,7 +88,7 @@
       become: true
       become_user: root
       shell: |
-        dnf update --releasever=2022.0.20220831 -y
+        dnf update --releasever=2022.0.20221207 -y
 
     - name: Installing Packages
       become: true
