@@ -257,7 +257,6 @@
           enable_keystone_registration_framework = false
           enable_linux_installer = false
           enable_media_remoting = false
-          enable_one_click_signin = false
           ffmpeg_branding = "Chrome"
           is_component_build = false
           is_debug = false
