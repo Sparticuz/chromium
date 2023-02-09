@@ -15,6 +15,7 @@ test:
 
 %.zip:
 	npm install --fund=false --package-lock=false
+	npm run build
 	mkdir -p nodejs
 	npm install --prefix nodejs/ tar-fs@2.1.1 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	npm pack
