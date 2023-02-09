@@ -1,0 +1,17 @@
+{
+  "name": "chromium-production-dependency",
+  "version": "0.0.0",
+  "description": "This package demonstrates using @sparticuz/chromium as a production dependency. WARNING: This package is over 50 megabytes and will likely not deploy using anything other than self-host",
+  "license": "ISC",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "110.0.0",
+    "puppeteer-core": "19.6.3"
+  }
+}
