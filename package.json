@@ -1,40 +1,7 @@
 {
   "name": "@sparticuz/chromium",
   "version": "110.0.0",
-  "author": {
-    "name": "Kyle McNally"
-  },
-  "license": "MIT",
   "description": "Chromium Binary for Serverless Platforms",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
-  "type": "commonjs",
-  "files": [
-    "bin",
-    "build"
-  ],
-  "engines": {
-    "node": ">= 14.18.0"
-  },
-  "scripts": {
-    "test": "make clean && make && make pretest && make test",
-    "build": "rm -rf build && tsc -p tsconfig.json"
-  },
-  "devDependencies": {
-    "@tsconfig/node14": "^1.0.3",
-    "@types/node": "^18.11.18",
-    "@types/tar-fs": "^2.0.1",
-    "clean-modules": "^2.0.6",
-    "typescript": "^4.9.4"
-  },
-  "bugs": {
-    "url": "https://github.com/Sparticuz/chromium/issues"
-  },
-  "homepage": "https://github.com/Sparticuz/chromium",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/Sparticuz/chromium.git"
-  },
   "keywords": [
     "aws",
     "browser",
@@ -45,18 +12,40 @@
     "playwright",
     "serverless"
   ],
-  "prettier": {
-    "arrowParens": "always",
-    "bracketSpacing": true,
-    "jsxBracketSameLine": false,
-    "printWidth": 140,
-    "semi": true,
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5",
-    "useTabs": false
+  "homepage": "https://github.com/Sparticuz/chromium",
+  "bugs": {
+    "url": "https://github.com/Sparticuz/chromium/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Sparticuz/chromium.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "type": "commonjs",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "bin",
+    "build"
+  ],
+  "scripts": {
+    "build": "rm -rf build && tsc -p tsconfig.json",
+    "test": "make clean && make && make pretest && make test"
   },
   "dependencies": {
     "tar-fs": "^2.1.1"
+  },
+  "devDependencies": {
+    "@tsconfig/node14": "^1.0.3",
+    "@types/node": "^18.11.18",
+    "@types/tar-fs": "^2.0.1",
+    "clean-modules": "^2.0.6",
+    "typescript": "^4.9.4"
+  },
+  "engines": {
+    "node": ">= 14.18.0"
   }
 }
