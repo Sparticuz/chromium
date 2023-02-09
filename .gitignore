@@ -11,3 +11,4 @@ _/amazon/.aws-sam
 *.tar
 *.tgz
 examples/**/package-lock.json
+examples/**/.serverless
