@@ -10,3 +10,4 @@ _/amazon/samconfig.toml
 _/amazon/.aws-sam
 *.tar
 *.tgz
+examples/**/package-lock.json
