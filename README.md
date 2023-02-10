@@ -140,6 +140,15 @@ const browser = await puppeteer.launch({
 });
 ```
 
+### Examples
+Here are some example projects and help with other services
+- [Production Dependency](https://github.com/Sparticuz/chromium/tree/master/examples/production-dependency)
+- [Serverless Framework with Lambda Layer](https://github.com/Sparticuz/chromium/tree/master/examples/serverless-with-lambda-layer)
+- [Chromium-min](https://github.com/Sparticuz/chromium/tree/master/examples/remote-min-binary)
+- AWS SAM *TODO*
+- [Webpack](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1343196897)
+- [Netlify](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1414107620)
+
 ### Running Locally
 
 This package will run in headless mode when `NODE_ENV = "test"`. If you want to run using your own local binary, set `IS_LOCAL` to anything.
