@@ -1,0 +1,17 @@
+{
+  "name": "chromium-remote-min",
+  "version": "0.0.0",
+  "description": "This package demonstrates using @sparticuz/chromium-min",
+  "license": "ISC",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium-min": "110.0.1",
+    "puppeteer-core": "19.6.3"
+  }
+}

@@ -1,5 +1,5 @@
 const puppeteer = require("puppeteer-core");
-const chromium = require('@sparticuz/chromium');
+const chromium = require("@sparticuz/chromium");
 
 module.exports = {
   handler: async () => {
@@ -22,9 +22,8 @@ module.exports = {
       await page.close();
 
       await browser.close();
-
     } catch (error) {
       throw new Error(error.message);
     }
-  }
+  },
 };
