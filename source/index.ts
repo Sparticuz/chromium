@@ -1,9 +1,15 @@
-import { access, createWriteStream, existsSync, mkdirSync, symlink } from 'node:fs';
-import { IncomingMessage } from 'node:http';
-import LambdaFS from './lambdafs';
-import { join } from 'node:path';
-import { URL } from 'node:url';
-import { downloadAndExtract, isValidUrl } from './helper';
+import {
+  access,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  symlink,
+} from "node:fs";
+import { IncomingMessage } from "node:http";
+import LambdaFS from "./lambdafs";
+import { join } from "node:path";
+import { URL } from "node:url";
+import { downloadAndExtract, isValidUrl } from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -38,15 +44,21 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-if ( process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+if (
+  process.env.AWS_EXECUTION_ENV !== undefined &&
+  /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) ===
+    true
+) {
   if (process.env.FONTCONFIG_PATH === undefined) {
-    process.env.FONTCONFIG_PATH = '/tmp/aws';
+    process.env.FONTCONFIG_PATH = "/tmp/aws";
   }
 
   if (process.env.LD_LIBRARY_PATH === undefined) {
-    process.env.LD_LIBRARY_PATH = '/tmp/aws/lib';
-  } else if (process.env.LD_LIBRARY_PATH.startsWith('/tmp/aws/lib') !== true) {
-    process.env.LD_LIBRARY_PATH = [...new Set(['/tmp/aws/lib', ...process.env.LD_LIBRARY_PATH.split(':')])].join(':');
+    process.env.LD_LIBRARY_PATH = "/tmp/aws/lib";
+  } else if (process.env.LD_LIBRARY_PATH.startsWith("/tmp/aws/lib") !== true) {
+    process.env.LD_LIBRARY_PATH = [
+      ...new Set(["/tmp/aws/lib", ...process.env.LD_LIBRARY_PATH.split(":")]),
+    ].join(":");
   }
 }
 
@@ -63,7 +75,7 @@ class Chromium {
     }
 
     if (process.env.HOME === undefined) {
-      process.env.HOME = '/tmp';
+      process.env.HOME = "/tmp";
     }
 
     if (existsSync(`${process.env.HOME}/.fonts`) !== true) {
@@ -76,24 +88,29 @@ class Chromium {
       }
 
       const url = new URL(input);
-      const output = `${process.env.HOME}/.fonts/${url.pathname.split('/').pop()}`;
+      const output = `${process.env.HOME}/.fonts/${url.pathname
+        .split("/")
+        .pop()}`;
 
       if (existsSync(output) === true) {
-        return resolve(output.split('/').pop() as string);
+        return resolve(output.split("/").pop() as string);
       }
 
-      if (url.protocol === 'file:') {
+      if (url.protocol === "file:") {
         access(url.pathname, (error) => {
           if (error != null) {
             return reject(error);
           }
 
           symlink(url.pathname, output, (error) => {
-            return error != null ? reject(error) : resolve(url.pathname.split('/').pop() as string);
+            return error != null
+              ? reject(error)
+              : resolve(url.pathname.split("/").pop() as string);
           });
         });
       } else {
-        let handler = url.protocol === 'http:' ? require('http').get : require('https').get;
+        let handler =
+          url.protocol === "http:" ? require("http").get : require("https").get;
 
         handler(input, (response: IncomingMessage) => {
           if (response.statusCode !== 200) {
@@ -102,17 +119,17 @@ class Chromium {
 
           const stream = createWriteStream(output);
 
-          stream.once('error', (error) => {
+          stream.once("error", (error) => {
             return reject(error);
           });
 
-          response.on('data', (chunk) => {
+          response.on("data", (chunk) => {
             stream.write(chunk);
           });
 
-          response.once('end', () => {
+          response.once("end", () => {
             stream.end(() => {
-              return resolve(url.pathname.split('/').pop() as string);
+              return resolve(url.pathname.split("/").pop() as string);
             });
           });
         });
@@ -126,39 +143,39 @@ class Chromium {
    */
   static get args(): string[] {
     const result = [
-      '--allow-running-insecure-content', // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
-      '--autoplay-policy=user-gesture-required', // https://source.chromium.org/search?q=lang:cpp+symbol:kAutoplayPolicy&ss=chromium
-      '--disable-background-timer-throttling',
-      '--disable-component-update', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableComponentUpdate&ss=chromium
-      '--disable-domain-reliability', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableDomainReliability&ss=chromium
-      '--disable-features=AudioServiceOutOfProcess,IsolateOrigins,site-per-process', // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
-      '--disable-ipc-flooding-protection',
-      '--disable-print-preview', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
-      '--disable-dev-shm-usage',
-      '--disable-setuid-sandbox', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
-      '--disable-site-isolation-trials', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
-      '--disable-speech-api', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
-      '--disable-web-security', // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
-      '--disk-cache-size=33554432', // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
-      '--enable-features=SharedArrayBuffer', // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
-      '--hide-scrollbars', // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
-      '--ignore-gpu-blocklist', // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
-      '--in-process-gpu', // https://source.chromium.org/search?q=lang:cpp+symbol:kInProcessGPU&ss=chromium
-      '--mute-audio', // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
-      '--no-default-browser-check', // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
-      '--no-first-run',
-      '--no-pings', // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
-      '--no-sandbox', // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
-      '--no-zygote', // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
-      '--use-gl=angle', // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-      '--use-angle=swiftshader', // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-      '--window-size=1920,1080', // https://source.chromium.org/search?q=lang:cpp+symbol:kWindowSize&ss=chromium
+      "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
+      "--autoplay-policy=user-gesture-required", // https://source.chromium.org/search?q=lang:cpp+symbol:kAutoplayPolicy&ss=chromium
+      "--disable-background-timer-throttling",
+      "--disable-component-update", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableComponentUpdate&ss=chromium
+      "--disable-domain-reliability", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableDomainReliability&ss=chromium
+      "--disable-features=AudioServiceOutOfProcess,IsolateOrigins,site-per-process", // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
+      "--disable-ipc-flooding-protection",
+      "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
+      "--disable-dev-shm-usage",
+      "--disable-setuid-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
+      "--disable-site-isolation-trials", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
+      "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
+      "--disable-web-security", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
+      "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
+      "--enable-features=SharedArrayBuffer", // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
+      "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
+      "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
+      "--in-process-gpu", // https://source.chromium.org/search?q=lang:cpp+symbol:kInProcessGPU&ss=chromium
+      "--mute-audio", // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
+      "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
+      "--no-first-run",
+      "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
+      "--no-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
+      "--no-zygote", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
+      "--use-gl=angle", // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
+      "--use-angle=swiftshader", // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
+      "--window-size=1920,1080", // https://source.chromium.org/search?q=lang:cpp+symbol:kWindowSize&ss=chromium
     ];
 
     if (Chromium.headless === true) {
-      result.push('--single-process'); // https://source.chromium.org/search?q=lang:cpp+symbol:kSingleProcess&ss=chromium
+      result.push("--single-process"); // https://source.chromium.org/search?q=lang:cpp+symbol:kSingleProcess&ss=chromium
     } else {
-      result.push('--start-maximized'); // https://source.chromium.org/search?q=lang:cpp+symbol:kStartMaximized&ss=chromium
+      result.push("--start-maximized"); // https://source.chromium.org/search?q=lang:cpp+symbol:kStartMaximized&ss=chromium
     }
 
     return result;
@@ -187,8 +204,8 @@ class Chromium {
     /**
      * If the `chromium` binary already exists in /tmp/chromium, return it.
      */
-    if (existsSync('/tmp/chromium') === true) {
-      return Promise.resolve('/tmp/chromium');
+    if (existsSync("/tmp/chromium") === true) {
+      return Promise.resolve("/tmp/chromium");
     }
 
     if (input && isValidUrl(input)) {
@@ -199,7 +216,7 @@ class Chromium {
      * otherwise, the default location is ../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
-    input ??= join(__dirname, '..', 'bin');
+    input ??= join(__dirname, "..", "bin");
 
     /**
      * If the input directory doesn't exist, throw an error.
@@ -213,7 +230,12 @@ class Chromium {
       LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
 
-    if (process.env.AWS_EXECUTION_ENV !== undefined && /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) === true) {
+    if (
+      process.env.AWS_EXECUTION_ENV !== undefined &&
+      /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(
+        process.env.AWS_EXECUTION_ENV
+      ) === true
+    ) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
@@ -227,17 +249,20 @@ class Chromium {
    * False is returned if Serverless environment variables `IS_LOCAL` or `IS_OFFLINE` are set.
    */
   static get headless() {
-    if (process.env.IS_LOCAL !== undefined || process.env.IS_OFFLINE !== undefined) {
+    if (
+      process.env.IS_LOCAL !== undefined ||
+      process.env.IS_OFFLINE !== undefined
+    ) {
       return false;
     }
     if (process.env.NODE_ENV === "test") {
       return true;
     }
     const environments = [
-      'AWS_LAMBDA_FUNCTION_NAME',
-      'FUNCTION_NAME',
-      'FUNCTION_TARGET',
-      'FUNCTIONS_EMULATOR',
+      "AWS_LAMBDA_FUNCTION_NAME",
+      "FUNCTION_NAME",
+      "FUNCTION_TARGET",
+      "FUNCTIONS_EMULATOR",
     ];
 
     return environments.some((key) => process.env[key] !== undefined);
