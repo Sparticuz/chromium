@@ -2,8 +2,12 @@
   "extends": "@tsconfig/node14/tsconfig.json",
   "compilerOptions": {
     "declaration": true,
-    "lib": ["dom"],
+    "lib": [
+      "dom"
+    ],
     "outDir": "build",
   },
-  "include": ["source"]
+  "include": [
+    "source"
+  ]
 }
