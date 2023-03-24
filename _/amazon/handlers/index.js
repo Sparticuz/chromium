@@ -36,7 +36,7 @@ exports.handler = async (event, context) => {
           }
 
           if (job.expected.hasOwnProperty('screenshot') === true) {
-            if (job.expected.hasOwnProperty('remove') === true ) {
+            if (job.expected.hasOwnProperty('remove') === true) {
               await page.evaluate((selector) => {
                 document.getElementById(selector).remove();
               }, job.expected.remove);
