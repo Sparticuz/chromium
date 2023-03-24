@@ -63,16 +63,22 @@ if (
 
 class Chromium {
   /**
+   * Determines the headless mode that chromium will run at
+   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
+   * @values true or "new"
+   */
+  static headlessMode: true | "new" = "new";
+
+  /**
+   * If true, the graphics stack and webgl is enabled,
+   * If false, webgl will be disabled. (If false, the swiftshader driver will also not extract)
+   */
+  static graphicsStackMode: boolean = true;
+
+  /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   * If headless is not true, `null` is returned instead.
    */
   static font(input: string): Promise<string | null> {
-    if (Chromium.headless !== true) {
-      return new Promise((resolve) => {
-        return resolve(null);
-      });
-    }
-
     if (process.env.HOME === undefined) {
       process.env.HOME = "/tmp";
     }
@@ -221,10 +227,11 @@ class Chromium {
       throw new Error(`The input directory "${input}" does not exist.`);
     }
 
-    const promises = [
-      LambdaFS.inflate(`${input}/chromium.br`),
-      LambdaFS.inflate(`${input}/swiftshader.tar.br`),
-    ];
+    const promises = [LambdaFS.inflate(`${input}/chromium.br`)];
+    if (this.graphicsStackMode) {
+      // Only inflate graphics stack if needed
+      promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
+    }
 
     if (
       process.env.AWS_EXECUTION_ENV !== undefined &&
@@ -237,29 +244,8 @@ class Chromium {
     return result.shift() as string;
   }
 
-  /**
-   * Returns a boolean indicating if we are running on AWS Lambda or Google Cloud Functions.
-   * True is returned if the NODE_ENV is set to 'test' for easier integration testing.
-   * False is returned if Serverless environment variables `IS_LOCAL` or `IS_OFFLINE` are set.
-   */
   static get headless() {
-    if (
-      process.env.IS_LOCAL !== undefined ||
-      process.env.IS_OFFLINE !== undefined
-    ) {
-      return false;
-    }
-    if (process.env.NODE_ENV === "test") {
-      return true;
-    }
-    const environments = [
-      "AWS_LAMBDA_FUNCTION_NAME",
-      "FUNCTION_NAME",
-      "FUNCTION_TARGET",
-      "FUNCTIONS_EMULATOR",
-    ];
-
-    return environments.some((key) => process.env[key] !== undefined);
+    return this.headlessMode;
   }
 }
 
