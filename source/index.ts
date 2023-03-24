@@ -144,43 +144,105 @@ class Chromium {
    * The canonical list of flags can be found on https://peter.sh/experiments/chromium-command-line-switches/.
    */
   static get args(): string[] {
-    const result = [
-      "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
-      "--autoplay-policy=user-gesture-required", // https://source.chromium.org/search?q=lang:cpp+symbol:kAutoplayPolicy&ss=chromium
+    /**
+     * These are the default ares in puppeteer.
+     * https://github.com/puppeteer/puppeteer/blob/3a31070d054fa3cd8116ca31c578807ed8d6f987/packages/puppeteer-core/src/node/ChromeLauncher.ts#L185
+     */
+    const puppeteerFlags = [
+      "--allow-pre-commit-input",
+      "--disable-background-networking",
       "--disable-background-timer-throttling",
-      "--disable-component-update", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableComponentUpdate&ss=chromium
-      "--disable-domain-reliability", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableDomainReliability&ss=chromium
-      "--disable-features=AudioServiceOutOfProcess,IsolateOrigins,site-per-process", // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
-      "--disable-ipc-flooding-protection",
-      "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
+      "--disable-backgrounding-occluded-windows",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--disable-default-apps",
       "--disable-dev-shm-usage",
-      "--disable-setuid-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
-      "--disable-site-isolation-trials", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
+      "--disable-extensions",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-renderer-backgrounding",
+      "--disable-sync",
+      "--enable-automation",
+      // TODO(sadym): remove '--enable-blink-features=IdleDetection' once
+      // IdleDetection is turned on by default.
+      "--enable-blink-features=IdleDetection",
+      "--export-tagged-pdf",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+    ];
+    const puppeteerDisableFeatures = [
+      "Translate",
+      "BackForwardCache",
+      // AcceptCHFrame disabled because of crbug.com/1348106.
+      "AcceptCHFrame",
+      "MediaRouter",
+      "OptimizationHints",
+    ];
+    const puppeteerEnableFeatures = ["NetworkServiceInProcess2"];
+
+    const chromiumFlags = [
+      "--disable-domain-reliability", // https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md#background-networking
+      "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
       "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
-      "--disable-web-security", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
       "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
-      "--enable-features=SharedArrayBuffer", // https://source.chromium.org/search?q=file:content_features.cc&ss=chromium
+      "--mute-audio", // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
+      "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
+      "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
+    ];
+    const chromiumDisableFeatures = [
+      "AudioServiceOutOfProcess",
+      "IsolateOrigins",
+      "site-per-process",
+    ];
+    const chromiumEnableFeatures = ["SharedArrayBuffer"];
+
+    const graphicsFlags = [
       "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
       "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
       "--in-process-gpu", // https://source.chromium.org/search?q=lang:cpp+symbol:kInProcessGPU&ss=chromium
-      "--mute-audio", // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
-      "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
-      "--no-first-run",
-      "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
-      "--no-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
-      "--no-zygote", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
-      "--use-gl=angle", // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-      "--use-angle=swiftshader", // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
       "--window-size=1920,1080", // https://source.chromium.org/search?q=lang:cpp+symbol:kWindowSize&ss=chromium
     ];
 
-    if (Chromium.headless === true) {
-      result.push("--single-process"); // https://source.chromium.org/search?q=lang:cpp+symbol:kSingleProcess&ss=chromium
-    } else {
-      result.push("--start-maximized"); // https://source.chromium.org/search?q=lang:cpp+symbol:kStartMaximized&ss=chromium
-    }
+    // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
+    this.graphicsStackMode
+      ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
+      : graphicsFlags.push("--disable-webgl");
 
-    return result;
+    const insecureFlags = [
+      "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
+      "--disable-setuid-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
+      "--disable-site-isolation-trials", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
+      "--disable-web-security", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
+      "--no-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
+      "--no-zygote", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
+    ];
+
+    const headlessFlags = [
+      this.headlessMode === "new" ? "--headless='new'" : "--headless",
+    ];
+
+    return [
+      ...puppeteerFlags,
+      ...chromiumFlags,
+      `--disable-features=${[
+        ...puppeteerDisableFeatures,
+        ...chromiumDisableFeatures,
+      ].join(",")}`,
+      `--enable-features=${[
+        ...puppeteerEnableFeatures,
+        ...chromiumEnableFeatures,
+      ].join(",")}`,
+      ...graphicsFlags,
+      ...insecureFlags,
+      ...headlessFlags,
+    ];
   }
 
   /**
