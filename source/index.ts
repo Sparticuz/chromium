@@ -46,8 +46,7 @@ interface Viewport {
 
 if (
   process.env.AWS_EXECUTION_ENV !== undefined &&
-  /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(process.env.AWS_EXECUTION_ENV) ===
-    true
+  /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
 ) {
   if (process.env.FONTCONFIG_PATH === undefined) {
     process.env.FONTCONFIG_PATH = "/tmp/aws";
@@ -232,9 +231,7 @@ class Chromium {
 
     if (
       process.env.AWS_EXECUTION_ENV !== undefined &&
-      /^AWS_Lambda_nodejs(?:14|16|18)[.]x$/.test(
-        process.env.AWS_EXECUTION_ENV
-      ) === true
+      /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
     ) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
