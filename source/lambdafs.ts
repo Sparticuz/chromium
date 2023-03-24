@@ -1,8 +1,8 @@
-import { createReadStream, createWriteStream, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
-import { extract } from 'tar-fs';
-import { createBrotliDecompress, createUnzip } from 'node:zlib';
+import { createReadStream, createWriteStream, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
+import { extract } from "tar-fs";
+import { createBrotliDecompress, createUnzip } from "node:zlib";
 
 class LambdaFS {
   /**
@@ -11,7 +11,15 @@ class LambdaFS {
    * @param filePath Path of the file to decompress.
    */
   static inflate(filePath: string): Promise<string> {
-    const output = filePath.includes("swiftshader") ? tmpdir() : join(tmpdir(), basename(filePath).replace(/[.](?:t(?:ar(?:[.](?:br|gz))?|br|gz)|br|gz)$/i, ''));
+    const output = filePath.includes("swiftshader")
+      ? tmpdir()
+      : join(
+          tmpdir(),
+          basename(filePath).replace(
+            /[.](?:t(?:ar(?:[.](?:br|gz))?|br|gz)|br|gz)$/i,
+            ""
+          )
+        );
 
     return new Promise((resolve, reject) => {
       if (filePath.includes("swiftshader")) {
@@ -30,27 +38,33 @@ class LambdaFS {
       if (/[.](?:t(?:ar(?:[.](?:br|gz))?|br|gz))$/i.test(filePath) === true) {
         target = extract(output);
 
-        target.once('finish', () => {
+        target.once("finish", () => {
           return resolve(output);
         });
       } else {
         target = createWriteStream(output, { mode: 0o700 });
       }
 
-      source.once('error', (error: Error) => {
+      source.once("error", (error: Error) => {
         return reject(error);
       });
 
-      target.once('error', (error: Error) => {
+      target.once("error", (error: Error) => {
         return reject(error);
       });
 
-      target.once('close', () => {
+      target.once("close", () => {
         return resolve(output);
       });
 
       if (/(?:br|gz)$/i.test(filePath) === true) {
-        source.pipe(/br$/i.test(filePath) ? createBrotliDecompress({ chunkSize: 2 ** 21 }) : createUnzip({ chunkSize: 2 ** 21 })).pipe(target);
+        source
+          .pipe(
+            /br$/i.test(filePath)
+              ? createBrotliDecompress({ chunkSize: 2 ** 21 })
+              : createUnzip({ chunkSize: 2 ** 21 })
+          )
+          .pipe(target);
       } else {
         source.pipe(target);
       }
