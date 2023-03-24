@@ -142,8 +142,7 @@
     - name: Checking for Directory Structure
       stat:
         path: /srv/source/chromium
-      register:
-        structure
+      register: structure
 
     - name: Creating Directory Structure
       become: true
@@ -172,7 +171,7 @@
         dest: /srv/source/chromium/.gclient
         owner: ec2-user
         group: ec2-user
-        mode: '0664'
+        mode: "0664"
 
     - name: Checking for Chromium
       stat:
@@ -187,8 +186,8 @@
 
     - name: Parse Result
       set_fact:
-       gitsha: >
-        {{ revision.content | regex_search('"git_sha":"([a-zA-Z0-9_]*)"', '\1') | trim }}
+        gitsha: >
+          {{ revision.content | regex_search('"git_sha":"([a-zA-Z0-9_]*)"', '\1') | trim }}
 
     - name: Checking Out Chromium revision
       shell: |
@@ -211,22 +210,22 @@
         backrefs: yes
       with_items:
         - {
-            path: 'sandbox_ipc_linux.cc',
+            path: "sandbox_ipc_linux.cc",
             line: '\1PLOG(WARNING) << "poll"; failed_polls = 0;',
             regexp: '^(\s+)PLOG[(]WARNING[)] << "poll";$',
           }
         - {
-            path: 'renderer_host/render_process_host_impl.cc',
+            path: "renderer_host/render_process_host_impl.cc",
             line: '\1// \2\3',
             regexp: '^(  )(\s*)(CHECK[(]render_process_host->InSameStoragePartition[(])$',
           }
         - {
-            path: 'renderer_host/render_process_host_impl.cc',
+            path: "renderer_host/render_process_host_impl.cc",
             line: '\1// \2\3',
             regexp: '^(  )(\s*)(browser_context->GetStoragePartition[(]site_instance,)$',
           }
         - {
-            path: 'renderer_host/render_process_host_impl.cc',
+            path: "renderer_host/render_process_host_impl.cc",
             line: '\1// \2\3',
             regexp: '^(  )(\s*)(false /[*] can_create [*]/[)][)][)];)$',
           }
@@ -340,7 +339,7 @@
       amazon.aws.ec2_instance:
         wait: yes
         state: absent
-        instance_ids: '{{ ec2.instance_ids }}'
+        instance_ids: "{{ ec2.instance_ids }}"
         region: "{{ region }}"
 
     - name: Deleting Security Group
