@@ -5,7 +5,7 @@ import {
   mkdirSync,
   symlink,
 } from "node:fs";
-import { IncomingMessage } from "node:http";
+import { https } from "follow-redirects";
 import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
@@ -108,10 +108,7 @@ class Chromium {
           });
         });
       } else {
-        let handler =
-          url.protocol === "http:" ? require("http").get : require("https").get;
-
-        handler(input, (response: IncomingMessage) => {
+        https.get(input, (response) => {
           if (response.statusCode !== 200) {
             return reject(`Unexpected status code: ${response.statusCode}.`);
           }
