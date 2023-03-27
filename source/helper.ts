@@ -17,6 +17,10 @@ export const isValidUrl = (input: string) => {
   }
 };
 
+export const isRunningInAwsLambda = () =>
+  process.env.AWS_EXECUTION_ENV &&
+  /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true;
+
 export const downloadAndExtract = async (url: string) =>
   new Promise<string>((resolve, reject) => {
     const getOptions = parse(url) as FollowRedirOptions;
