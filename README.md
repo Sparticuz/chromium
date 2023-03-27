@@ -153,15 +153,7 @@ Here are some example projects and help with other services
 
 This package will run in headless mode when `NODE_ENV = "test"`. If you want to run using your own local binary, set `IS_LOCAL` to anything.
 
-## API
 
-| Method / Property           | Returns              | Description                                                                                                                                             |
-| --------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `font(url)`                 | `{?Promise<string>}` | Provisions a custom font and returns its basename.                                                                                                      |
-| `args`                      | `{!Array<string>}`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
-| `defaultViewport`           | `{!Object}`          | Returns more sensible default viewport settings.                                                                                                        |
-| `executablePath(location)`  | `{?Promise<string>}` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `headless`                  | `{!boolean}`         | Returns `true` if we are running on AWS Lambda or GCF.                                                                                                  |
 
 ## Fonts
 
@@ -210,6 +202,19 @@ zip -9 --filesync --move --recurse-paths .fonts.zip .fonts/
 ## Graphics
 
 By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
+
+## API
+
+| Method / Property                   | Returns           | Description                                                                                                                                             |
+| ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                      |
+| `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
+| `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
+| `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
+| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"new"`                                                                                                      |
+| `headless`                          | `true \| "new"`   | Returns `true` or `"new"` depending on what version of chrome's headless you are running                                                                |
+| `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
+| `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 
 ## Compiling
 
