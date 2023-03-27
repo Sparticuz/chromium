@@ -1,0 +1,21 @@
+{
+  "name": "serverless-with-lambda-layer",
+  "version": "0.0.0",
+  "description": "This package demonstrates using @sparticuz/chromium as a devDependency with a layer that contains the binaries",
+  "license": "ISC",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "main": "index.js",
+  "scripts": {
+    "deploy": "sls deploy",
+    "test": "sls invoke --function chromium-test --log"
+  },
+  "dependencies": {
+    "puppeteer-core": "19.6.3"
+  },
+  "devDependencies": {
+    "@sparticuz/chromium": "110.0.0",
+    "serverless": "^3.27.0"
+  }
+}
