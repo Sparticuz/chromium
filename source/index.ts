@@ -64,7 +64,7 @@ class Chromium {
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
    * @values true or "new"
    */
-  static headlessMode: true | "new" = "new";
+  private static headlessMode: true | "new" = "new";
 
   /**
    * If true, the graphics stack and webgl is enabled,
@@ -222,7 +222,7 @@ class Chromium {
     ];
 
     const headlessFlags = [
-      this.headlessMode === "new" ? "--headless='new'" : "--headless",
+      this.headless === "new" ? "--headless='new'" : "--headless",
     ];
 
     return [
@@ -300,8 +300,26 @@ class Chromium {
     return result.shift() as string;
   }
 
-  static get headless() {
+  /**
+   * Returns the headless mode.
+   * `true` means the 'old' (legacy, chromium < 112) headless mode.
+   * "new" means the 'new' headless mode.
+   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
+   * @returns true | "new"
+   */
+  public static get headless() {
     return this.headlessMode;
+  }
+
+  /**
+   * Sets the headless mode.
+   * `true` means the 'old' (legacy, chromium < 112) headless mode.
+   * "new" means the 'new' headless mode.
+   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
+   * @default "new"
+   */
+  public static set setHeadlessMode(value: true | "new") {
+    this.headlessMode = value;
   }
 }
 
