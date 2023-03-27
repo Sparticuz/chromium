@@ -149,11 +149,28 @@ Here are some example projects and help with other services
 - [Webpack](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1343196897)
 - [Netlify](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1414107620)
 
-### Running Locally
+### Running Locally & Headless/Headful mode
 
-This package will run in headless mode when `NODE_ENV = "test"`. If you want to run using your own local binary, set `IS_LOCAL` to anything.
+This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version.
 
+```shell
+npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
+```
 
+For more information on installing a specific version of `chromium`, checkout [@puppeteer/browsers](https://www.npmjs.com/package/@puppeteer/browsers).
+
+For example, you can set your code to use an ENV variable such as `IS_LOCAL`, then use if/else statments to direct puppeteer to the correct environment.
+
+```javascript
+const browser = await puppeteer.launch({
+  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath: process.env.IS_LOCAL
+    ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
+    : await chromium.executablePath(),
+  headless: process.env.IS_LOCAL ? false : chromium.headless,
+});
+```
 
 ## Fonts
 
