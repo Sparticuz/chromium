@@ -17,9 +17,19 @@ export const isValidUrl = (input: string) => {
   }
 };
 
-export const isRunningInAwsLambda = () =>
-  process.env.AWS_EXECUTION_ENV &&
-  /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true;
+/**
+ * Determines if the running instance is inside an AWS Lambda container.
+ * @returns
+ */
+export const isRunningInAwsLambda = () => {
+  if (
+    process.env.AWS_EXECUTION_ENV &&
+    /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
+  ) {
+    return true;
+  }
+  return false;
+};
 
 export const downloadAndExtract = async (url: string) =>
   new Promise<string>((resolve, reject) => {
