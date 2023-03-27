@@ -144,6 +144,7 @@ Here are some example projects and help with other services
 
 - [Production Dependency](https://github.com/Sparticuz/chromium/tree/master/examples/production-dependency)
 - [Serverless Framework with Lambda Layer](https://github.com/Sparticuz/chromium/tree/master/examples/serverless-with-lambda-layer)
+- [Serverless Framework with Pre-existing Lambda Layer](https://github.com/Sparticuz/chromium/tree/master/examples/serverless-with-preexisting-lambda-layer)
 - [Chromium-min](https://github.com/Sparticuz/chromium/tree/master/examples/remote-min-binary)
 - AWS SAM _TODO_
 - [Webpack](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1343196897)
