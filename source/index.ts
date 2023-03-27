@@ -9,7 +9,7 @@ import { https } from "follow-redirects";
 import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
-import { downloadAndExtract, isValidUrl } from "./helper";
+import { downloadAndExtract, isRunningInAwsLambda, isValidUrl } from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -44,10 +44,7 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-if (
-  process.env.AWS_EXECUTION_ENV !== undefined &&
-  /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
-) {
+if (isRunningInAwsLambda()) {
   if (process.env.FONTCONFIG_PATH === undefined) {
     process.env.FONTCONFIG_PATH = "/tmp/aws";
   }
@@ -295,10 +292,7 @@ class Chromium {
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
 
-    if (
-      process.env.AWS_EXECUTION_ENV !== undefined &&
-      /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
-    ) {
+    if (isRunningInAwsLambda()) {
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
