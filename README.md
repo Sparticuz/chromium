@@ -206,6 +206,11 @@ Afterwards, you just need to ZIP the directory and upload it as a AWS Lambda Lay
 ```shell
 zip -9 --filesync --move --recurse-paths .fonts.zip .fonts/
 ```
+
+## Graphics
+
+By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
+
 ## Compiling
 
 To compile your own version of Chromium check the [Ansible playbook instructions](_/ansible).
