@@ -189,8 +189,6 @@ await chromium.font(
 
 This method should be invoked _before_ launching Chromium.
 
-> On non-serverless environments, the `font()` method is a no-op to avoid polluting the user space.
-
 ---
 
 Alternatively, it's also possible to provision fonts via AWS Lambda Layers.
