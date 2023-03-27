@@ -68,9 +68,10 @@ class Chromium {
 
   /**
    * If true, the graphics stack and webgl is enabled,
-   * If false, webgl will be disabled. (If false, the swiftshader driver will also not extract)
+   * If false, webgl will be disabled.
+   * (If false, the swiftshader.tar.br file will also not extract)
    */
-  static graphicsStackMode: boolean = true;
+  private static graphicsMode: boolean = true;
 
   /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
@@ -208,7 +209,7 @@ class Chromium {
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-    this.graphicsStackMode
+    this.graphics
       ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
       : graphicsFlags.push("--disable-webgl");
 
@@ -286,17 +287,20 @@ class Chromium {
       throw new Error(`The input directory "${input}" does not exist.`);
     }
 
+    // Extract the required files
     const promises = [LambdaFS.inflate(`${input}/chromium.br`)];
-    if (this.graphicsStackMode) {
+    if (this.graphicsMode) {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
-
     if (isRunningInAwsLambda()) {
+      // If running in AWS Lambda, extract more required files
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
     }
 
+    // Await all extractions
     const result = await Promise.all(promises);
+    // Returns the first result of the promise, which is the location of the `chromium` binary
     return result.shift() as string;
   }
 
@@ -320,6 +324,30 @@ class Chromium {
    */
   public static set setHeadlessMode(value: true | "new") {
     this.headlessMode = value;
+  }
+
+  /**
+   * Returns whether the graphics stack is enabled or disabled
+   * @returns boolean
+   */
+  public static get graphics() {
+    return this.graphicsMode;
+  }
+
+  /**
+   * Sets whether the graphics stack is enabled or disabled.
+   * @param true means the stack is enabled. WebGL will work.
+   * @param false means that the stack is disabled. WebGL will not work.
+   * `false` will also skip the extract of the graphics driver, saving about a second during initial extract
+   * @default true
+   */
+  public static set setGraphicsMode(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error(
+        `Graphics mode must be a boolean, you entered '${value}'`
+      );
+    }
+    this.graphicsMode = value;
   }
 }
 
