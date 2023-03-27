@@ -24,22 +24,22 @@ interface Viewport {
   /**
    * Specify device scale factor.
    * See {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio | devicePixelRatio} for more info.
-   * @defaultValue 1
+   * @default 1
    */
   deviceScaleFactor?: number;
   /**
    * Whether the `meta viewport` tag is taken into account.
-   * @defaultValue false
+   * @default false
    */
   isMobile?: boolean;
   /**
    * Specifies if the viewport is in landscape mode.
-   * @defaultValue false
+   * @default false
    */
   isLandscape?: boolean;
   /**
    * Specify if the viewport supports touch events.
-   * @defaultValue false
+   * @default false
    */
   hasTouch?: boolean;
 }
@@ -76,7 +76,7 @@ class Chromium {
   /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
-  static font(input: string): Promise<string | null> {
+  static font(input: string): Promise<string> {
     if (process.env.HOME === undefined) {
       process.env.HOME = "/tmp";
     }
@@ -244,7 +244,7 @@ class Chromium {
   }
 
   /**
-   * Returns sensible default viewport settings.
+   * Returns sensible default viewport settings for serverless environments.
    */
   static get defaultViewport(): Required<Viewport> {
     return {
@@ -270,9 +270,15 @@ class Chromium {
       return Promise.resolve("/tmp/chromium");
     }
 
+    /**
+     * If input is a valid URL, download and extract the file. It will extract to /tmp/chromium-pack
+     * and executablePath will be recursively called on that location, which will then extract
+     * the brotli files to the correct locations
+     */
     if (input && isValidUrl(input)) {
       return this.executablePath(await downloadAndExtract(input));
     }
+
     /**
      * If input is defined, use that as the location of the brotli files,
      * otherwise, the default location is ../bin.
@@ -289,7 +295,7 @@ class Chromium {
 
     // Extract the required files
     const promises = [LambdaFS.inflate(`${input}/chromium.br`)];
-    if (this.graphicsMode) {
+    if (this.graphics) {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
