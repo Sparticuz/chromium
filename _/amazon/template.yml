@@ -12,21 +12,9 @@ Resources:
         LayerName: sparticuz-chromium
         ContentUri: code/
         CompatibleRuntimes:
-          - nodejs14.x
           - nodejs16.x
           - nodejs18.x
 
-  node14:
-    Type: AWS::Serverless::Function
-    Properties:
-      Layers:
-        - !Ref layer
-      Handler: handlers/index.handler
-      Runtime: nodejs14.x
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSXRayDaemonWriteAccess
-      Tracing: Active
   node16:
     Type: AWS::Serverless::Function
     Properties:

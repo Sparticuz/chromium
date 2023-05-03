@@ -45,15 +45,20 @@ interface Viewport {
 }
 
 if (isRunningInAwsLambda()) {
-  if (process.env.FONTCONFIG_PATH === undefined) {
-    process.env.FONTCONFIG_PATH = "/tmp/aws";
+  if (process.env["FONTCONFIG_PATH"] === undefined) {
+    process.env["FONTCONFIG_PATH"] = "/tmp/aws";
   }
 
-  if (process.env.LD_LIBRARY_PATH === undefined) {
-    process.env.LD_LIBRARY_PATH = "/tmp/aws/lib";
-  } else if (process.env.LD_LIBRARY_PATH.startsWith("/tmp/aws/lib") !== true) {
-    process.env.LD_LIBRARY_PATH = [
-      ...new Set(["/tmp/aws/lib", ...process.env.LD_LIBRARY_PATH.split(":")]),
+  if (process.env["LD_LIBRARY_PATH"] === undefined) {
+    process.env["LD_LIBRARY_PATH"] = "/tmp/aws/lib";
+  } else if (
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/aws/lib") !== true
+  ) {
+    process.env["LD_LIBRARY_PATH"] = [
+      ...new Set([
+        "/tmp/aws/lib",
+        ...process.env["LD_LIBRARY_PATH"].split(":"),
+      ]),
     ].join(":");
   }
 }
@@ -77,12 +82,12 @@ class Chromium {
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
   static font(input: string): Promise<string> {
-    if (process.env.HOME === undefined) {
-      process.env.HOME = "/tmp";
+    if (process.env["HOME"] === undefined) {
+      process.env["HOME"] = "/tmp";
     }
 
-    if (existsSync(`${process.env.HOME}/.fonts`) !== true) {
-      mkdirSync(`${process.env.HOME}/.fonts`);
+    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
+      mkdirSync(`${process.env["HOME"]}/.fonts`);
     }
 
     return new Promise((resolve, reject) => {
@@ -91,7 +96,7 @@ class Chromium {
       }
 
       const url = new URL(input);
-      const output = `${process.env.HOME}/.fonts/${url.pathname
+      const output = `${process.env["HOME"]}/.fonts/${url.pathname
         .split("/")
         .pop()}`;
 
