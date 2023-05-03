@@ -143,7 +143,7 @@ class Chromium {
    */
   static get args(): string[] {
     /**
-     * These are the default ares in puppeteer.
+     * These are the default args in puppeteer.
      * https://github.com/puppeteer/puppeteer/blob/3a31070d054fa3cd8116ca31c578807ed8d6f987/packages/puppeteer-core/src/node/ChromeLauncher.ts#L185
      */
     const puppeteerFlags = [
