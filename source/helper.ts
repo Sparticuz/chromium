@@ -23,8 +23,8 @@ export const isValidUrl = (input: string) => {
  */
 export const isRunningInAwsLambda = () => {
   if (
-    process.env.AWS_EXECUTION_ENV &&
-    /^AWS_Lambda_nodejs/.test(process.env.AWS_EXECUTION_ENV) === true
+    process.env["AWS_EXECUTION_ENV"] &&
+    /^AWS_Lambda_nodejs/.test(process.env["AWS_EXECUTION_ENV"]) === true
   ) {
     return true;
   }
