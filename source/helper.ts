@@ -19,12 +19,19 @@ export const isValidUrl = (input: string) => {
 
 /**
  * Determines if the running instance is inside an AWS Lambda container.
- * @returns
+ * AWS_EXECUTION_ENV is for native Lambda instances
+ * AWS_LAMBDA_JS_RUNTIME is for netlify instances
+ * @returns boolean indicating if the running instance is inside a Lambda container
  */
 export const isRunningInAwsLambda = () => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
     /^AWS_Lambda_nodejs/.test(process.env["AWS_EXECUTION_ENV"]) === true
+  ) {
+    return true;
+  } else if (
+    process.env["AWS_LAMBDA_JS_RUNTIME"] &&
+    /^nodejs/.test(process.env["AWS_LAMBDA_JS_RUNTIME"]) === true
   ) {
     return true;
   }
