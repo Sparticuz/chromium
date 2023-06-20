@@ -64,12 +64,12 @@
 
     - name: Registering Host
       add_host:
-        hostname: "{{ ec2.instances[0].public_ip_address }}"
+        hostname: "{{ ec2.instances[0]['public_ip_address'] }}"
         groupname: aws
 
     - name: Waiting for SSH
       wait_for:
-        host: "{{ ec2.instances[0].public_ip_address }}"
+        host: "{{ ec2.instances[0]['public_ip_address'] }}"
         port: 22
         timeout: 240
         state: started
@@ -251,6 +251,7 @@
           disable_histogram_support = false
           enable_basic_print_dialog = false
           enable_basic_printing = true
+          enable_pdf = true
           enable_keystone_registration_framework = false
           enable_linux_installer = false
           enable_media_remoting = false

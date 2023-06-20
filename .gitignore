@@ -3,7 +3,6 @@
 *.pem.pub
 *.zip
 bin/chromium-*.br
-build
 node_modules
 nodejs
 _/amazon/samconfig.toml
@@ -12,3 +11,6 @@ _/amazon/.aws-sam
 *.tgz
 examples/**/package-lock.json
 examples/**/.serverless
+chromium/
+_/ansible/bin
+_/ansible/lib
