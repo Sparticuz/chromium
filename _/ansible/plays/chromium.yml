@@ -249,9 +249,10 @@
           blink_symbol_level = 0
           dcheck_always_on = false
           disable_histogram_support = false
-          enable_basic_print_dialog = false
+          enable_print_preview = true
           enable_basic_printing = true
           enable_pdf = true
+          enable_tagged_pdf = true
           enable_keystone_registration_framework = false
           enable_linux_installer = false
           enable_media_remoting = false
@@ -273,6 +274,17 @@
         gn gen out/Headless
       args:
         chdir: /srv/source/chromium/src
+
+    - name: Get arguement list
+      shell: |
+        gn args out/Headless --list
+      args:
+        chdir: /srv/source/chromium/src
+      register: result
+
+    - name: Print return information from the previous task
+      ansible.builtin.debug:
+        var: result
 
     - name: Compiling Headless Chromium
       shell: |
