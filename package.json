@@ -45,7 +45,7 @@
     "@types/follow-redirects": "^1.14.1",
     "@types/node": "^18.16.17",
     "@types/tar-fs": "^2.0.1",
-    "clean-modules": "^2.0.6",
+    "clean-modules": "^3.0.3",
     "typescript": "^5.1.3"
   },
   "engines": {
