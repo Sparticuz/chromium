@@ -2,37 +2,37 @@ name: AWS Lambda CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
     name: Build Lambda Layer
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.x
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
 
-    - name: Install Packages
-      run: npm ci
+      - name: Install Packages
+        run: npm ci
 
-    - name: Compile Typescript
-      run: npm run build
+      - name: Compile Typescript
+        run: npm run build
 
-    - name: Create Lambda Layer
-      run: make chromium.zip
+      - name: Create Lambda Layer
+        run: make chromium.zip
 
-    - name: Upload Layer Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: chromium
-        path: chromium.zip
+      - name: Upload Layer Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: chromium
+          path: chromium.zip
 
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)
@@ -46,27 +46,27 @@ jobs:
           - 16
           - 18
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
 
-    - name: Setup AWS SAM CLI
-      uses: aws-actions/setup-sam@v2
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
 
-    - name: Download Layer Artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: chromium
+      - name: Download Layer Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: chromium
 
-    - name: Provision Layer
-      run: unzip chromium.zip -d _/amazon/code
+      - name: Provision Layer
+        run: unzip chromium.zip -d _/amazon/code
 
-    - name: Install test dependencies
-      run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+      - name: Install test dependencies
+        run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
-    - name: Invoke Lambda on SAM
-      run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/${{ matrix.event }}.json node${{ matrix.version }} 2>&1 | (grep 'Error' && exit 1 || exit 0)
+      - name: Invoke Lambda on SAM
+        run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/${{ matrix.event }}.json node${{ matrix.version }} 2>&1 | (grep 'Error' && exit 1 || exit 0)

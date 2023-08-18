@@ -10,71 +10,70 @@ jobs:
     name: Build and release
     runs-on: ubuntu-latest
     steps:
-
       # Install jq so I can edit package.json from the command line
-    - run: sudo apt-get install jq -y
+      - run: sudo apt-get install jq -y
 
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.x
-        registry-url: https://registry.npmjs.org/
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          registry-url: https://registry.npmjs.org/
 
-    - run: npm ci
+      - run: npm ci
 
-    - run: npm run build
+      - run: npm run build
 
-    - name: Release chromium on npmjs
-      run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+      - name: Release chromium on npmjs
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
-    - name: Create Lambda Layer
-      run: make chromium-${{ github.ref_name }}-layer.zip
+      - name: Create Lambda Layer
+        run: make chromium-${{ github.ref_name }}-layer.zip
 
-    # Change the package name to chromium-min,
-    # delete the bin folder from the files array
-    # so that it doesn't publish the binaries to -min
-    - name: Cleanup and prepare for chromium-min
-      run: |
-        jq '.name="@sparticuz/chromium-min"' package.json > .package.json
-        jq 'del(.files[] | select(. == "bin"))' .package.json > package.json
-        jq '.homepage="https://github.com/Sparticuz/chromium#-min-package"' package.json > .package.json
-        mv .package.json package.json
-        rm package-lock.json
-        npm install
+      # Change the package name to chromium-min,
+      # delete the bin folder from the files array
+      # so that it doesn't publish the binaries to -min
+      - name: Cleanup and prepare for chromium-min
+        run: |
+          jq '.name="@sparticuz/chromium-min"' package.json > .package.json
+          jq 'del(.files[] | select(. == "bin"))' .package.json > package.json
+          jq '.homepage="https://github.com/Sparticuz/chromium#-min-package"' package.json > .package.json
+          mv .package.json package.json
+          rm package-lock.json
+          npm install
 
-    - name: Release chromium-min on npmjs
-      run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+      - name: Release chromium-min on npmjs
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
-    - name: Create Chromium Pack
-      run: |
-        cd bin
-        tar -cvf chromium-${{ github.ref_name }}-pack.tar *
-        mv chromium-${{ github.ref_name }}-pack.tar ..
-        cd ..
+      - name: Create Chromium Pack
+        run: |
+          cd bin
+          tar -cvf chromium-${{ github.ref_name }}-pack.tar *
+          mv chromium-${{ github.ref_name }}-pack.tar ..
+          cd ..
 
-    - name: Upload items to Github Release
-      uses: ncipollo/release-action@v1.12.0
-      with:
-        tag: ${{ github.ref_name }}
-        body: |
-          # [@sparticuz/chromium ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium), [@sparticuz/chromium-min ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium-min)
-          The `chromium-${{ github.ref_name }}-layer.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
-          ```
-          bucketName="chromiumUploadBucket" && \
-          aws s3 cp chromium-${{ github.ref_name }}-layer.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" && \
-          aws lambda publish-layer-version --layer-name chromium --description "Chromium ${{ github.ref_name }}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
-          ```
-          The `chromium-${{ github.ref_name }}-pack.tar` file may be uploaded to any https endpoint and the remote location may be used as the `input` variable in the `chromium.executablePath(input)` function.
-        artifacts: "chromium-${{ github.ref_name }}-layer.zip,chromium-${{ github.ref_name }}-pack.tar"
-        prerelease: false
-        draft: true
-        generateReleaseNotes: true
-        token: ${{ github.token }}
-        owner: Sparticuz
-        repo: chromium
+      - name: Upload items to Github Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          tag: ${{ github.ref_name }}
+          body: |
+            # [@sparticuz/chromium ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium), [@sparticuz/chromium-min ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium-min)
+            The `chromium-${{ github.ref_name }}-layer.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
+            ```
+            bucketName="chromiumUploadBucket" && \
+            aws s3 cp chromium-${{ github.ref_name }}-layer.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" && \
+            aws lambda publish-layer-version --layer-name chromium --description "Chromium ${{ github.ref_name }}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
+            ```
+            The `chromium-${{ github.ref_name }}-pack.tar` file may be uploaded to any https endpoint and the remote location may be used as the `input` variable in the `chromium.executablePath(input)` function.
+          artifacts: "chromium-${{ github.ref_name }}-layer.zip,chromium-${{ github.ref_name }}-pack.tar"
+          prerelease: false
+          draft: true
+          generateReleaseNotes: true
+          token: ${{ github.token }}
+          owner: Sparticuz
+          repo: chromium
