@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "follow-redirects": "^1.15.2",
-    "tar-fs": "^2.1.1"
+    "tar-fs": "^3.0.4"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.4",
@@ -45,8 +45,8 @@
     "@types/follow-redirects": "^1.14.1",
     "@types/node": "^18.16.17",
     "@types/tar-fs": "^2.0.1",
-    "clean-modules": "^2.0.6",
-    "typescript": "^5.1.3"
+    "clean-modules": "^3.0.4",
+    "typescript": "^5.1.6"
   },
   "engines": {
     "node": ">= 16"

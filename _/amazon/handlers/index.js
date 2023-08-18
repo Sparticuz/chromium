@@ -1,7 +1,7 @@
-const { ok } = require('assert');
-const { createHash } = require('crypto');
+const { ok } = require("assert");
+const { createHash } = require("crypto");
 const puppeteer = require("puppeteer-core");
-const chromium = require('@sparticuz/chromium');
+const chromium = require("@sparticuz/chromium");
 
 exports.handler = async (event, context) => {
   let browser = null;
@@ -15,9 +15,9 @@ exports.handler = async (event, context) => {
       ignoreHTTPSErrors: true,
     });
 
-    const contexts = [
-      browser.defaultBrowserContext(),
-    ];
+    console.log("Chromium verion", await browser.version());
+
+    const contexts = [browser.defaultBrowserContext()];
 
     while (contexts.length < event.length) {
       contexts.push(await browser.createIncognitoBrowserContext());
@@ -27,23 +27,31 @@ exports.handler = async (event, context) => {
       const job = event.shift();
       const page = await context.newPage();
 
-      if (job.hasOwnProperty('url') === true) {
-        await page.goto(job.url, { waitUntil: ['domcontentloaded', 'load'] });
+      if (job.hasOwnProperty("url") === true) {
+        await page.goto(job.url, { waitUntil: ["domcontentloaded", "load"] });
 
-        if (job.hasOwnProperty('expected') === true) {
-          if (job.expected.hasOwnProperty('title') === true) {
-            ok(await page.title() === job.expected.title, `Title assertion failed.`);
+        if (job.hasOwnProperty("expected") === true) {
+          if (job.expected.hasOwnProperty("title") === true) {
+            ok(
+              (await page.title()) === job.expected.title,
+              `Title assertion failed.`
+            );
           }
 
-          if (job.expected.hasOwnProperty('screenshot') === true) {
-            if (job.expected.hasOwnProperty('remove') === true) {
+          if (job.expected.hasOwnProperty("screenshot") === true) {
+            if (job.expected.hasOwnProperty("remove") === true) {
               await page.evaluate((selector) => {
                 document.getElementById(selector).remove();
               }, job.expected.remove);
             }
             const screenshot = await page.screenshot();
             // console.log(screenshot.toString('base64'), createHash('sha1').update(screenshot.toString('base64')).digest('hex'));
-            ok(createHash('sha1').update(screenshot.toString('base64')).digest('hex') === job.expected.screenshot, `Screenshot assertion failed.`);
+            ok(
+              createHash("sha1")
+                .update(screenshot.toString("base64"))
+                .digest("hex") === job.expected.screenshot,
+              `Screenshot assertion failed.`
+            );
           }
         }
       }
