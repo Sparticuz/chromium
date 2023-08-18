@@ -9,11 +9,11 @@ Resources:
   layer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-        LayerName: sparticuz-chromium
-        ContentUri: code/
-        CompatibleRuntimes:
-          - nodejs16.x
-          - nodejs18.x
+      LayerName: sparticuz-chromium
+      ContentUri: code/
+      CompatibleRuntimes:
+        - nodejs16.x
+        - nodejs18.x
 
   node16:
     Type: AWS::Serverless::Function
