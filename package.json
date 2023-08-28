@@ -40,7 +40,7 @@
     "tar-fs": "^3.0.4"
   },
   "devDependencies": {
-    "@tsconfig/node16": "^1.0.4",
+    "@tsconfig/node16": "^16.1.1",
     "@tsconfig/strictest": "^2.0.1",
     "@types/follow-redirects": "^1.14.1",
     "@types/node": "^18.16.17",
