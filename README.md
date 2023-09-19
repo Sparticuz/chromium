@@ -184,6 +184,24 @@ const browser = await puppeteer.launch({
 });
 ```
 
+## Frequently asked questions
+
+### Can I use ARM or Graviton instances?
+
+Amazon's default Lambda base image is quite old at this point and does not support newer versions of `glibc` that chromium requires. When Amazon Linux 2023 comes to Lambda as the default base image, ARM support should be possible. Ref: https://github.com/Sparticuz/chrome-aws-lambda/pull/11, https://github.com/aws/aws-lambda-base-images/issues/59
+
+### Can I use Google Chrome or Chrome for Testing, what is headless_shell?
+
+`headless_shell` is a purpose built version of `chromium` specific for headless purposes. It does not include the GUI at all and only works via remote debugging connection. Ref: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md, https://source.chromium.org/chromium/chromium/src/+/main:headless/app/headless_shell.cc
+
+### Can I use the "new" Headless mode?
+
+From what I can tell, `headless_shell` does not seem to include support for the "new" headless mode.
+
+### It doesn't work with Webpack!?!
+
+Try marking this package as an external. Ref: https://webpack.js.org/configuration/externals/
+
 ## Fonts
 
 The Amazon Linux 2 AWS Lambda runtime is not provisioned with any font faces.
