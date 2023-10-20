@@ -58,7 +58,7 @@
             ebs:
               delete_on_termination: true
               volume_type: io2
-              volume_size: 128
+              volume_size: 256
               iops: 3000
       register: ec2
 
