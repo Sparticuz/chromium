@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Example configuration for AWS SAM and Chromium
+
+Resources:
+  ChromiumLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: Chromium with Node.js integration for AWS Lambda
+      ContentUri: layers/chromium
+      CompatibleRuntimes:
+        - &nodejsRuntime nodejs18.x
+      # Chromium doesn't currently have ARM support; see https://github.com/Sparticuz/chromium#can-i-use-arm-or-graviton-instances
+      CompatibleArchitectures:
+        - &chromiumArch x86_64
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: *nodejsRuntime
+      BuildArchitecture: *chromiumArch
+
+  ExampleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/exampleFunction
+      Handler: app.lambdaHandler
+      Runtime: *nodejsRuntime
+      Architectures:
+        - *chromiumArch
+      Layers:
+        - !Ref ChromiumLayer
+      # Adjust as necessary
+      Timeout: 30
+      MemorySize: 1024
