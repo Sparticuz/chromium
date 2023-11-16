@@ -40,8 +40,8 @@ export const isRunningInAwsLambda = () => {
 
 export const isRunningInAwsLambdaNode20 = () => {
   if (
-    process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-    /^nodejs20.x/.test(process.env["AWS_LAMBDA_JS_RUNTIME"]) === true
+    process.env["AWS_EXECUTION_ENV"] &&
+    process.env["AWS_EXECUTION_ENV"].contains("nodejs20.x")
   ) {
     return true;
   }
