@@ -9,7 +9,12 @@ import { https } from "follow-redirects";
 import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
-import { downloadAndExtract, isRunningInAwsLambda, isValidUrl } from "./helper";
+import {
+  downloadAndExtract,
+  isRunningInAwsLambda,
+  isValidUrl,
+  isRunningInAwsLambdaNode20,
+} from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -308,6 +313,9 @@ class Chromium {
     if (isRunningInAwsLambda()) {
       // If running in AWS Lambda, extract more required files
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
+      if (isRunningInAwsLambdaNode20()) {
+        promises.push(LambdaFS.inflate(`${input}/al.2023.tar.br`));
+      }
     }
 
     // Await all extractions
