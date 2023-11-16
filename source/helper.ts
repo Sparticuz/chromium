@@ -26,12 +26,12 @@ export const isValidUrl = (input: string) => {
 export const isRunningInAwsLambda = () => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
-    /^AWS_Lambda_nodejs/.test(process.env["AWS_EXECUTION_ENV"]) === true
+    process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs")
   ) {
     return true;
   } else if (
     process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-    /^nodejs/.test(process.env["AWS_LAMBDA_JS_RUNTIME"]) === true
+    process.env["AWS_LAMBDA_JS_RUNTIME"].includes("nodejs")
   ) {
     return true;
   }
@@ -41,7 +41,7 @@ export const isRunningInAwsLambda = () => {
 export const isRunningInAwsLambdaNode20 = () => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
-    process.env["AWS_EXECUTION_ENV"].includes("nodejs20.x")
+    process.env["AWS_EXECUTION_ENV"].includes("20.x")
   ) {
     return true;
   }
