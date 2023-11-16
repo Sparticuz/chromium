@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { extract } from "tar-fs";
 import { parse } from "node:url";
 import type { UrlWithStringQuery } from "node:url";
-import { version } from "node:process";
 
 interface FollowRedirOptions extends UrlWithStringQuery {
   maxBodyLength: number;
@@ -40,7 +39,10 @@ export const isRunningInAwsLambda = () => {
 };
 
 export const isRunningInAwsLambdaNode20 = () => {
-  if (version.startsWith("v20")) {
+  if (
+    process.env["AWS_LAMBDA_JS_RUNTIME"] &&
+    /^nodejs20.x/.test(process.env["AWS_LAMBDA_JS_RUNTIME"]) === true
+  ) {
     return true;
   }
   return false;
