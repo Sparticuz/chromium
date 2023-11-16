@@ -41,7 +41,7 @@ export const isRunningInAwsLambda = () => {
 export const isRunningInAwsLambdaNode20 = () => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
-    process.env["AWS_EXECUTION_ENV"].contains("nodejs20.x")
+    process.env["AWS_EXECUTION_ENV"].includes("nodejs20.x")
   ) {
     return true;
   }
