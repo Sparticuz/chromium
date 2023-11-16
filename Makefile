@@ -8,7 +8,7 @@ pretest:
 	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node18
+	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 
 .fonts.zip:
 	zip -9 --filesync --move --recurse-paths .fonts.zip .fonts/
