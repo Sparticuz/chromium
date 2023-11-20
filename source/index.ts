@@ -62,6 +62,7 @@ if (isRunningInAwsLambda()) {
     process.env["LD_LIBRARY_PATH"] = [
       ...new Set([
         "/tmp/aws/lib",
+        isRunningInAwsLambdaNode20() ? "/tmp/al2023/lib" : undefined,
         ...process.env["LD_LIBRARY_PATH"].split(":"),
       ]),
     ].join(":");
@@ -314,7 +315,7 @@ class Chromium {
       // If running in AWS Lambda, extract more required files
       promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
       if (isRunningInAwsLambdaNode20()) {
-        promises.push(LambdaFS.inflate(`${input}/al.2023.tar.br`));
+        promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
       }
     }
 
