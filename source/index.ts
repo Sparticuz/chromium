@@ -87,8 +87,6 @@ if (isRunningInAwsLambdaNode20()) {
   }
 }
 
-console.log("LD", process.env["LD_LIBRARY_PATH"]);
-
 class Chromium {
   /**
    * Determines the headless mode that chromium will run at
