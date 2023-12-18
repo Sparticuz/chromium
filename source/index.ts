@@ -55,20 +55,39 @@ if (isRunningInAwsLambda()) {
   }
 
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
-    process.env["LD_LIBRARY_PATH"] = "/tmp/aws/lib";
+    process.env["LD_LIBRARY_PATH"] = "/tmp/al2/lib";
   } else if (
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/aws/lib") !== true ||
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2023/lib") !== true
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2/lib") !== true
   ) {
     process.env["LD_LIBRARY_PATH"] = [
       ...new Set([
-        isRunningInAwsLambdaNode20() ? "/tmp/al2023/lib" : undefined,
-        "/tmp/aws/lib",
+        "/tmp/al2/lib",
         ...process.env["LD_LIBRARY_PATH"].split(":"),
       ]),
     ].join(":");
   }
 }
+
+if (isRunningInAwsLambdaNode20()) {
+  if (process.env["FONTCONFIG_PATH"] === undefined) {
+    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
+  }
+
+  if (process.env["LD_LIBRARY_PATH"] === undefined) {
+    process.env["LD_LIBRARY_PATH"] = "/tmp/al2023/lib";
+  } else if (
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2023/lib") !== true
+  ) {
+    process.env["LD_LIBRARY_PATH"] = [
+      ...new Set([
+        "/tmp/al2023/lib",
+        ...process.env["LD_LIBRARY_PATH"].split(":"),
+      ]),
+    ].join(":");
+  }
+}
+
+console.log("LD", process.env["LD_LIBRARY_PATH"]);
 
 class Chromium {
   /**
@@ -317,10 +336,10 @@ class Chromium {
     }
     if (isRunningInAwsLambda()) {
       // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
-      if (isRunningInAwsLambdaNode20()) {
-        promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
-      }
+      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+    }
+    if (isRunningInAwsLambdaNode20()) {
+      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
     }
 
     // Await all extractions
