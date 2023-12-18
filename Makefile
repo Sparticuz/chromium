@@ -10,14 +10,11 @@ pretest:
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 
-.fonts.zip:
-	zip -9 --filesync --move --recurse-paths .fonts.zip .fonts/
-
 %.zip:
 	npm install --fund=false --package-lock=false
 	npm run build
 	mkdir -p nodejs
-	npm install --prefix nodejs/ tar-fs@2.1.1 follow-redirects@1.15.2 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+	npm install --prefix nodejs/ tar-fs@3.0.4 follow-redirects@1.15.3 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	npm pack
 	mkdir -p nodejs/node_modules/@sparticuz/chromium/
 	tar --directory nodejs/node_modules/@sparticuz/chromium/ --extract --file sparticuz-chromium-*.tgz --strip-components=1
