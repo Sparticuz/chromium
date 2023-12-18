@@ -51,7 +51,7 @@ interface Viewport {
 
 if (isRunningInAwsLambda()) {
   if (process.env["FONTCONFIG_PATH"] === undefined) {
-    process.env["FONTCONFIG_PATH"] = "/tmp/aws";
+    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
   }
 
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
@@ -306,7 +306,10 @@ class Chromium {
     }
 
     // Extract the required files
-    const promises = [LambdaFS.inflate(`${input}/chromium.br`)];
+    const promises = [
+      LambdaFS.inflate(`${input}/chromium.br`),
+      LambdaFS.inflate(`${input}/fonts.tar.br`),
+    ];
     if (this.graphics) {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
