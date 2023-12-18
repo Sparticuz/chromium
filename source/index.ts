@@ -57,12 +57,13 @@ if (isRunningInAwsLambda()) {
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
     process.env["LD_LIBRARY_PATH"] = "/tmp/aws/lib";
   } else if (
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/aws/lib") !== true
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/aws/lib") !== true ||
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2023/lib") !== true
   ) {
     process.env["LD_LIBRARY_PATH"] = [
       ...new Set([
-        "/tmp/aws/lib",
         isRunningInAwsLambdaNode20() ? "/tmp/al2023/lib" : undefined,
+        "/tmp/aws/lib",
         ...process.env["LD_LIBRARY_PATH"].split(":"),
       ]),
     ].join(":");
