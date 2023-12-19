@@ -9,7 +9,12 @@ import { https } from "follow-redirects";
 import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
-import { downloadAndExtract, isRunningInAwsLambda, isValidUrl } from "./helper";
+import {
+  downloadAndExtract,
+  isRunningInAwsLambda,
+  isValidUrl,
+  isRunningInAwsLambdaNode20,
+} from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
@@ -46,17 +51,36 @@ interface Viewport {
 
 if (isRunningInAwsLambda()) {
   if (process.env["FONTCONFIG_PATH"] === undefined) {
-    process.env["FONTCONFIG_PATH"] = "/tmp/aws";
+    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
   }
 
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
-    process.env["LD_LIBRARY_PATH"] = "/tmp/aws/lib";
+    process.env["LD_LIBRARY_PATH"] = "/tmp/al2/lib";
   } else if (
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/aws/lib") !== true
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2/lib") !== true
   ) {
     process.env["LD_LIBRARY_PATH"] = [
       ...new Set([
-        "/tmp/aws/lib",
+        "/tmp/al2/lib",
+        ...process.env["LD_LIBRARY_PATH"].split(":"),
+      ]),
+    ].join(":");
+  }
+}
+
+if (isRunningInAwsLambdaNode20()) {
+  if (process.env["FONTCONFIG_PATH"] === undefined) {
+    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
+  }
+
+  if (process.env["LD_LIBRARY_PATH"] === undefined) {
+    process.env["LD_LIBRARY_PATH"] = "/tmp/al2023/lib";
+  } else if (
+    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2023/lib") !== true
+  ) {
+    process.env["LD_LIBRARY_PATH"] = [
+      ...new Set([
+        "/tmp/al2023/lib",
         ...process.env["LD_LIBRARY_PATH"].split(":"),
       ]),
     ].join(":");
@@ -300,14 +324,20 @@ class Chromium {
     }
 
     // Extract the required files
-    const promises = [LambdaFS.inflate(`${input}/chromium.br`)];
+    const promises = [
+      LambdaFS.inflate(`${input}/chromium.br`),
+      LambdaFS.inflate(`${input}/fonts.tar.br`),
+    ];
     if (this.graphics) {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
     if (isRunningInAwsLambda()) {
       // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/aws.tar.br`));
+      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+    }
+    if (isRunningInAwsLambdaNode20()) {
+      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
     }
 
     // Await all extractions
