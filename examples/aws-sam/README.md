@@ -16,4 +16,4 @@
    sam local invoke ExampleFunction
    ```
 
-   This example connects to https://www.example.com and outputs the page's title as the function result. See the source code in [`app.mjs`](app.mjs) for more details.
+   This example connects to https://www.example.com and outputs the page's title as the function result. See the source code in [`app.mjs`](functions/exampleFunction/app.mjs) for more details.
