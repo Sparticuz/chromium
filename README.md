@@ -232,10 +232,10 @@ This method should be invoked _before_ launching Chromium.
 
 Alternatively, it's also possible to provision fonts via AWS Lambda Layers.
 
-Simply create a directory named `.fonts` and place any font faces you want there:
+Simply create a directory named `fonts` and place any font faces you want there:
 
 ```
-.fonts
+fonts
 ├── NotoColorEmoji.ttf
 └── Roboto.ttf
 ```
@@ -243,7 +243,7 @@ Simply create a directory named `.fonts` and place any font faces you want there
 Afterwards, you just need to ZIP the directory and upload it as a AWS Lambda Layer:
 
 ```shell
-zip -9 --filesync --move --recurse-paths .fonts.zip .fonts/
+zip -9 --filesync --move --recurse-paths fonts.zip fonts/
 ```
 
 ## Graphics
