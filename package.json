@@ -36,14 +36,14 @@
     "test": "make clean && make && make pretest && make test"
   },
   "dependencies": {
-    "follow-redirects": "^1.15.3",
+    "follow-redirects": "^1.15.5",
     "tar-fs": "^3.0.4"
   },
   "devDependencies": {
     "@tsconfig/node16": "^16.1.1",
     "@tsconfig/strictest": "^2.0.2",
     "@types/follow-redirects": "^1.14.4",
-    "@types/node": "^18.19.3",
+    "@types/node": "^20.11.10",
     "@types/tar-fs": "^2.0.4",
     "clean-modules": "^3.0.4",
     "typescript": "^5.3.3"

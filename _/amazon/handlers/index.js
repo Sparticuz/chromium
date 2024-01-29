@@ -16,7 +16,7 @@ exports.handler = async (event, context) => {
       ignoreHTTPSErrors: true,
     });
 
-    console.log("Chromium verion", await browser.version());
+    console.log("Chromium version", await browser.version());
 
     const contexts = [browser.defaultBrowserContext()];
 
@@ -46,7 +46,14 @@ exports.handler = async (event, context) => {
               }, job.expected.remove);
             }
             const screenshot = await page.screenshot();
-            // console.log(screenshot.toString('base64'), createHash('sha1').update(screenshot.toString('base64')).digest('hex'));
+            /*
+            console.log(
+              `data:image/png;base64,${screenshot.toString("base64")}`,
+              createHash("sha1")
+                .update(screenshot.toString("base64"))
+                .digest("hex")
+            );
+            */
             ok(
               createHash("sha1")
                 .update(screenshot.toString("base64"))
