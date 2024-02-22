@@ -258,8 +258,8 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"new"`                                                                                                      |
-| `headless`                          | `true \| "new"`   | Returns `true` or `"new"` depending on what version of chrome's headless you are running                                                                |
+| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"chrome-headless-shell"`                                                                                                      |
+| `headless`                          | `true \| "chrome-headless-shell"`   | Returns `true` or `"chrome-headless-shell"` depending on what version of chrome's headless you are running                                                                |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
 | `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 
