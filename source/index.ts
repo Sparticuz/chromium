@@ -93,7 +93,7 @@ class Chromium {
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
    * @values true or "new"
    */
-  private static headlessMode: true | "new" = "new";
+  private static headlessMode: true | "chrome-headless-shell" = "chrome-headless-shell";
 
   /**
    * If true, the graphics stack and webgl is enabled,
@@ -223,6 +223,7 @@ class Chromium {
       "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
       "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
       "--single-process", // Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
+      "--font-render-hinting=none", // https://github.com/puppeteer/puppeteer/issues/2410#issuecomment-560573612
     ];
     const chromiumDisableFeatures = [
       "AudioServiceOutOfProcess",
@@ -253,7 +254,7 @@ class Chromium {
     ];
 
     const headlessFlags = [
-      this.headless === "new" ? "--headless='new'" : "--headless",
+      this.headless === "chrome-headless-shell" ? "--headless='chrome-headless-shell'" : "--headless",
     ];
 
     return [
@@ -348,10 +349,10 @@ class Chromium {
 
   /**
    * Returns the headless mode.
-   * `true` means the 'old' (legacy, chromium < 112) headless mode.
-   * "new" means the 'new' headless mode.
+   * "chrome-headless-shell" means the 'old' (legacy, chromium < 112) headless mode.
+   * `true` means the 'new' headless mode.
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @returns true | "new"
+   * @returns true | "chrome-headless-shell"
    */
   public static get headless() {
     return this.headlessMode;
@@ -359,18 +360,18 @@ class Chromium {
 
   /**
    * Sets the headless mode.
-   * `true` means the 'old' (legacy, chromium < 112) headless mode.
-   * "new" means the 'new' headless mode.
+   * "chrome-headless-shell" means the 'old' (legacy, chromium < 112) headless mode.
+   * `true` means the 'new' headless mode.
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @default "new"
+   * @default "chrome-headless-shell"
    */
-  public static set setHeadlessMode(value: true | "new") {
+  public static set setHeadlessMode(value: true | "chrome-headless-shell") {
     if (
-      (typeof value === "string" && value !== "new") ||
+      (typeof value === "string" && value !== "chrome-headless-shell") ||
       (typeof value === "boolean" && value !== true)
     ) {
       throw new Error(
-        `Headless mode must be either \`true\` or 'new', you entered '${value}'`
+        `Headless mode must be either \`true\` or 'chrome-headless-shell', you entered '${value}'`
       );
     }
     this.headlessMode = value;
