@@ -37,13 +37,13 @@
   },
   "dependencies": {
     "follow-redirects": "^1.15.5",
-    "tar-fs": "^3.0.4"
+    "tar-fs": "^3.0.5"
   },
   "devDependencies": {
     "@tsconfig/node16": "^16.1.1",
-    "@tsconfig/strictest": "^2.0.2",
+    "@tsconfig/strictest": "^2.0.3",
     "@types/follow-redirects": "^1.14.4",
-    "@types/node": "^20.11.10",
+    "@types/node": "^20.11.19",
     "@types/tar-fs": "^2.0.4",
     "clean-modules": "^3.0.4",
     "typescript": "^5.3.3"
