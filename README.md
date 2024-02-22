@@ -50,7 +50,9 @@ const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// Optional: If you'd like to use the legacy headless mode. "new" is the default.
+// Optional: If you'd like to use the new headless mode. "chrome-headless-shell" is the default.
+// NOTE: Because we build the chrome-headless-shell binary, this option does not work.
+//       However, this option will stay so when we migrate to full chromium it will work.
 chromium.setHeadlessMode = true;
 
 // Optional: If you'd like to disable webgl, true is the default.
@@ -163,7 +165,7 @@ Here are some example projects and help with other services
 
 ### Running Locally & Headless/Headful mode
 
-This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version.
+This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version. Users have reported installing `rosetta` on MacOS will also work.
 
 ```shell
 npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
