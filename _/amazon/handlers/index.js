@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
     const contexts = [browser.defaultBrowserContext()];
 
     while (contexts.length < event.length) {
-      contexts.push(await browser.createIncognitoBrowserContext());
+      contexts.push(await browser.createBrowserContext());
     }
 
     for (let context of contexts) {
