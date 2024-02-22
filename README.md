@@ -50,7 +50,9 @@ const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// Optional: If you'd like to use the legacy headless mode. "new" is the default.
+// Optional: If you'd like to use the new headless mode. "chrome-headless-shell" is the default.
+// NOTE: Because we build the chrome-headless-shell binary, this option does not work.
+//       However, this option will stay so when we migrate to full chromium it will work.
 chromium.setHeadlessMode = true;
 
 // Optional: If you'd like to disable webgl, true is the default.
@@ -163,7 +165,7 @@ Here are some example projects and help with other services
 
 ### Running Locally & Headless/Headful mode
 
-This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version.
+This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version. Users have reported installing `rosetta` on MacOS will also work.
 
 ```shell
 npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
@@ -258,8 +260,8 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"new"`                                                                                                      |
-| `headless`                          | `true \| "new"`   | Returns `true` or `"new"` depending on what version of chrome's headless you are running                                                                |
+| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"chrome-headless-shell"`                                                                                                      |
+| `headless`                          | `true \| "chrome-headless-shell"`   | Returns `true` or `"chrome-headless-shell"` depending on what version of chrome's headless you are running                                                                |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
 | `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 
