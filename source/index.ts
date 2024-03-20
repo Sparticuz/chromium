@@ -93,7 +93,7 @@ class Chromium {
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
    * @values true or "new"
    */
-  private static headlessMode: true | "chrome-headless-shell" = "chrome-headless-shell";
+  private static headlessMode: true | "shell" = "shell";
 
   /**
    * If true, the graphics stack and webgl is enabled,
@@ -254,7 +254,7 @@ class Chromium {
     ];
 
     const headlessFlags = [
-      this.headless === "chrome-headless-shell" ? "--headless='chrome-headless-shell'" : "--headless",
+      this.headless === "shell" ? "--headless='shell'" : "--headless",
     ];
 
     return [
@@ -349,10 +349,10 @@ class Chromium {
 
   /**
    * Returns the headless mode.
-   * "chrome-headless-shell" means the 'old' (legacy, chromium < 112) headless mode.
+   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
    * `true` means the 'new' headless mode.
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @returns true | "chrome-headless-shell"
+   * @returns true | "shell"
    */
   public static get headless() {
     return this.headlessMode;
@@ -360,18 +360,18 @@ class Chromium {
 
   /**
    * Sets the headless mode.
-   * "chrome-headless-shell" means the 'old' (legacy, chromium < 112) headless mode.
+   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
    * `true` means the 'new' headless mode.
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @default "chrome-headless-shell"
+   * @default "shell"
    */
-  public static set setHeadlessMode(value: true | "chrome-headless-shell") {
+  public static set setHeadlessMode(value: true | "shell") {
     if (
-      (typeof value === "string" && value !== "chrome-headless-shell") ||
+      (typeof value === "string" && value !== "shell") ||
       (typeof value === "boolean" && value !== true)
     ) {
       throw new Error(
-        `Headless mode must be either \`true\` or 'chrome-headless-shell', you entered '${value}'`
+        `Headless mode must be either \`true\` or 'shell', you entered '${value}'`
       );
     }
     this.headlessMode = value;
