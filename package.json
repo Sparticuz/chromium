@@ -1,6 +1,6 @@
 {
   "name": "@sparticuz/chromium",
-  "version": "122.0.0",
+  "version": "123.0.0",
   "description": "Chromium Binary for Serverless Platforms",
   "keywords": [
     "aws",
