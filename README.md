@@ -215,6 +215,14 @@ for (const page of await browser.pages()) {
 await browser.close();
 ```
 
+You can also try the following if one of the calls is hanging for some reason.
+
+```typescript
+await Promise.race([browser.close(), browser.close(), browser.close()]);
+```
+
+Always `await browser.close()`, even if your script is returning an error.
+
 ### I need Accessible pdf files
 
 This is due to the way @sparticuz/chromium is built. If you require accessible pdf's, you'll need to
