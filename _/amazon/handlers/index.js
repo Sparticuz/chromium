@@ -1,5 +1,5 @@
-const { ok } = require("assert");
-const { createHash } = require("crypto");
+const { ok } = require("node:assert");
+const { createHash } = require("node:crypto");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
