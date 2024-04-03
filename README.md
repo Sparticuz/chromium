@@ -204,6 +204,17 @@ From what I can tell, `headless_shell` does not seem to include support for the 
 
 Try marking this package as an external. Ref: https://webpack.js.org/configuration/externals/
 
+### I'm experiencing timeouts or failures closing Chromium
+
+This is a common issue. Chromium sometimes opens up more pages than you ask for. You can try the following
+
+```typescript
+for (const page of await browser.pages()) {
+  await page.close();
+}
+await browser.close();
+```
+
 ## Fonts
 
 The Amazon Linux 2 AWS Lambda runtime is not provisioned with any font faces.
@@ -260,8 +271,8 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"shell"`                                                                                                      |
-| `headless`                          | `true \| "shell"`   | Returns `true` or `"shell"` depending on what version of chrome's headless you are running                                                                |
+| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"shell"`                                                                                                    |
+| `headless`                          | `true \| "shell"` | Returns `true` or `"shell"` depending on what version of chrome's headless you are running                                                              |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
 | `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 
