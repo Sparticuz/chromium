@@ -240,9 +240,11 @@ class Chromium {
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-    this.graphics
-      ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
-      : graphicsFlags.push("--disable-webgl");
+    // Blocked by https://github.com/Sparticuz/chromium/issues/247
+    //this.graphics
+    //  ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
+    //  : graphicsFlags.push("--disable-webgl");
+    graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader");
 
     const insecureFlags = [
       "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
