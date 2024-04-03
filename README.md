@@ -215,6 +215,31 @@ for (const page of await browser.pages()) {
 await browser.close();
 ```
 
+### I need Accessible pdf files
+
+This is due to the way @sparticuz/chromium is built. If you require accessible pdf's, you'll need to
+recompile chromium yourself with the following patch. You can then use that binary with @sparticuz/chromium-min.
+
+_Note_: This will increase the time required to generate a PDF.
+
+```patch
+diff --git a/_/ansible/plays/chromium.yml b/_/ansible/plays/chromium.yml
+index b42c740..49111d7 100644
+--- a/_/ansible/plays/chromium.yml
++++ b/_/ansible/plays/chromium.yml
+@@ -249,8 +249,9 @@
+           blink_symbol_level = 0
+           dcheck_always_on = false
+           disable_histogram_support = false
+-          enable_basic_print_dialog = false
+           enable_basic_printing = true
++          enable_pdf = true
++          enable_tagged_pdf = true
+           enable_keystone_registration_framework = false
+           enable_linux_installer = false
+           enable_media_remoting = false
+```
+
 ## Fonts
 
 The Amazon Linux 2 AWS Lambda runtime is not provisioned with any font faces.
