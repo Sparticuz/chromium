@@ -1,5 +1,5 @@
-const { ok } = require("assert");
-const { createHash } = require("crypto");
+const { ok } = require("node:assert");
+const { createHash } = require("node:crypto");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
@@ -18,15 +18,8 @@ exports.handler = async (event, context) => {
 
     console.log("Chromium version", await browser.version());
 
-    const contexts = [browser.defaultBrowserContext()];
-
-    while (contexts.length < event.length) {
-      contexts.push(await browser.createBrowserContext());
-    }
-
-    for (let context of contexts) {
-      const job = event.shift();
-      const page = await context.newPage();
+    for (let job of event) {
+      const page = await browser.newPage();
 
       if (job.hasOwnProperty("url") === true) {
         await page.goto(job.url, { waitUntil: ["domcontentloaded", "load"] });
@@ -68,6 +61,9 @@ exports.handler = async (event, context) => {
     throw error.message;
   } finally {
     if (browser !== null) {
+      for (const page of await browser.pages()) {
+        await page.close();
+      }
       await browser.close();
     }
   }
