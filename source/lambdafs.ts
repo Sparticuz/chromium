@@ -72,4 +72,4 @@ class LambdaFS {
   }
 }
 
-export = LambdaFS;
+export default LambdaFS;

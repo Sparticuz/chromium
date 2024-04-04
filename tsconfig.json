@@ -1,10 +1,10 @@
 {
-  "extends": ["@tsconfig/node16/tsconfig", "@tsconfig/strictest"],
+  "extends": ["@tsconfig/node20/tsconfig", "@tsconfig/strictest"],
   "compilerOptions": {
     "declaration": true,
-    "lib": ["dom", "ES2021"],
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "lib": ["dom", "ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "build"
   },
   "include": ["source"]
