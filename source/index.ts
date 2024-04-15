@@ -313,7 +313,11 @@ class Chromium {
         `Graphics mode must be a boolean, you entered '${value}'`
       );
     }
-    this.graphicsMode = value;
+
+    // Disabling 'disabling the gpu'
+    // Blocked by https://github.com/Sparticuz/chromium/issues/247
+    // this.graphicsMode = value;
+    this.graphicsMode = true;
   }
 }
 
