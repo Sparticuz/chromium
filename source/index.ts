@@ -1,3 +1,4 @@
+import { https } from "follow-redirects";
 import {
   access,
   createWriteStream,
@@ -5,27 +6,19 @@ import {
   mkdirSync,
   symlink,
 } from "node:fs";
-import { https } from "follow-redirects";
-import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
+
 import {
   downloadAndExtract,
   isRunningInAwsLambda,
-  isValidUrl,
   isRunningInAwsLambdaNode20,
+  isValidUrl,
 } from "./helper";
+import { inflate } from "./lambdafs";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
-  /**
-   * The page width in pixels.
-   */
-  width: number;
-  /**
-   * The page height in pixels.
-   */
-  height: number;
   /**
    * Specify device scale factor.
    * See {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio | devicePixelRatio} for more info.
@@ -33,20 +26,28 @@ interface Viewport {
    */
   deviceScaleFactor?: number;
   /**
-   * Whether the `meta viewport` tag is taken into account.
+   * Specify if the viewport supports touch events.
    * @default false
    */
-  isMobile?: boolean;
+  hasTouch?: boolean;
+  /**
+   * The page height in pixels.
+   */
+  height: number;
   /**
    * Specifies if the viewport is in landscape mode.
    * @default false
    */
   isLandscape?: boolean;
   /**
-   * Specify if the viewport supports touch events.
+   * Whether the `meta viewport` tag is taken into account.
    * @default false
    */
-  hasTouch?: boolean;
+  isMobile?: boolean;
+  /**
+   * The page width in pixels.
+   */
+  width: number;
 }
 
 if (isRunningInAwsLambda()) {
@@ -89,190 +90,69 @@ if (isRunningInAwsLambdaNode20()) {
 
 class Chromium {
   /**
-   * Determines the headless mode that chromium will run at
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @values true or "new"
-   */
-  private static headlessMode: true | "shell" = "shell";
-
-  /**
    * If true, the graphics stack and webgl is enabled,
    * If false, webgl will be disabled.
    * (If false, the swiftshader.tar.br file will also not extract)
    */
-  private static graphicsMode: boolean = true;
-
-  /**
-   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   */
-  static font(input: string): Promise<string> {
-    if (process.env["HOME"] === undefined) {
-      process.env["HOME"] = "/tmp";
-    }
-
-    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
-      mkdirSync(`${process.env["HOME"]}/.fonts`);
-    }
-
-    return new Promise((resolve, reject) => {
-      if (/^https?:[/][/]/i.test(input) !== true) {
-        input = `file://${input}`;
-      }
-
-      const url = new URL(input);
-      const output = `${process.env["HOME"]}/.fonts/${url.pathname
-        .split("/")
-        .pop()}`;
-
-      if (existsSync(output) === true) {
-        return resolve(output.split("/").pop() as string);
-      }
-
-      if (url.protocol === "file:") {
-        access(url.pathname, (error) => {
-          if (error != null) {
-            return reject(error);
-          }
-
-          symlink(url.pathname, output, (error) => {
-            return error != null
-              ? reject(error)
-              : resolve(url.pathname.split("/").pop() as string);
-          });
-        });
-      } else {
-        https.get(input, (response) => {
-          if (response.statusCode !== 200) {
-            return reject(`Unexpected status code: ${response.statusCode}.`);
-          }
-
-          const stream = createWriteStream(output);
-
-          stream.once("error", (error) => {
-            return reject(error);
-          });
-
-          response.on("data", (chunk) => {
-            stream.write(chunk);
-          });
-
-          response.once("end", () => {
-            stream.end(() => {
-              return resolve(url.pathname.split("/").pop() as string);
-            });
-          });
-        });
-      }
-    });
-  }
+  private static graphicsMode = true;
 
   /**
    * Returns a list of additional Chromium flags recommended for serverless environments.
    * The canonical list of flags can be found on https://peter.sh/experiments/chromium-command-line-switches/.
+   * Most of below can be found here: https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md
    */
   static get args(): string[] {
-    /**
-     * These are the default args in puppeteer.
-     * https://github.com/puppeteer/puppeteer/blob/3a31070d054fa3cd8116ca31c578807ed8d6f987/packages/puppeteer-core/src/node/ChromeLauncher.ts#L185
-     */
-    const puppeteerFlags = [
-      "--allow-pre-commit-input",
-      "--disable-background-networking",
-      "--disable-background-timer-throttling",
-      "--disable-backgrounding-occluded-windows",
-      "--disable-breakpad",
-      "--disable-client-side-phishing-detection",
-      "--disable-component-extensions-with-background-pages",
-      "--disable-component-update",
-      "--disable-default-apps",
-      "--disable-dev-shm-usage",
-      "--disable-extensions",
-      "--disable-hang-monitor",
-      "--disable-ipc-flooding-protection",
-      "--disable-popup-blocking",
-      "--disable-prompt-on-repost",
-      "--disable-renderer-backgrounding",
-      "--disable-sync",
-      "--enable-automation",
-      // TODO(sadym): remove '--enable-blink-features=IdleDetection' once
-      // IdleDetection is turned on by default.
-      "--enable-blink-features=IdleDetection",
-      "--export-tagged-pdf",
-      "--force-color-profile=srgb",
-      "--metrics-recording-only",
-      "--no-first-run",
-      "--password-store=basic",
-      "--use-mock-keychain",
-    ];
-    const puppeteerDisableFeatures = [
-      "Translate",
-      "BackForwardCache",
-      // AcceptCHFrame disabled because of crbug.com/1348106.
-      "AcceptCHFrame",
-      "MediaRouter",
-      "OptimizationHints",
-    ];
-    const puppeteerEnableFeatures = ["NetworkServiceInProcess2"];
-
     const chromiumFlags = [
-      "--disable-domain-reliability", // https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md#background-networking
+      "--ash-no-nudges", // Avoids blue bubble "user education" nudges (eg., "… give your browser a new look", Memory Saver)
+      "--disable-domain-reliability", // Disables Domain Reliability Monitoring, which tracks whether the browser has difficulty contacting Google-owned sites and uploads reports to Google.
       "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
-      "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
+      // "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
       "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
-      "--mute-audio", // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
-      "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
-      "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
-      "--single-process", // Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
+      "--no-default-browser-check", // Disable the default browser check, do not prompt to set it as such
+      "--no-pings", // Don't send hyperlink auditing pings
+      "--single-process", // Runs the renderer and plugins in the same process as the browser. NOTES: Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
       "--font-render-hinting=none", // https://github.com/puppeteer/puppeteer/issues/2410#issuecomment-560573612
     ];
     const chromiumDisableFeatures = [
+      // "AutofillServerCommunication", // Disables autofill server communication. This feature isn't disabled via other 'parent' flags.
       "AudioServiceOutOfProcess",
+      // "DestroyProfileOnBrowserClose", // Disable the feature of: Destroy profiles when their last browser window is closed, instead of when the browser exits.
+      // "InterestFeedContentSuggestions", // Disables the Discover feed on NTP
       "IsolateOrigins",
-      "site-per-process",
+      "site-per-process", // Disables OOPIF. https://www.chromium.org/Home/chromium-security/site-isolation
     ];
     const chromiumEnableFeatures = ["SharedArrayBuffer"];
 
     const graphicsFlags = [
-      "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
       "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
-      "--in-process-gpu", // https://source.chromium.org/search?q=lang:cpp+symbol:kInProcessGPU&ss=chromium
-      "--window-size=1920,1080", // https://source.chromium.org/search?q=lang:cpp+symbol:kWindowSize&ss=chromium
+      "--in-process-gpu", // Saves some memory by moving GPU process into a browser process thread
+      "--window-size=1920,1080", // Sets the initial window size. Provided as string in the format "800,600".
     ];
-
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-    // Blocked by https://github.com/Sparticuz/chromium/issues/247
-    //this.graphics
-    //  ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
-    //  : graphicsFlags.push("--disable-webgl");
-    graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader");
+    // https://developer.chrome.com/blog/supercharge-web-ai-testing
+    // https://www.browserless.io/blog/2023/08/31/browserless-gpu-instances/
+    this.graphics &&
+      graphicsFlags.push(
+        "--enable-gpu",
+        "--use-gl=angle",
+        "--use-angle=swiftshader"
+      );
 
     const insecureFlags = [
       "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
-      "--disable-setuid-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
+      "--disable-setuid-sandbox", // Lambda runs as root, so this is required to allow Chromium to run as root
       "--disable-site-isolation-trials", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
       "--disable-web-security", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
-      "--no-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
-      "--no-zygote", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
-    ];
-
-    const headlessFlags = [
-      this.headless === "shell" ? "--headless='shell'" : "--headless",
+      "--no-sandbox", // Lambda runs as root, so this is required to allow Chromium to run as root
+      "--no-zygote", // https://codereview.chromium.org/2384163002
     ];
 
     return [
-      ...puppeteerFlags,
       ...chromiumFlags,
-      `--disable-features=${[
-        ...puppeteerDisableFeatures,
-        ...chromiumDisableFeatures,
-      ].join(",")}`,
-      `--enable-features=${[
-        ...puppeteerEnableFeatures,
-        ...chromiumEnableFeatures,
-      ].join(",")}`,
+      `--disable-features=${[...chromiumDisableFeatures].join(",")}`,
+      `--enable-features=${[...chromiumEnableFeatures].join(",")}`,
       ...graphicsFlags,
       ...insecureFlags,
-      ...headlessFlags,
     ];
   }
 
@@ -328,19 +208,19 @@ class Chromium {
 
     // Extract the required files
     const promises = [
-      LambdaFS.inflate(`${input}/chromium.br`),
-      LambdaFS.inflate(`${input}/fonts.tar.br`),
+      inflate(`${input}/chromium.br`),
+      inflate(`${input}/fonts.tar.br`),
     ];
     if (this.graphics) {
       // Only inflate graphics stack if needed
-      promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
+      promises.push(inflate(`${input}/swiftshader.tar.br`));
     }
     if (isRunningInAwsLambda()) {
       // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+      promises.push(inflate(`${input}/al2.tar.br`));
     }
     if (isRunningInAwsLambdaNode20()) {
-      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
+      promises.push(inflate(`${input}/al2023.tar.br`));
     }
 
     // Await all extractions
@@ -350,33 +230,67 @@ class Chromium {
   }
 
   /**
-   * Returns the headless mode.
-   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
-   * `true` means the 'new' headless mode.
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @returns true | "shell"
+   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
-  public static get headless() {
-    return this.headlessMode;
-  }
-
-  /**
-   * Sets the headless mode.
-   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
-   * `true` means the 'new' headless mode.
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @default "shell"
-   */
-  public static set setHeadlessMode(value: true | "shell") {
-    if (
-      (typeof value === "string" && value !== "shell") ||
-      (typeof value === "boolean" && value !== true)
-    ) {
-      throw new Error(
-        `Headless mode must be either \`true\` or 'shell', you entered '${value}'`
-      );
+  static font(input: string): Promise<string> {
+    if (process.env["HOME"] === undefined) {
+      process.env["HOME"] = "/tmp";
     }
-    this.headlessMode = value;
+
+    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
+      mkdirSync(`${process.env["HOME"]}/.fonts`);
+    }
+
+    return new Promise((resolve, reject) => {
+      if (/^https?:\/\//i.test(input) !== true) {
+        input = `file://${input}`;
+      }
+
+      const url = new URL(input);
+      const output = `${process.env["HOME"]}/.fonts/${url.pathname
+        .split("/")
+        .pop()}`;
+
+      if (existsSync(output) === true) {
+        return resolve(output.split("/").pop() as string);
+      }
+
+      if (url.protocol === "file:") {
+        access(url.pathname, (error) => {
+          if (error != null) {
+            return reject(error);
+          }
+
+          symlink(url.pathname, output, (error) => {
+            return error == null
+              ? resolve(url.pathname.split("/").pop() as string)
+              : reject(error);
+          });
+        });
+      } else {
+        https.get(input, (response) => {
+          if (response.statusCode !== 200) {
+            return reject(`Unexpected status code: ${response.statusCode}.`);
+          }
+
+          const stream = createWriteStream(output);
+
+          stream.once("error", (error) => {
+            return reject(error);
+          });
+
+          response.on("data", (chunk) => {
+            stream.write(chunk);
+          });
+
+          response.once("end", () => {
+            stream.end(() => {
+              return resolve(url.pathname.split("/").pop() as string);
+            });
+          });
+        });
+      }
+    });
   }
 
   /**
@@ -396,11 +310,15 @@ class Chromium {
    */
   public static set setGraphicsMode(value: boolean) {
     if (typeof value !== "boolean") {
-      throw new Error(
+      throw new TypeError(
         `Graphics mode must be a boolean, you entered '${value}'`
       );
     }
-    this.graphicsMode = value;
+
+    // Disabling 'disabling the gpu'
+    // Blocked by https://github.com/Sparticuz/chromium/issues/247
+    // this.graphicsMode = value;
+    this.graphicsMode = true;
   }
 }
 

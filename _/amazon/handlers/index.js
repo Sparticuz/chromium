@@ -3,16 +3,19 @@ const { createHash } = require("node:crypto");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   let browser = null;
 
   try {
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: puppeteer.defaultArgs({
+        args: chromium.args,
+        headless: "shell",
+      }),
       defaultViewport: chromium.defaultViewport,
       dumpio: true,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: "shell",
       ignoreHTTPSErrors: true,
     });
 
