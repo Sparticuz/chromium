@@ -3,7 +3,7 @@ const { createHash } = require("node:crypto");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   let browser = null;
 
   try {

@@ -1,3 +1,4 @@
+import { https } from "follow-redirects";
 import {
   access,
   createWriteStream,
@@ -5,27 +6,19 @@ import {
   mkdirSync,
   symlink,
 } from "node:fs";
-import { https } from "follow-redirects";
-import LambdaFS from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
+
 import {
   downloadAndExtract,
   isRunningInAwsLambda,
-  isValidUrl,
   isRunningInAwsLambdaNode20,
+  isValidUrl,
 } from "./helper";
+import { inflate } from "./lambdafs";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
 interface Viewport {
-  /**
-   * The page width in pixels.
-   */
-  width: number;
-  /**
-   * The page height in pixels.
-   */
-  height: number;
   /**
    * Specify device scale factor.
    * See {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio | devicePixelRatio} for more info.
@@ -33,20 +26,28 @@ interface Viewport {
    */
   deviceScaleFactor?: number;
   /**
-   * Whether the `meta viewport` tag is taken into account.
+   * Specify if the viewport supports touch events.
    * @default false
    */
-  isMobile?: boolean;
+  hasTouch?: boolean;
+  /**
+   * The page height in pixels.
+   */
+  height: number;
   /**
    * Specifies if the viewport is in landscape mode.
    * @default false
    */
   isLandscape?: boolean;
   /**
-   * Specify if the viewport supports touch events.
+   * Whether the `meta viewport` tag is taken into account.
    * @default false
    */
-  hasTouch?: boolean;
+  isMobile?: boolean;
+  /**
+   * The page width in pixels.
+   */
+  width: number;
 }
 
 if (isRunningInAwsLambda()) {
@@ -93,71 +94,7 @@ class Chromium {
    * If false, webgl will be disabled.
    * (If false, the swiftshader.tar.br file will also not extract)
    */
-  private static graphicsMode: boolean = true;
-
-  /**
-   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   */
-  static font(input: string): Promise<string> {
-    if (process.env["HOME"] === undefined) {
-      process.env["HOME"] = "/tmp";
-    }
-
-    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
-      mkdirSync(`${process.env["HOME"]}/.fonts`);
-    }
-
-    return new Promise((resolve, reject) => {
-      if (/^https?:[/][/]/i.test(input) !== true) {
-        input = `file://${input}`;
-      }
-
-      const url = new URL(input);
-      const output = `${process.env["HOME"]}/.fonts/${url.pathname
-        .split("/")
-        .pop()}`;
-
-      if (existsSync(output) === true) {
-        return resolve(output.split("/").pop() as string);
-      }
-
-      if (url.protocol === "file:") {
-        access(url.pathname, (error) => {
-          if (error != null) {
-            return reject(error);
-          }
-
-          symlink(url.pathname, output, (error) => {
-            return error != null
-              ? reject(error)
-              : resolve(url.pathname.split("/").pop() as string);
-          });
-        });
-      } else {
-        https.get(input, (response) => {
-          if (response.statusCode !== 200) {
-            return reject(`Unexpected status code: ${response.statusCode}.`);
-          }
-
-          const stream = createWriteStream(output);
-
-          stream.once("error", (error) => {
-            return reject(error);
-          });
-
-          response.on("data", (chunk) => {
-            stream.write(chunk);
-          });
-
-          response.once("end", () => {
-            stream.end(() => {
-              return resolve(url.pathname.split("/").pop() as string);
-            });
-          });
-        });
-      }
-    });
-  }
+  private static graphicsMode = true;
 
   /**
    * Returns a list of additional Chromium flags recommended for serverless environments.
@@ -271,25 +208,89 @@ class Chromium {
 
     // Extract the required files
     const promises = [
-      LambdaFS.inflate(`${input}/chromium.br`),
-      LambdaFS.inflate(`${input}/fonts.tar.br`),
+      inflate(`${input}/chromium.br`),
+      inflate(`${input}/fonts.tar.br`),
     ];
     if (this.graphics) {
       // Only inflate graphics stack if needed
-      promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
+      promises.push(inflate(`${input}/swiftshader.tar.br`));
     }
     if (isRunningInAwsLambda()) {
       // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+      promises.push(inflate(`${input}/al2.tar.br`));
     }
     if (isRunningInAwsLambdaNode20()) {
-      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
+      promises.push(inflate(`${input}/al2023.tar.br`));
     }
 
     // Await all extractions
     const result = await Promise.all(promises);
     // Returns the first result of the promise, which is the location of the `chromium` binary
     return result.shift() as string;
+  }
+
+  /**
+   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
+   */
+  static font(input: string): Promise<string> {
+    if (process.env["HOME"] === undefined) {
+      process.env["HOME"] = "/tmp";
+    }
+
+    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
+      mkdirSync(`${process.env["HOME"]}/.fonts`);
+    }
+
+    return new Promise((resolve, reject) => {
+      if (/^https?:\/\//i.test(input) !== true) {
+        input = `file://${input}`;
+      }
+
+      const url = new URL(input);
+      const output = `${process.env["HOME"]}/.fonts/${url.pathname
+        .split("/")
+        .pop()}`;
+
+      if (existsSync(output) === true) {
+        return resolve(output.split("/").pop() as string);
+      }
+
+      if (url.protocol === "file:") {
+        access(url.pathname, (error) => {
+          if (error != null) {
+            return reject(error);
+          }
+
+          symlink(url.pathname, output, (error) => {
+            return error == null
+              ? resolve(url.pathname.split("/").pop() as string)
+              : reject(error);
+          });
+        });
+      } else {
+        https.get(input, (response) => {
+          if (response.statusCode !== 200) {
+            return reject(`Unexpected status code: ${response.statusCode}.`);
+          }
+
+          const stream = createWriteStream(output);
+
+          stream.once("error", (error) => {
+            return reject(error);
+          });
+
+          response.on("data", (chunk) => {
+            stream.write(chunk);
+          });
+
+          response.once("end", () => {
+            stream.end(() => {
+              return resolve(url.pathname.split("/").pop() as string);
+            });
+          });
+        });
+      }
+    });
   }
 
   /**
@@ -309,7 +310,7 @@ class Chromium {
    */
   public static set setGraphicsMode(value: boolean) {
     if (typeof value !== "boolean") {
-      throw new Error(
+      throw new TypeError(
         `Graphics mode must be a boolean, you entered '${value}'`
       );
     }
