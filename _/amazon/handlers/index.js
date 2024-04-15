@@ -10,11 +10,12 @@ exports.handler = async (event, context) => {
     browser = await puppeteer.launch({
       args: puppeteer.defaultArgs({
         args: chromium.args,
+        headless: "shell",
       }),
       defaultViewport: chromium.defaultViewport,
       dumpio: true,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: "shell",
       ignoreHTTPSErrors: true,
     });
 
