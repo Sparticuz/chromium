@@ -11,7 +11,7 @@
 [sparticuz/chrome-aws-lambda](https://github.com/sparticuz/chrome-aws-lambda) was originally forked from [alixaxel/chrome-aws-lambda#264](https://github.com/alixaxel/chrome-aws-lambda/pull/264).
 The biggest difference, besides the chromium version, is the inclusion of some code from https://github.com/alixaxel/lambdafs, as well as dropping that as a dependency. Due to some changes in WebGL, the files in bin/swiftshader.tar.br need to be extracted to `/tmp` instead of `/tmp/swiftshader`. This necessitated changes in lambdafs.
 
-However, it quickly became difficult to maintain because of the pace of `puppeteer` updates. This package, `@sparticuz/chromium`, is not chained to `puppeteer` versions, but also does not include the overrides and hooks that the original package contained. It is only `chromium`, as well as the special code needed to decompress the brotli package, and a set of predefined arguments tailored to serverless usage.
+However, it quickly became difficult to maintain because of the pace of `puppeteer` updates. This package, `@sparticuz/chromium`, is not chained to `puppeteer` versions, but also does not include the overrides and hooks that the original package contained. It is only `chromium`, as well as the special code needed to decompress the brotli package, and an additional set of predefined arguments tailored to serverless usage.
 
 ## Install
 
@@ -50,11 +50,6 @@ const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// Optional: If you'd like to use the new headless mode. "shell" is the default.
-// NOTE: Because we build the shell binary, this option does not work.
-//       However, this option will stay so when we migrate to full chromium it will work.
-chromium.setHeadlessMode = true;
-
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
 
@@ -65,10 +60,13 @@ await chromium.font(
 
 test("Check the page title of example.com", async (t) => {
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args: puppeteer.defaultArgs({
+      args: chromium.args,
+      headless: "shell",
+    }),
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: "shell",
   });
 
   const page = await browser.newPage();
@@ -127,10 +125,13 @@ In this example, /opt/chromium contains all the brotli files
 
 ```javascript
 const browser = await puppeteer.launch({
-  args: chromium.args,
+  args: puppeteer.defaultArgs({
+    args: chromium.args,
+    headless: "shell",
+  }),
   defaultViewport: chromium.defaultViewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
@@ -142,12 +143,15 @@ The latest chromium-pack.tar file will be on the latest [release](https://github
 
 ```javascript
 const browser = await puppeteer.launch({
-  args: chromium.args,
+  args: puppeteer.defaultArgs({
+    args: chromium.args,
+    headless: "shell",
+  }),
   defaultViewport: chromium.defaultViewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
   ),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
@@ -177,12 +181,12 @@ For example, you can set your code to use an ENV variable such as `IS_LOCAL`, th
 
 ```javascript
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : chromium.args,
+  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : puppeteer.defaultArgs({args:chromium.args, process.env.IS_LOCAL ? false : "shell"}),
   defaultViewport: chromium.defaultViewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
-  headless: process.env.IS_LOCAL ? false : chromium.headless,
+  headless: process.env.IS_LOCAL ? false : "shell",
 });
 ```
 
@@ -294,20 +298,20 @@ zip -9 --filesync --move --recurse-paths fonts.zip fonts/
 
 ## Graphics
 
+NOTE: Disabling the Graphics stack is currently broken, causing Chromium to crash repeadly. For now, even if you `setGraphicsMode=false`, this package will set it to `true`.
+
 By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
 
 ## API
 
-| Method / Property                   | Returns           | Description                                                                                                                                             |
-| ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                      |
-| `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
-| `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
-| `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"shell"`                                                                                                    |
-| `headless`                          | `true \| "shell"` | Returns `true` or `"shell"` depending on what version of chrome's headless you are running                                                              |
-| `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
-| `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
+| Method / Property                   | Returns           | Description                                                                                                                                                                                    |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                                                             |
+| `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md) that are specific to running in Lambda. |
+| `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                                                            |
+| `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                                                         |
+| `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                                                             |
+| `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                                                            |
 
 ## Compiling
 
@@ -357,11 +361,13 @@ exports.handler = async (event, context, callback) => {
   try {
 -    browser = await chromium.puppeteer.launch({
 +    browser = await puppeteer.launch({
-      args: chromium.args,
+-      args: chromium.args,
++      args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
       defaultViewport: chromium.defaultViewport,
 -      executablePath: await chromium.executablePath,
 +      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+-      headless: chromium.headless,
++      headless: "shell",
       ignoreHTTPSErrors: true,
     });
 
