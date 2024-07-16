@@ -12,3 +12,4 @@ _/amazon/.aws-sam
 *.tgz
 examples/**/package-lock.json
 examples/**/.serverless
+docker
