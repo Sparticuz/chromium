@@ -97,7 +97,7 @@ test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: true,
   });
 
   const context = await browser.newContext();
