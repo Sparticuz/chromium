@@ -17,39 +17,7 @@ import {
 } from "./helper";
 import { inflate } from "./lambdafs";
 
-/** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
-interface Viewport {
-  /**
-   * Specify device scale factor.
-   * See {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio | devicePixelRatio} for more info.
-   * @default 1
-   */
-  deviceScaleFactor?: number;
-  /**
-   * Specify if the viewport supports touch events.
-   * @default false
-   */
-  hasTouch?: boolean;
-  /**
-   * The page height in pixels.
-   */
-  height: number;
-  /**
-   * Specifies if the viewport is in landscape mode.
-   * @default false
-   */
-  isLandscape?: boolean;
-  /**
-   * Whether the `meta viewport` tag is taken into account.
-   * @default false
-   */
-  isMobile?: boolean;
-  /**
-   * The page width in pixels.
-   */
-  width: number;
-}
-
+// Set up the environmental variables
 if (isRunningInAwsLambda()) {
   if (process.env["FONTCONFIG_PATH"] === undefined) {
     process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
@@ -154,20 +122,6 @@ class Chromium {
       ...graphicsFlags,
       ...insecureFlags,
     ];
-  }
-
-  /**
-   * Returns sensible default viewport settings for serverless environments.
-   */
-  static get defaultViewport(): Required<Viewport> {
-    return {
-      deviceScaleFactor: 1,
-      hasTouch: false,
-      height: 1080,
-      isLandscape: true,
-      isMobile: false,
-      width: 1920,
-    };
   }
 
   /**

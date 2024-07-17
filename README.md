@@ -64,7 +64,14 @@ test("Check the page title of example.com", async (t) => {
       args: chromium.args,
       headless: "shell",
     }),
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: {
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      height: 1080,
+      isLandscape: true,
+      isMobile: false,
+      width: 1920,
+    },
     executablePath: await chromium.executablePath(),
     headless: "shell",
   });
