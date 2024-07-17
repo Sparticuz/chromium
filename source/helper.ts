@@ -1,10 +1,9 @@
 import { https } from "follow-redirects";
 import { unlink } from "node:fs";
 import { tmpdir } from "node:os";
-import { type UrlWithStringQuery, parse } from "node:url";
 import { extract } from "tar-fs";
 
-interface FollowRedirOptions extends UrlWithStringQuery {
+interface FollowRedirOptions extends URL {
   maxBodyLength: number;
 }
 
@@ -56,7 +55,7 @@ export const isRunningInAwsLambdaNode20 = () => {
 
 export const downloadAndExtract = async (url: string) =>
   new Promise<string>((resolve, reject) => {
-    const getOptions = parse(url) as FollowRedirOptions;
+    const getOptions = new URL(url) as FollowRedirOptions;
     getOptions.maxBodyLength = 60 * 1024 * 1024; // 60mb
     const destinationDirectory = `${tmpdir()}/chromium-pack`;
     const extractObject = extract(destinationDirectory);
