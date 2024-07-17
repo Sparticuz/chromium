@@ -50,9 +50,6 @@ const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// Optional: If you'd like to disable webgl, true is the default.
-chromium.setGraphicsMode = false;
-
 // Optional: Load any fonts you need. Open Sans is included by default in AWS Lambda instances
 await chromium.font(
   "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
