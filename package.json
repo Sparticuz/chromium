@@ -1,6 +1,6 @@
 {
   "name": "@sparticuz/chromium",
-  "version": "123.0.1",
+  "version": "126.0.0",
   "description": "Chromium Binary for Serverless Platforms",
   "keywords": [
     "aws",
@@ -37,16 +37,16 @@
   },
   "dependencies": {
     "follow-redirects": "^1.15.6",
-    "tar-fs": "^3.0.5"
+    "tar-fs": "^3.0.6"
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
     "@tsconfig/strictest": "^2.0.5",
     "@types/follow-redirects": "^1.14.4",
-    "@types/node": "^20.12.7",
+    "@types/node": "^20.14.10",
     "@types/tar-fs": "^2.0.4",
     "clean-modules": "^3.0.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.3"
   },
   "engines": {
     "node": ">= 16"
