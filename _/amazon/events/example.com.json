@@ -3,14 +3,14 @@
     "url": "https://example.com",
     "expected": {
       "title": "Example Domain",
-      "screenshot": "e610a8be5568f23c453b08928460aae3ae0b4b0a"
+      "screenshot": "6b6bfde6d0cd0035255ac81eb4c6a8823fc74f02"
     }
   },
   {
     "url": "https://get.webgl.org",
     "expected": {
       "remove": "logo-container",
-      "screenshot": "ec6c79a571b4cb5727c6fc23f9da30de3868138c"
+      "screenshot": "1e4d1ce70b48ca14c1cee2a8e5f458f6ea1b987d"
     }
   }
 ]

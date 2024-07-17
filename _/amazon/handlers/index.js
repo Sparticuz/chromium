@@ -12,7 +12,6 @@ exports.handler = async (event) => {
         args: chromium.args,
         headless: "shell",
       }),
-      defaultViewport: chromium.defaultViewport,
       dumpio: true,
       executablePath: await chromium.executablePath(),
       headless: "shell",
