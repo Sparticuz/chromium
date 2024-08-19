@@ -5,10 +5,12 @@ module.exports = {
   handler: async () => {
     try {
       const browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
+        args: puppeteer.defaultArgs({
+          args: chromium.args,
+          headless: "shell",
+        }),
         executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
+        headless: "shell",
         ignoreHTTPSErrors: true,
       });
 

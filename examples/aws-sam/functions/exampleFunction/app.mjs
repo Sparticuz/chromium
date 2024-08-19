@@ -1,12 +1,14 @@
-import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 
 export const lambdaHandler = async (event, context) => {
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    args: puppeteer.defaultArgs({
+      args: chromium.args,
+      headless: "shell",
+    }),
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: "shell",
   });
 
   const page = await browser.newPage();
@@ -20,5 +22,5 @@ export const lambdaHandler = async (event, context) => {
 
   await browser.close();
 
-  return { result: 'success', browserVersion, pageTitle };
-}
+  return { result: "success", browserVersion, pageTitle };
+};
