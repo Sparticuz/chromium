@@ -13,7 +13,7 @@ exports.handler = async (event, context) => {
       dumpio: true,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
+      acceptInsecureCerts: true,
     });
 
     console.log("Chromium version", await browser.version());
@@ -38,7 +38,7 @@ exports.handler = async (event, context) => {
                 document.getElementById(selector).remove();
               }, job.expected.remove);
             }
-            const screenshot = await page.screenshot();
+            const screenshot = Buffer.from(await page.screenshot());
             /*
             console.log(
               `data:image/png;base64,${screenshot.toString("base64")}`,
