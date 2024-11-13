@@ -14,6 +14,7 @@ import {
   isRunningInAwsLambda,
   isValidUrl,
   isRunningInAwsLambdaNode20,
+  setupLambdaEnvironment,
 } from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
@@ -49,42 +50,11 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
+// Setup the lambda environment
 if (isRunningInAwsLambda()) {
-  if (process.env["FONTCONFIG_PATH"] === undefined) {
-    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
-  }
-
-  if (process.env["LD_LIBRARY_PATH"] === undefined) {
-    process.env["LD_LIBRARY_PATH"] = "/tmp/al2/lib";
-  } else if (
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2/lib") !== true
-  ) {
-    process.env["LD_LIBRARY_PATH"] = [
-      ...new Set([
-        "/tmp/al2/lib",
-        ...process.env["LD_LIBRARY_PATH"].split(":"),
-      ]),
-    ].join(":");
-  }
-}
-
-if (isRunningInAwsLambdaNode20()) {
-  if (process.env["FONTCONFIG_PATH"] === undefined) {
-    process.env["FONTCONFIG_PATH"] = "/tmp/fonts";
-  }
-
-  if (process.env["LD_LIBRARY_PATH"] === undefined) {
-    process.env["LD_LIBRARY_PATH"] = "/tmp/al2023/lib";
-  } else if (
-    process.env["LD_LIBRARY_PATH"].startsWith("/tmp/al2023/lib") !== true
-  ) {
-    process.env["LD_LIBRARY_PATH"] = [
-      ...new Set([
-        "/tmp/al2023/lib",
-        ...process.env["LD_LIBRARY_PATH"].split(":"),
-      ]),
-    ].join(":");
-  }
+  setupLambdaEnvironment("/tmp/al2/lib");
+} else if (isRunningInAwsLambdaNode20()) {
+  setupLambdaEnvironment("/tmp/al2023/lib");
 }
 
 class Chromium {
@@ -106,9 +76,7 @@ class Chromium {
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
   static font(input: string): Promise<string> {
-    if (process.env["HOME"] === undefined) {
-      process.env["HOME"] = "/tmp";
-    }
+    process.env["HOME"] ??= "/tmp";
 
     if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
       mkdirSync(`${process.env["HOME"]}/.fonts`);
