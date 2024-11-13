@@ -36,6 +36,13 @@ export const isRunningInAwsLambda = () => {
     !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")
   ) {
     return true;
+  } else if (
+    process.env["CODEBUILD_BUILD_IMAGE"] &&
+    process.env["CODEBUILD_BUILD_IMAGE"].includes("lambda") &&
+    process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs") &&
+    !process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20")
+  ) {
+    return true;
   }
   return false;
 };
@@ -49,6 +56,12 @@ export const isRunningInAwsLambdaNode20 = () => {
   } else if (
     process.env["AWS_LAMBDA_JS_RUNTIME"] &&
     process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")
+  ) {
+    return true;
+  } else if (
+    process.env["CODEBUILD_BUILD_IMAGE"] &&
+    process.env["CODEBUILD_BUILD_IMAGE"].includes("lambda") &&
+    process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20")
   ) {
     return true;
   }
