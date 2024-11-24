@@ -52,11 +52,7 @@ interface Viewport {
 const environment = getEnvironment();
 
 if (environment.awsLambda) {
-  if (environment.nodeVersion < 20) {
-    setupLambdaEnvironment("/tmp/al2/lib");
-  } else {
-    setupLambdaEnvironment("/tmp/al2023/lib");
-  }
+  setupLambdaEnvironment(`/tmp/${environment.instanceType}/lib`);
 }
 
 // // Setup the lambda environment
@@ -314,11 +310,9 @@ class Chromium {
     }
 
     if (environment.awsLambda) {
-      if (environment.nodeVersion < 20) {
-        promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
-      } else {
-        promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
-      }
+      promises.push(
+        LambdaFS.inflate(`${input}/${environment.instanceType}.tar.br`)
+      );
     }
 
     // Await all extractions

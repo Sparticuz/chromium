@@ -49,9 +49,21 @@ const envIncludes = (key: string, values: Array<string>): boolean => {
   return true;
 };
 
+/**
+ * Determines if the running instance is inside an AWS Lambda container,
+ * and the nodejs version.
+ *
+ * Less than 20 targets AL2 instances
+ * Above and including 20 AL2023 instances
+ *
+ * AWS_EXECUTION_ENV is for native Lambda instances
+ * AWS_LAMBDA_JS_RUNTIME is for netlify instances
+ * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
+ */
 export const getEnvironment = (): {
   awsLambda: boolean;
-  nodeVersion: number;
+  instanceType: "al2" | "al2023";
+  nodeVersion: 20 | 22 | 0;
 } => {
   const awsLambda = (() => {
     if (envIncludes("AWS_EXECUTION_ENV", ["AWS_Lambda_nodejs"])) return true;
@@ -62,10 +74,6 @@ export const getEnvironment = (): {
   })();
 
   const nodeVersion = (() => {
-    if (envIncludes("AWS_EXECUTION_ENV", ["18.x"])) return 18;
-    if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["18.x"])) return 18;
-    if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs18"])) return 18;
-
     if (envIncludes("AWS_EXECUTION_ENV", ["20.x"])) return 20;
     if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["20.x"])) return 20;
     if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs20"])) return 20;
@@ -74,61 +82,17 @@ export const getEnvironment = (): {
     if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["22.x"])) return 22;
     if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs22"])) return 22;
 
-    /** Bunch all versions lower than 18 into one, does this make sense ? */
+    /** Assumes that its ok that all versions lower than 20 are seen as one */
     return 0;
   })();
 
-  return { awsLambda, nodeVersion };
-};
+  const instanceType = (() => {
+    if (nodeVersion < 20) return "al2";
 
-/**
- * Determines if the running instance is inside an AWS Lambda container,
- * and the nodejs version is less than v20. This is to target AL2 instances
- * AWS_EXECUTION_ENV is for native Lambda instances
- * AWS_LAMBDA_JS_RUNTIME is for netlify instances
- * @returns boolean indicating if the running instance is inside a Lambda container
- */
-export const isRunningInAwsLambda = () => {
-  if (envIncludes("AWS_EXECUTION_ENV", ["AWS_Lambda_nodejs", "20.x"])) {
-    return true;
-  }
+    return `al2023`;
+  })();
 
-  if (
-    process.env["AWS_EXECUTION_ENV"] &&
-    process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
-    !process.env["AWS_EXECUTION_ENV"].includes("20.x")
-  ) {
-    return true;
-  } else if (
-    process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-    process.env["AWS_LAMBDA_JS_RUNTIME"].includes("nodejs") &&
-    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")
-  ) {
-    return true;
-  }
-  return false;
-};
-
-/**
- * Determines if the running instance is inside an AWS Lambda container,
- * and the nodejs version is 20. This is to target AL2023 instances
- * AWS_EXECUTION_ENV is for native Lambda instances
- * AWS_LAMBDA_JS_RUNTIME is for netlify instances
- * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
- * @returns boolean indicating if the running instance is inside a Lambda container with nodejs20
- */
-export const isRunningInAwsLambdaNode20 = () => {
-  if (
-    (process.env["AWS_EXECUTION_ENV"] &&
-      process.env["AWS_EXECUTION_ENV"].includes("20.x")) ||
-    (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-      process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")) ||
-    (process.env["CODEBUILD_BUILD_IMAGE"] &&
-      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20"))
-  ) {
-    return true;
-  }
-  return false;
+  return { awsLambda, nodeVersion, instanceType };
 };
 
 export const downloadAndExtract = async (url: string) =>
