@@ -55,13 +55,6 @@ if (environment.awsLambda) {
   setupLambdaEnvironment(`/tmp/${environment.instanceType}/lib`);
 }
 
-// // Setup the lambda environment
-// if (isRunningInAwsLambda()) {
-//   setupLambdaEnvironment("/tmp/al2/lib");
-// } else if (isRunningInAwsLambdaNode20()) {
-//   setupLambdaEnvironment("/tmp/al2023/lib");
-// }
-
 class Chromium {
   /**
    * Determines the headless mode that chromium will run at
