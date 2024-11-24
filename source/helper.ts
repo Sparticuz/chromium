@@ -56,6 +56,9 @@ const envIncludes = (key: string, values: Array<string>): boolean => {
  * Less than 20 targets AL2 instances
  * Above and including 20 AL2023 instances
  *
+ * @see https://docs.aws.amazon.com/linux/al2023/ug/lambda.html#lambda-al2023-based
+ * @see https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
+ *
  * AWS_EXECUTION_ENV is for native Lambda instances
  * AWS_LAMBDA_JS_RUNTIME is for netlify instances
  * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
