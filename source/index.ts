@@ -11,10 +11,9 @@ import { join } from "node:path";
 import { URL } from "node:url";
 import {
   downloadAndExtract,
-  isRunningInAwsLambda,
   isValidUrl,
-  isRunningInAwsLambdaNode20,
   setupLambdaEnvironment,
+  getEnvironment,
 } from "./helper";
 
 /** Viewport taken from https://github.com/puppeteer/puppeteer/blob/main/docs/api/puppeteer.viewport.md */
@@ -50,12 +49,22 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-// Setup the lambda environment
-if (isRunningInAwsLambda()) {
-  setupLambdaEnvironment("/tmp/al2/lib");
-} else if (isRunningInAwsLambdaNode20()) {
-  setupLambdaEnvironment("/tmp/al2023/lib");
+const environment = getEnvironment();
+
+if (environment.awsLambda) {
+  if (environment.nodeVersion < 20) {
+    setupLambdaEnvironment("/tmp/al2/lib");
+  } else {
+    setupLambdaEnvironment("/tmp/al2023/lib");
+  }
 }
+
+// // Setup the lambda environment
+// if (isRunningInAwsLambda()) {
+//   setupLambdaEnvironment("/tmp/al2/lib");
+// } else if (isRunningInAwsLambdaNode20()) {
+//   setupLambdaEnvironment("/tmp/al2023/lib");
+// }
 
 class Chromium {
   /**
@@ -303,12 +312,13 @@ class Chromium {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
-    if (isRunningInAwsLambda()) {
-      // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
-    }
-    if (isRunningInAwsLambdaNode20()) {
-      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
+
+    if (environment.awsLambda) {
+      if (environment.nodeVersion < 20) {
+        promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+      } else {
+        promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
+      }
     }
 
     // Await all extractions

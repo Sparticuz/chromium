@@ -39,6 +39,48 @@ export const isValidUrl = (input: string) => {
   }
 };
 
+const envIncludes = (key: string, values: Array<string>): boolean => {
+  if (process.env[key] == null) return false;
+
+  for (const value of values) {
+    if (!process.env[key].includes(value)) return false;
+  }
+
+  return true;
+};
+
+export const getEnvironment = (): {
+  awsLambda: boolean;
+  nodeVersion: number;
+} => {
+  const awsLambda = (() => {
+    if (envIncludes("AWS_EXECUTION_ENV", ["AWS_Lambda_nodejs"])) return true;
+    if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["nodejs"])) return true;
+    if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs"])) return true;
+
+    return false;
+  })();
+
+  const nodeVersion = (() => {
+    if (envIncludes("AWS_EXECUTION_ENV", ["18.x"])) return 18;
+    if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["18.x"])) return 18;
+    if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs18"])) return 18;
+
+    if (envIncludes("AWS_EXECUTION_ENV", ["20.x"])) return 20;
+    if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["20.x"])) return 20;
+    if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs20"])) return 20;
+
+    if (envIncludes("AWS_EXECUTION_ENV", ["22.x"])) return 22;
+    if (envIncludes("AWS_LAMBDA_JS_RUNTIME", ["22.x"])) return 22;
+    if (envIncludes("CODEBUILD_BUILD_IMAGE", ["nodejs22"])) return 22;
+
+    /** Bunch all versions lower than 18 into one, does this make sense ? */
+    return 0;
+  })();
+
+  return { awsLambda, nodeVersion };
+};
+
 /**
  * Determines if the running instance is inside an AWS Lambda container,
  * and the nodejs version is less than v20. This is to target AL2 instances
@@ -47,6 +89,10 @@ export const isValidUrl = (input: string) => {
  * @returns boolean indicating if the running instance is inside a Lambda container
  */
 export const isRunningInAwsLambda = () => {
+  if (envIncludes("AWS_EXECUTION_ENV", ["AWS_Lambda_nodejs", "20.x"])) {
+    return true;
+  }
+
   if (
     process.env["AWS_EXECUTION_ENV"] &&
     process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
