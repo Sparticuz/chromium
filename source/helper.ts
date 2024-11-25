@@ -50,13 +50,15 @@ export const isRunningInAwsLambda = () => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
     process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
-    !process.env["AWS_EXECUTION_ENV"].includes("20.x")
+    !process.env["AWS_EXECUTION_ENV"].includes("20.x") &&
+    !process.env["AWS_EXECUTION_ENV"].includes("22.x")
   ) {
     return true;
   } else if (
     process.env["AWS_LAMBDA_JS_RUNTIME"] &&
     process.env["AWS_LAMBDA_JS_RUNTIME"].includes("nodejs") &&
-    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")
+    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x") &&
+    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")
   ) {
     return true;
   }
@@ -75,10 +77,16 @@ export const isRunningInAwsLambdaNode20 = () => {
   if (
     (process.env["AWS_EXECUTION_ENV"] &&
       process.env["AWS_EXECUTION_ENV"].includes("20.x")) ||
+    (process.env["AWS_EXECUTION_ENV"] &&
+      process.env["AWS_EXECUTION_ENV"].includes("22.x")) ||
     (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
       process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")) ||
+    (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
+      process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")) ||
     (process.env["CODEBUILD_BUILD_IMAGE"] &&
-      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20"))
+      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20")) ||
+    (process.env["CODEBUILD_BUILD_IMAGE"] &&
+      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22"))
   ) {
     return true;
   }

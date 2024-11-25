@@ -8,13 +8,16 @@ pretest:
 	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
+	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
 
 test16:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node16
 
 test18:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node18
+
+test20:
+	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 
 %.zip:
 	npm install --fund=false --package-lock=false
