@@ -15,6 +15,7 @@ Resources:
         - nodejs16.x
         - nodejs18.x
         - nodejs20.x
+        - nodejs22.x
 
   node16:
     Type: AWS::Serverless::Function
@@ -45,6 +46,17 @@ Resources:
         - !Ref layer
       Handler: handlers/index.handler
       Runtime: nodejs20.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess
+      Tracing: Active
+  node22:
+    Type: AWS::Serverless::Function
+    Properties:
+      Layers:
+        - !Ref layer
+      Handler: handlers/index.handler
+      Runtime: nodejs22.x
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
