@@ -23,7 +23,7 @@ test20:
 	npm install --fund=false --package-lock=false
 	npm run build
 	mkdir -p nodejs
-	npm install --prefix nodejs/ tar-fs@3.0.6 follow-redirects@1.15.9 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+	npm install --prefix nodejs/ tar-fs@3.0.8 follow-redirects@1.15.9 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	npm pack
 	mkdir -p nodejs/node_modules/@sparticuz/chromium/
 	tar --directory nodejs/node_modules/@sparticuz/chromium/ --extract --file sparticuz-chromium-*.tgz --strip-components=1
