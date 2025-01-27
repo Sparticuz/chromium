@@ -224,6 +224,10 @@ await Promise.race([browser.close(), browser.close(), browser.close()]);
 
 Always `await browser.close()`, even if your script is returning an error.
 
+### `BrowserContext` isn't working properly (Target.closed)
+
+You may not be able to create a new context, you can try to use the default context as seen in this patch: https://github.com/Sparticuz/chromium/issues/298
+
 ### I need Accessible pdf files
 
 This is due to the way @sparticuz/chromium is built. If you require accessible pdf's, you'll need to
