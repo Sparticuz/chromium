@@ -59,13 +59,6 @@ if (isRunningInAwsLambda()) {
 
 class Chromium {
   /**
-   * Determines the headless mode that chromium will run at
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @values true or "new"
-   */
-  private static headlessMode: true | "shell" = "shell";
-
-  /**
    * If true, the graphics stack and webgl is enabled,
    * If false, webgl will be disabled.
    * (If false, the swiftshader.tar.br file will also not extract)
@@ -319,13 +312,11 @@ class Chromium {
 
   /**
    * Returns the headless mode.
-   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
-   * `true` means the 'new' headless mode.
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @returns true | "shell"
+   * "shell" means the `chrome-headless-shell` headless mode.
+   * @returns "shell"
    */
   public static get headless() {
-    return this.headlessMode;
+    return "shell";
   }
 
   /**
@@ -333,18 +324,12 @@ class Chromium {
    * "shell" means the 'old' (legacy, chromium < 112) headless mode.
    * `true` means the 'new' headless mode.
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @default "shell"
+   * @deprecated 'New' headless mode will not be coming to chrome-headless-shell
    */
-  public static set setHeadlessMode(value: true | "shell") {
-    if (
-      (typeof value === "string" && value !== "shell") ||
-      (typeof value === "boolean" && value !== true)
-    ) {
-      throw new Error(
-        `Headless mode must be either \`true\` or 'shell', you entered '${value}'`
-      );
-    }
-    this.headlessMode = value;
+  public static set setHeadlessMode(_value: true | "shell") {
+    console.warn(
+      "setHeadlessMode is deprecated. The headless mode is set to 'shell'."
+    );
   }
 
   /**

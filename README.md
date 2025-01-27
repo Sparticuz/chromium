@@ -50,11 +50,6 @@ const test = require("node:test");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// Optional: If you'd like to use the new headless mode. "shell" is the default.
-// NOTE: Because we build the shell binary, this option does not work.
-//       However, this option will stay so when we migrate to full chromium it will work.
-chromium.setHeadlessMode = true;
-
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
 
@@ -165,13 +160,13 @@ Here are some example projects and help with other services
 
 ### Running Locally & Headless/Headful mode
 
-This version of `chromium` is built using the `headless.gn` build variables, which does not appear to even include a GUI. [Also, at this point, AWS Lambda 2 does not support a modern version of `glibc`](https://github.com/aws/aws-lambda-base-images/issues/59), so this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version. Users have reported installing `rosetta` on MacOS will also work.
+This version of `chromium` is built using the `headless.gn` build variables, which does not even include a GUI. Also, this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version. Users have reported installing `rosetta` on MacOS will also work.
 
 ```shell
 npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
 ```
 
-For more information on installing a specific version of `chromium`, checkout [@puppeteer/browsers](https://www.npmjs.com/package/@puppeteer/browsers).
+For more information on installing a specific version of `chromium`, check out [@puppeteer/browsers](https://www.npmjs.com/package/@puppeteer/browsers).
 
 For example, you can set your code to use an ENV variable such as `IS_LOCAL`, then use if/else statements to direct puppeteer to the correct environment.
 
@@ -190,11 +185,17 @@ const browser = await puppeteer.launch({
 
 ### Can I use ARM or Graviton instances?
 
-Amazon's default Lambda base image is quite old at this point and does not support newer versions of `glibc` that chromium requires. When Amazon Linux 2023 comes to Lambda as the default base image, ARM support should be possible. Ref: https://github.com/Sparticuz/chrome-aws-lambda/pull/11, https://github.com/aws/aws-lambda-base-images/issues/59
+At this point, @sparticuz/chromium does not support ARM.
 
-### Can I use Google Chrome or Chrome for Testing, what is headless_shell?
+- https://github.com/Sparticuz/chrome-aws-lambda/pull/11
 
-`headless_shell` is a purpose built version of `chromium` specific for headless purposes. It does not include the GUI at all and only works via remote debugging connection. Ref: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md, https://source.chromium.org/chromium/chromium/src/+/main:headless/app/headless_shell.cc
+### Can I use Google Chrome or Chrome for Testing, what is chrome-headless-shell?
+
+`headless_shell` is a purpose built version of `chromium` specific for headless purposes. It does not include the GUI at all and only works via remote debugging connection. This is what this package is built on.
+
+- https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
+- https://source.chromium.org/chromium/chromium/src/+/main:headless/app/headless_shell.cc
+- https://developer.chrome.com/blog/chrome-headless-shell
 
 ### Can I use the "new" Headless mode?
 
@@ -202,7 +203,9 @@ From what I can tell, `headless_shell` does not seem to include support for the 
 
 ### It doesn't work with Webpack!?!
 
-Try marking this package as an external. Ref: https://webpack.js.org/configuration/externals/
+Try marking this package as an external.
+
+- https://webpack.js.org/configuration/externals/
 
 ### I'm experiencing timeouts or failures closing Chromium
 
@@ -222,6 +225,10 @@ await Promise.race([browser.close(), browser.close(), browser.close()]);
 ```
 
 Always `await browser.close()`, even if your script is returning an error.
+
+### `BrowserContext` isn't working properly (Target.closed)
+
+You may not be able to create a new context, you can try to use the default context as seen in this patch: https://github.com/Sparticuz/chromium/issues/298
 
 ### I need Accessible pdf files
 
@@ -292,6 +299,13 @@ Afterwards, you just need to ZIP the directory and upload it as a AWS Lambda Lay
 zip -9 --filesync --move --recurse-paths fonts.zip fonts/
 ```
 
+Font directories are specified inside of the `fonts.conf` file found inside of the `bin/fonts.tar.br` file. These are the default folders:
+
+- `/var/task/.fonts`
+- `/var/task/fonts`
+- `/opt/fonts`
+- `/tmp/fonts`
+
 ## Graphics
 
 By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
@@ -304,8 +318,8 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-| `setHeadlessMode`                   | `void`            | Sets the headless mode to either `true` or `"shell"`                                                                                                    |
-| `headless`                          | `true \| "shell"` | Returns `true` or `"shell"` depending on what version of chrome's headless you are running                                                              |
+|                                     |
+| `headless`                          | `"shell"`         | Returns `"shell"` which is what `chrome-headless-shell` requires                                                                                        |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
 | `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 
@@ -417,6 +431,26 @@ This allows us to get the best compression ratio and faster decompression times.
 | `chromium.br` | Brotli    | 9     | 38853994  | 37.05     | 71.63%     | 0.673s     |
 | `chromium.br` | Brotli    | 10    | 36090087  | 34.42     | 73.65%     | 0.765s     |
 | `chromium.br` | Brotli    | 11    | 34820408  | **33.21** | **74.58%** | 0.712s     |
+
+## Backers
+
+Thank you for your support!
+
+[![syntaxfm](https://avatars.githubusercontent.com/syntaxfm?size=100)](https://github.com/syntaxfm)
+[![th3madhack3r](https://avatars.githubusercontent.com/th3madhack3r?size=100)](https://github.com/th3madhack3r)
+
+### Past
+
+![C2BB](https://avatars.githubusercontent.com/C2BB?size=30)
+![acchou](https://avatars.githubusercontent.com/acchou?size=30)
+![infr](https://avatars.githubusercontent.com/infr?size=30)
+![aarmora](https://avatars.githubusercontent.com/aarmora?size=30)
+[![azymnis](https://avatars.githubusercontent.com/azymnis?size=30)](https://github.com/azymnis)
+![mushilabs](https://avatars.githubusercontent.com/mushilabs?size=30)
+![omgovich](https://avatars.githubusercontent.com/omgovich?size=30)
+<img src="https://avatars.githubusercontent.com/kuda1992" width="30" />
+![jlee512](https://avatars.githubusercontent.com/jlee512?size=30)
+![swain](https://avatars.githubusercontent.com/swain?size=30)
 
 ## License
 
