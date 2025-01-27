@@ -190,7 +190,8 @@ const browser = await puppeteer.launch({
 
 ### Can I use ARM or Graviton instances?
 
-Amazon's default Lambda base image is quite old at this point and does not support newer versions of `glibc` that chromium requires. When Amazon Linux 2023 comes to Lambda as the default base image, ARM support should be possible. Ref: https://github.com/Sparticuz/chrome-aws-lambda/pull/11, https://github.com/aws/aws-lambda-base-images/issues/59
+At this point, @sparticuz/chromium does not support ARM.
+Ref: https://github.com/Sparticuz/chrome-aws-lambda/pull/11, https://github.com/aws/aws-lambda-base-images/issues/59
 
 ### Can I use Google Chrome or Chrome for Testing, what is headless_shell?
 
@@ -417,6 +418,26 @@ This allows us to get the best compression ratio and faster decompression times.
 | `chromium.br` | Brotli    | 9     | 38853994  | 37.05     | 71.63%     | 0.673s     |
 | `chromium.br` | Brotli    | 10    | 36090087  | 34.42     | 73.65%     | 0.765s     |
 | `chromium.br` | Brotli    | 11    | 34820408  | **33.21** | **74.58%** | 0.712s     |
+
+## Backers
+
+Thank you for your support!
+
+[![syntaxfm](https://avatars.githubusercontent.com/syntaxfm?size=100)](https://github.com/syntaxfm)
+[![th3madhack3r](https://avatars.githubusercontent.com/th3madhack3r?size=100)](https://github.com/th3madhack3r)
+
+### Past
+
+![C2BB](https://avatars.githubusercontent.com/C2BB?size=30)
+![acchou](https://avatars.githubusercontent.com/acchou?size=30)
+![infr](https://avatars.githubusercontent.com/infr?size=30)
+![aarmora](https://avatars.githubusercontent.com/aarmora?size=30)
+[![azymnis](https://avatars.githubusercontent.com/azymnis?size=30)](https://github.com/azymnis)
+![mushilabs](https://avatars.githubusercontent.com/mushilabs?size=30)
+![omgovich](https://avatars.githubusercontent.com/omgovich?size=30)
+<img src="https://avatars.githubusercontent.com/kuda1992" width="30" />
+![jlee512](https://avatars.githubusercontent.com/jlee512?size=30)
+![swain](https://avatars.githubusercontent.com/swain?size=30)
 
 ## License
 
