@@ -326,7 +326,7 @@ class Chromium {
    * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
    * @deprecated 'New' headless mode will not be coming to chrome-headless-shell
    */
-  public static set setHeadlessMode(value: true | "shell") {
+  public static set setHeadlessMode(_value: true | "shell") {
     console.warn(
       "setHeadlessMode is deprecated. The headless mode is set to 'shell'."
     );
