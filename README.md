@@ -297,6 +297,13 @@ Afterwards, you just need to ZIP the directory and upload it as a AWS Lambda Lay
 zip -9 --filesync --move --recurse-paths fonts.zip fonts/
 ```
 
+Font directories are specified inside of the `fonts.conf` file found inside of the `bin/fonts.tar.br` file. These are the default folders:
+
+- `/var/task/.fonts`
+- `/var/task/fonts`
+- `/opt/fonts`
+- `/tmp/fonts`
+
 ## Graphics
 
 By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
