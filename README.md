@@ -230,6 +230,10 @@ Always `await browser.close()`, even if your script is returning an error.
 
 You may not be able to create a new context, you can try to use the default context as seen in this patch: https://github.com/Sparticuz/chromium/issues/298
 
+### Do I need to use @sparticuz/chromium?
+
+This package is designed to be run on a vanilla Lambda instance. If you are using a dockerfile to publish your code to Lambda, it may be a better idea to install `chromium` and it's dependencies from the distribution's repositories.
+
 ### I need Accessible pdf files
 
 This is due to the way @sparticuz/chromium is built. If you require accessible pdf's, you'll need to
