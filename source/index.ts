@@ -316,7 +316,7 @@ class Chromium {
    * @returns "shell"
    */
   public static get headless() {
-    return "shell";
+    return "shell" as const;
   }
 
   /**
