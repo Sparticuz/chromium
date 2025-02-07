@@ -44,9 +44,10 @@ export const isValidUrl = (input: string) => {
  * and the nodejs version is less than v20. This is to target AL2 instances
  * AWS_EXECUTION_ENV is for native Lambda instances
  * AWS_LAMBDA_JS_RUNTIME is for netlify instances
+ * VERCEL for Vercel Functions (Node 18 enables an AL2-compatible environment)
  * @returns boolean indicating if the running instance is inside a Lambda container
  */
-export const isRunningInAwsLambda = () => {
+export const isRunningInAwsLambda = (nodeMajorVersion: number) => {
   if (
     process.env["AWS_EXECUTION_ENV"] &&
     process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
@@ -61,6 +62,8 @@ export const isRunningInAwsLambda = () => {
     !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")
   ) {
     return true;
+  } else if (process.env["VERCEL"] && nodeMajorVersion == 18) {
+    return true;
   }
   return false;
 };
@@ -71,9 +74,10 @@ export const isRunningInAwsLambda = () => {
  * AWS_EXECUTION_ENV is for native Lambda instances
  * AWS_LAMBDA_JS_RUNTIME is for netlify instances
  * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
+ * VERCEL is for Vercel Functions (Node 20 or later enables an AL2023-compatible environment).
  * @returns boolean indicating if the running instance is inside a Lambda container with nodejs20
  */
-export const isRunningInAwsLambdaNode20 = () => {
+export const isRunningInAwsLambdaNode20 = (nodeMajorVersion: number) => {
   if (
     (process.env["AWS_EXECUTION_ENV"] &&
       process.env["AWS_EXECUTION_ENV"].includes("20.x")) ||
@@ -86,7 +90,8 @@ export const isRunningInAwsLambdaNode20 = () => {
     (process.env["CODEBUILD_BUILD_IMAGE"] &&
       process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20")) ||
     (process.env["CODEBUILD_BUILD_IMAGE"] &&
-      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22"))
+      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22")) ||
+    (process.env["VERCEL"] && nodeMajorVersion >= 20)
   ) {
     return true;
   }
