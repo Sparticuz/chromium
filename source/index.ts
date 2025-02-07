@@ -50,10 +50,12 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
+const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? '');
+
 // Setup the lambda environment
-if (isRunningInAwsLambda()) {
+if (isRunningInAwsLambda(nodeMajorVersion)) {
   setupLambdaEnvironment("/tmp/al2/lib");
-} else if (isRunningInAwsLambdaNode20()) {
+} else if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
   setupLambdaEnvironment("/tmp/al2023/lib");
 }
 
@@ -296,11 +298,11 @@ class Chromium {
       // Only inflate graphics stack if needed
       promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
     }
-    if (isRunningInAwsLambda()) {
+    if (isRunningInAwsLambda(nodeMajorVersion)) {
       // If running in AWS Lambda, extract more required files
       promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
     }
-    if (isRunningInAwsLambdaNode20()) {
+    if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
       promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
     }
 
