@@ -440,6 +440,7 @@ This allows us to get the best compression ratio and faster decompression times.
 
 Thank you for your support!
 
+[![Munawwar](https://avatars.githubusercontent.com/Munawwar?size=100)](https://github.com/munawwar)
 [![syntaxfm](https://avatars.githubusercontent.com/syntaxfm?size=100)](https://github.com/syntaxfm)
 [![th3madhack3r](https://avatars.githubusercontent.com/th3madhack3r?size=100)](https://github.com/th3madhack3r)
 
@@ -449,7 +450,7 @@ Thank you for your support!
 ![acchou](https://avatars.githubusercontent.com/acchou?size=30)
 ![infr](https://avatars.githubusercontent.com/infr?size=30)
 ![aarmora](https://avatars.githubusercontent.com/aarmora?size=30)
-[![azymnis](https://avatars.githubusercontent.com/azymnis?size=30)](https://github.com/azymnis)
+![azymnis](https://avatars.githubusercontent.com/azymnis?size=30)
 ![mushilabs](https://avatars.githubusercontent.com/mushilabs?size=30)
 ![omgovich](https://avatars.githubusercontent.com/omgovich?size=30)
 <img src="https://avatars.githubusercontent.com/kuda1992" width="30" />
