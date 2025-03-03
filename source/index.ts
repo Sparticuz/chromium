@@ -50,7 +50,7 @@ interface Viewport {
   hasTouch?: boolean;
 }
 
-const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? '');
+const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? "");
 
 // Setup the lambda environment
 if (isRunningInAwsLambda(nodeMajorVersion)) {
@@ -203,11 +203,14 @@ class Chromium {
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-    // Blocked by https://github.com/Sparticuz/chromium/issues/247
-    //this.graphics
-    //  ? graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader")
-    //  : graphicsFlags.push("--disable-webgl");
-    graphicsFlags.push("--use-gl=angle", "--use-angle=swiftshader");
+    this.graphics
+      ? graphicsFlags.push(
+          // As the unsafe WebGL fallback, SwANGLE (ANGLE + SwiftShader Vulkan)
+          "--use-gl=angle",
+          "--use-angle=swiftshader",
+          "--enable-unsafe-swiftshader"
+        )
+      : graphicsFlags.push("--disable-webgl");
 
     const insecureFlags = [
       "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
@@ -293,11 +296,8 @@ class Chromium {
     const promises = [
       LambdaFS.inflate(`${input}/chromium.br`),
       LambdaFS.inflate(`${input}/fonts.tar.br`),
+      LambdaFS.inflate(`${input}/swiftshader.tar.br`),
     ];
-    if (this.graphics) {
-      // Only inflate graphics stack if needed
-      promises.push(LambdaFS.inflate(`${input}/swiftshader.tar.br`));
-    }
     if (isRunningInAwsLambda(nodeMajorVersion)) {
       // If running in AWS Lambda, extract more required files
       promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
@@ -346,7 +346,6 @@ class Chromium {
    * Sets whether the graphics stack is enabled or disabled.
    * @param true means the stack is enabled. WebGL will work.
    * @param false means that the stack is disabled. WebGL will not work.
-   * `false` will also skip the extract of the graphics driver, saving about a second during initial extract
    * @default true
    */
   public static set setGraphicsMode(value: boolean) {
@@ -355,11 +354,7 @@ class Chromium {
         `Graphics mode must be a boolean, you entered '${value}'`
       );
     }
-
-    // Disabling 'disabling the gpu'
-    // Blocked by https://github.com/Sparticuz/chromium/issues/247
-    // this.graphicsMode = value;
-    this.graphicsMode = true;
+    this.graphicsMode = value;
   }
 }
 
