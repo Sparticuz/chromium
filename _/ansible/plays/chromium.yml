@@ -16,7 +16,7 @@
       amazon.aws.ec2_key:
         name: ansible
         state: present
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
         key_material: "{{ item }}"
       with_file: ../ansible.pem.pub
 
@@ -25,7 +25,7 @@
         name: Chromium
         description: SSH Access
         state: present
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
         rules:
           - proto: tcp
             to_port: 22
@@ -41,6 +41,7 @@
         ebs_optimized: yes
         image:
           id: "{{ image }}"
+        #         id: "{{ lookup('amazon.aws.aws_ssm', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region=aws_region) }}"
         instance_initiated_shutdown_behavior: terminate
         instance_type: "{{ instance_size }}"
         key_name: ansible
@@ -48,7 +49,7 @@
           assign_public_ip: yes
           delete_on_termination: yes
           groups: Chromium
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
         security_group: Chromium
         state: present
         tags:
@@ -88,7 +89,7 @@
       become: true
       become_user: root
       shell: |
-        dnf update --releasever=2022.0.20221207 -y
+        dnf update --releasever=2023.6.20250211 -y
 
     - name: Installing Packages
       become: true
@@ -334,19 +335,19 @@
         wait: yes
         state: absent
         instance_ids: "{{ ec2.instance_ids }}"
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
 
     - name: Deleting Security Group
       amazon.aws.ec2_group:
         name: Chromium
         state: absent
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
 
     - name: Deleting EC2 Key Pair
       amazon.aws.ec2_key:
         name: ansible
         state: absent
-        region: "{{ region }}"
+        region: "{{ aws_region }}"
 
     - name: Deleting SSH Key
       file:
