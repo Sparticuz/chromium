@@ -124,6 +124,8 @@ class Chromium {
               return resolve(url.pathname.split("/").pop() as string);
             });
           });
+        }).on("error", (error) => {
+          reject(error)
         });
       }
     });
