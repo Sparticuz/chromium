@@ -71,7 +71,7 @@ test("Check the page title of example.com", async (t) => {
     args: chromium.args,
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: "shell",
   });
 
   const page = await browser.newPage();
@@ -95,7 +95,7 @@ test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    // headless: true, /* true is the default */
   });
 
   const context = await browser.newContext();
@@ -141,7 +141,7 @@ const browser = await puppeteer.launch({
   args: chromium.args,
   defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
@@ -166,7 +166,7 @@ const browser = await puppeteer.launch({
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
   ),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
@@ -209,7 +209,7 @@ const browser = await puppeteer.launch({
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
-  headless: process.env.IS_LOCAL ? false : chromium.headless,
+  headless: process.env.IS_LOCAL ? false : "shell",
 });
 ```
 
@@ -354,7 +354,6 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
 |                                     |
-| `headless`                          | `"shell"`         | Returns `"shell"` which is what `chrome-headless-shell` requires                                                                                        |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
 | `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
 

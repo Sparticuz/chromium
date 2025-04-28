@@ -19,7 +19,7 @@ exports.handler = async (event, context) => {
       },
       dumpio: true,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: "shell",
       acceptInsecureCerts: true,
     });
 
