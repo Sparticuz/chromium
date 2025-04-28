@@ -68,7 +68,7 @@ test("Check the page title of example.com", async (t) => {
     width: 1920,
   };
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args: puppeteer.defaultArgs({ args: chromium.args }),
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: "shell",
@@ -93,7 +93,7 @@ const chromium = require("@sparticuz/chromium");
 
 test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
-    args: chromium.args,
+    args: chromium.args, // Playwright merges the args
     executablePath: await chromium.executablePath(),
     // headless: true, /* true is the default */
   });
@@ -138,7 +138,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: chromium.args,
+  args: puppeteer.defaultArgs({ args: chromium.args }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
   headless: "shell",
@@ -161,7 +161,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: chromium.args,
+  args: puppeteer.defaultArgs({ args: chromium.args }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
@@ -204,7 +204,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : chromium.args,
+  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : puppeteer.defaultArgs({ args: chromium.args }),,
   defaultViewport: viewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
@@ -387,50 +387,6 @@ aws lambda publish-layer-version --layer-name chromium --description "Chromium v
 Alternatively, you can also download the layer artifact from one of our [releases](https://github.com/Sparticuz/chromium/releases).
 
 According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
-
-## Migration from `chrome-aws-lambda`
-
-- Change the import or require to be `@sparticuz/chromium`
-- Add the import or require for `puppeteer-core`
-- Change the browser launch to use the native `puppeteer.launch()` function
-- Change the `executablePath` to be a function.
-
-```diff
--const chromium = require('@sparticuz/chrome-aws-lambda');
-+const chromium = require("@sparticuz/chromium");
-+const puppeteer = require("puppeteer-core");
-
-exports.handler = async (event, context, callback) => {
-  let result = null;
-  let browser = null;
-
-  try {
--    browser = await chromium.puppeteer.launch({
-+    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
--      executablePath: await chromium.executablePath,
-+      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
-
-    let page = await browser.newPage();
-
-    await page.goto(event.url || 'https://example.com');
-
-    result = await page.title();
-  } catch (error) {
-    return callback(error);
-  } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
-  }
-
-  return callback(null, result);
-};
-```
 
 ## Compression
 

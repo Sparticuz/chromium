@@ -8,7 +8,10 @@ exports.handler = async (event, context) => {
 
   try {
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: puppeteer.defaultArgs({
+        // Add in more args for serverless environments
+        args: chromium.args,
+      }),
       defaultViewport: {
         deviceScaleFactor: 1,
         hasTouch: false,

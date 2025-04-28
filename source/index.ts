@@ -101,74 +101,32 @@ class Chromium {
   /**
    * Returns a list of additional Chromium flags recommended for serverless environments.
    * The canonical list of flags can be found on https://peter.sh/experiments/chromium-command-line-switches/.
+   * Most of below can be found here: https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md
    */
   static get args(): string[] {
-    /**
-     * These are the default args in puppeteer.
-     * https://github.com/puppeteer/puppeteer/blob/3a31070d054fa3cd8116ca31c578807ed8d6f987/packages/puppeteer-core/src/node/ChromeLauncher.ts#L185
-     */
-    const puppeteerFlags = [
-      "--allow-pre-commit-input",
-      "--disable-background-networking",
-      "--disable-background-timer-throttling",
-      "--disable-backgrounding-occluded-windows",
-      "--disable-breakpad",
-      "--disable-client-side-phishing-detection",
-      "--disable-component-extensions-with-background-pages",
-      "--disable-component-update",
-      "--disable-default-apps",
-      "--disable-dev-shm-usage",
-      "--disable-extensions",
-      "--disable-hang-monitor",
-      "--disable-ipc-flooding-protection",
-      "--disable-popup-blocking",
-      "--disable-prompt-on-repost",
-      "--disable-renderer-backgrounding",
-      "--disable-sync",
-      "--enable-automation",
-      // TODO(sadym): remove '--enable-blink-features=IdleDetection' once
-      // IdleDetection is turned on by default.
-      "--enable-blink-features=IdleDetection",
-      "--export-tagged-pdf",
-      "--force-color-profile=srgb",
-      "--metrics-recording-only",
-      "--no-first-run",
-      "--password-store=basic",
-      "--use-mock-keychain",
-    ];
-    const puppeteerDisableFeatures = [
-      "Translate",
-      "BackForwardCache",
-      // AcceptCHFrame disabled because of crbug.com/1348106.
-      "AcceptCHFrame",
-      "MediaRouter",
-      "OptimizationHints",
-    ];
-    const puppeteerEnableFeatures = ["NetworkServiceInProcess2"];
-
     const chromiumFlags = [
-      "--disable-domain-reliability", // https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md#background-networking
+      "--ash-no-nudges", // Avoids blue bubble "user education" nudges (eg., "… give your browser a new look", Memory Saver)
+      "--disable-domain-reliability", // Disables Domain Reliability Monitoring, which tracks whether the browser has difficulty contacting Google-owned sites and uploads reports to Google.
       "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
-      "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
+      // "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
       "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
-      "--mute-audio", // https://source.chromium.org/search?q=lang:cpp+symbol:kMuteAudio&ss=chromium
-      "--no-default-browser-check", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoDefaultBrowserCheck&ss=chromium
-      "--no-pings", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoPings&ss=chromium
-      "--single-process", // Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
+      "--no-default-browser-check", // Disable the default browser check, do not prompt to set it as such
+      "--no-pings", // Don't send hyperlink auditing pings
+      "--single-process", // Runs the renderer and plugins in the same process as the browser. NOTES: Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
       "--font-render-hinting=none", // https://github.com/puppeteer/puppeteer/issues/2410#issuecomment-560573612
     ];
     const chromiumDisableFeatures = [
       "AudioServiceOutOfProcess",
       "IsolateOrigins",
-      "site-per-process",
+      "site-per-process", // Disables OOPIF. https://www.chromium.org/Home/chromium-security/site-isolation
     ];
     const chromiumEnableFeatures = ["SharedArrayBuffer"];
 
     const graphicsFlags = [
       "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
       "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
-      "--in-process-gpu", // https://source.chromium.org/search?q=lang:cpp+symbol:kInProcessGPU&ss=chromium
-      "--window-size=1920,1080", // https://source.chromium.org/search?q=lang:cpp+symbol:kWindowSize&ss=chromium
+      "--in-process-gpu", // Saves some memory by moving GPU process into a browser process thread
+      "--window-size=1920,1080", // Sets the initial window size. Provided as string in the format "800,600".
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
@@ -183,28 +141,21 @@ class Chromium {
 
     const insecureFlags = [
       "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
-      "--disable-setuid-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSetuidSandbox&ss=chromium
+      "--disable-setuid-sandbox", // Lambda runs as root, so this is required to allow Chromium to run as root
       "--disable-site-isolation-trials", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSiteIsolation&ss=chromium
       "--disable-web-security", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableWebSecurity&ss=chromium
+    ];
+
+    const headlessFlags = [
+      "--headless='shell'", // We only support running chrome-headless-shell
       "--no-sandbox", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoSandbox&ss=chromium
       "--no-zygote", // https://source.chromium.org/search?q=lang:cpp+symbol:kNoZygote&ss=chromium
     ];
 
-    const headlessFlags = [
-      this.headless === "shell" ? "--headless='shell'" : "--headless",
-    ];
-
     return [
-      ...puppeteerFlags,
       ...chromiumFlags,
-      `--disable-features=${[
-        ...puppeteerDisableFeatures,
-        ...chromiumDisableFeatures,
-      ].join(",")}`,
-      `--enable-features=${[
-        ...puppeteerEnableFeatures,
-        ...chromiumEnableFeatures,
-      ].join(",")}`,
+      `--disable-features=${[...chromiumDisableFeatures].join(",")}`,
+      `--enable-features=${[...chromiumEnableFeatures].join(",")}`,
       ...graphicsFlags,
       ...insecureFlags,
       ...headlessFlags,
