@@ -6,7 +6,7 @@ import {
   symlink,
 } from "node:fs";
 import { https } from "follow-redirects";
-import LambdaFS from "./lambdafs";
+import { inflate } from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
 import {
@@ -71,29 +71,31 @@ class Chromium {
           });
         });
       } else {
-        https.get(input, (response) => {
-          if (response.statusCode !== 200) {
-            return reject(`Unexpected status code: ${response.statusCode}.`);
-          }
+        https
+          .get(input, (response) => {
+            if (response.statusCode !== 200) {
+              return reject(`Unexpected status code: ${response.statusCode}.`);
+            }
 
-          const stream = createWriteStream(output);
+            const stream = createWriteStream(output);
 
-          stream.once("error", (error) => {
-            return reject(error);
-          });
-
-          response.on("data", (chunk) => {
-            stream.write(chunk);
-          });
-
-          response.once("end", () => {
-            stream.end(() => {
-              return resolve(url.pathname.split("/").pop() as string);
+            stream.once("error", (error) => {
+              return reject(error);
             });
+
+            response.on("data", (chunk) => {
+              stream.write(chunk);
+            });
+
+            response.once("end", () => {
+              stream.end(() => {
+                return resolve(url.pathname.split("/").pop() as string);
+              });
+            });
+          })
+          .on("error", (error) => {
+            reject(error);
           });
-        }).on("error", (error) => {
-          reject(error)
-        });
       }
     });
   }
@@ -108,7 +110,6 @@ class Chromium {
       "--ash-no-nudges", // Avoids blue bubble "user education" nudges (eg., "… give your browser a new look", Memory Saver)
       "--disable-domain-reliability", // Disables Domain Reliability Monitoring, which tracks whether the browser has difficulty contacting Google-owned sites and uploads reports to Google.
       "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
-      // "--disable-speech-api", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisableSpeechAPI&ss=chromium
       "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
       "--no-default-browser-check", // Disable the default browser check, do not prompt to set it as such
       "--no-pings", // Don't send hyperlink auditing pings
@@ -200,16 +201,16 @@ class Chromium {
 
     // Extract the required files
     const promises = [
-      LambdaFS.inflate(`${input}/chromium.br`),
-      LambdaFS.inflate(`${input}/fonts.tar.br`),
-      LambdaFS.inflate(`${input}/swiftshader.tar.br`),
+      inflate(`${input}/chromium.br`),
+      inflate(`${input}/fonts.tar.br`),
+      inflate(`${input}/swiftshader.tar.br`),
     ];
     if (isRunningInAwsLambda(nodeMajorVersion)) {
       // If running in AWS Lambda, extract more required files
-      promises.push(LambdaFS.inflate(`${input}/al2.tar.br`));
+      promises.push(inflate(`${input}/al2.tar.br`));
     }
     if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
-      promises.push(LambdaFS.inflate(`${input}/al2023.tar.br`));
+      promises.push(inflate(`${input}/al2023.tar.br`));
     }
 
     // Await all extractions
