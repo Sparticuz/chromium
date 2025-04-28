@@ -268,28 +268,6 @@ class Chromium {
   }
 
   /**
-   * Returns the headless mode.
-   * "shell" means the `chrome-headless-shell` headless mode.
-   * @returns "shell"
-   */
-  public static get headless() {
-    return "shell" as const;
-  }
-
-  /**
-   * Sets the headless mode.
-   * "shell" means the 'old' (legacy, chromium < 112) headless mode.
-   * `true` means the 'new' headless mode.
-   * https://developer.chrome.com/articles/new-headless/#try-out-the-new-headless
-   * @deprecated 'New' headless mode will not be coming to chrome-headless-shell
-   */
-  public static set setHeadlessMode(_value: true | "shell") {
-    console.warn(
-      "setHeadlessMode is deprecated. The headless mode is set to 'shell'."
-    );
-  }
-
-  /**
    * Returns whether the graphics stack is enabled or disabled
    * @returns boolean
    */
