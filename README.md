@@ -329,6 +329,8 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 
 ## Compiling
 
+Running `npm run update` will update Ansible's `inventory.ini` with the latest version of Chromium stable.
+
 To compile your own version of Chromium check the [Ansible playbook instructions](_/ansible).
 
 ## AWS Lambda Layer
