@@ -59,9 +59,17 @@ await chromium.font(
 );
 
 test("Check the page title of example.com", async (t) => {
+  const viewport = {
+    deviceScaleFactor: 1,
+    hasTouch: false,
+    height: 1080,
+    isLandscape: true,
+    isMobile: false,
+    width: 1920,
+  };
   const browser = await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: chromium.headless,
   });
@@ -121,9 +129,17 @@ In this example, /opt/chromium contains all the brotli files
 ```
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
 const browser = await puppeteer.launch({
   args: chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
   headless: chromium.headless,
 });
@@ -136,9 +152,17 @@ On the initial iteration, `@sparticuz/chromium` will download the pack tar file,
 The latest chromium-pack.tar file will be on the latest [release](https://github.com/Sparticuz/chromium/releases).
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
 const browser = await puppeteer.launch({
   args: chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  defaultViewport: viewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
   ),
@@ -171,9 +195,17 @@ For more information on installing a specific version of `chromium`, check out [
 For example, you can set your code to use an ENV variable such as `IS_LOCAL`, then use if/else statements to direct puppeteer to the correct environment.
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
 const browser = await puppeteer.launch({
   args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  defaultViewport: viewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
@@ -320,7 +352,6 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                      |
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
-| `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
 |                                     |
 | `headless`                          | `"shell"`         | Returns `"shell"` which is what `chrome-headless-shell` requires                                                                                        |
