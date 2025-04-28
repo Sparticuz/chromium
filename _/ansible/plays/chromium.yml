@@ -45,10 +45,9 @@
         instance_initiated_shutdown_behavior: terminate
         instance_type: "{{ instance_size }}"
         key_name: ansible
-        network:
-          assign_public_ip: yes
-          delete_on_termination: yes
-          groups: Chromium
+        network_interfaces:
+          - assign_public_ip: yes
+            groups: Chromium
         region: "{{ aws_region }}"
         security_group: Chromium
         state: present

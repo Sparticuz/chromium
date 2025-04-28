@@ -1,9 +1,8 @@
 .PHONY: ansible chromium
 
 dependencies:
-	sudo apt install python3-pip zip
-	pip install ansible boto boto3 aws-sam-cli
-	echo "Docker is also required in order to test the package, please install docker or Docker Desktop"
+	sudo pacman -S ansible docker python-boto3 zip
+	echo "aws-sam-cli-bin is also required in order to test the package"
 
 build:
-	ansible-playbook plays/chromium.yml -i inventory.ini
+	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini
