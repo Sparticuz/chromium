@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { inflate } from "./lambdafs";
+import { inflate } from "./lambdafs.js";
 import { join } from "node:path";
 import { URL } from "node:url";
 import {
@@ -10,7 +10,7 @@ import {
   setupLambdaEnvironment,
   createSymlink,
   downloadFile,
-} from "./helper";
+} from "./helper.js";
 
 const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? "");
 
@@ -21,7 +21,7 @@ if (isRunningInAwsLambda(nodeMajorVersion)) {
   setupLambdaEnvironment("/tmp/al2023/lib");
 }
 
-class Chromium {
+export class Chromium {
   /**
    * If true, the graphics stack and webgl is enabled,
    * If false, webgl will be disabled.
@@ -220,5 +220,3 @@ class Chromium {
     this.graphicsMode = value;
   }
 }
-
-export = Chromium;
