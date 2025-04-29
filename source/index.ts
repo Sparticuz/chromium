@@ -1,11 +1,4 @@
-import {
-  access,
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  symlink,
-} from "node:fs";
-import { https } from "follow-redirects";
+import { existsSync, mkdirSync } from "node:fs";
 import { inflate } from "./lambdafs";
 import { join } from "node:path";
 import { URL } from "node:url";
@@ -15,6 +8,8 @@ import {
   isValidUrl,
   isRunningInAwsLambdaNode20,
   setupLambdaEnvironment,
+  createSymlink,
+  downloadFile,
 } from "./helper";
 
 const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? "");
@@ -37,67 +32,50 @@ class Chromium {
   /**
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
-  static font(input: string): Promise<string> {
-    process.env["HOME"] ??= "/tmp";
+  static async font(input: string): Promise<string> {
+    const fontsDir = `${process.env["HOME"]}/.fonts`;
 
-    if (existsSync(`${process.env["HOME"]}/.fonts`) !== true) {
-      mkdirSync(`${process.env["HOME"]}/.fonts`);
+    // Create fonts directory if it doesn't exist
+    if (!existsSync(fontsDir)) {
+      mkdirSync(fontsDir);
     }
 
-    return new Promise((resolve, reject) => {
-      if (/^https?:[/][/]/i.test(input) !== true) {
-        input = `file://${input}`;
+    // Convert local path to file URL if needed
+    if (!/^https?:[/][/]/i.test(input)) {
+      input = `file://${input}`;
+    }
+
+    const url = new URL(input);
+    const fontName = url.pathname.split("/").pop();
+
+    if (!fontName) {
+      throw new Error(`Invalid font name: ${url.pathname}`);
+    }
+    const outputPath = `${fontsDir}/${fontName}`;
+
+    // Return font name if it already exists
+    if (existsSync(outputPath)) {
+      return fontName;
+    }
+
+    // Handle local file
+    if (url.protocol === "file:") {
+      try {
+        await createSymlink(url.pathname, outputPath);
+        return fontName;
+      } catch (error) {
+        throw new Error(`Failed to create symlink for font: ${error}`);
       }
-
-      const url = new URL(input);
-      const output = `${process.env["HOME"]}/.fonts/${url.pathname
-        .split("/")
-        .pop()}`;
-
-      if (existsSync(output) === true) {
-        return resolve(output.split("/").pop() as string);
+    }
+    // Handle remote file
+    else {
+      try {
+        await downloadFile(input, outputPath);
+        return fontName;
+      } catch (error) {
+        throw new Error(`Failed to download font: ${error}`);
       }
-
-      if (url.protocol === "file:") {
-        access(url.pathname, (error) => {
-          if (error != null) {
-            return reject(error);
-          }
-
-          symlink(url.pathname, output, (error) => {
-            return error != null
-              ? reject(error)
-              : resolve(url.pathname.split("/").pop() as string);
-          });
-        });
-      } else {
-        https
-          .get(input, (response) => {
-            if (response.statusCode !== 200) {
-              return reject(`Unexpected status code: ${response.statusCode}.`);
-            }
-
-            const stream = createWriteStream(output);
-
-            stream.once("error", (error) => {
-              return reject(error);
-            });
-
-            response.on("data", (chunk) => {
-              stream.write(chunk);
-            });
-
-            response.once("end", () => {
-              stream.end(() => {
-                return resolve(url.pathname.split("/").pop() as string);
-              });
-            });
-          })
-          .on("error", (error) => {
-            reject(error);
-          });
-      }
-    });
+    }
   }
 
   /**
@@ -172,8 +150,8 @@ class Chromium {
     /**
      * If the `chromium` binary already exists in /tmp/chromium, return it.
      */
-    if (existsSync("/tmp/chromium") === true) {
-      return Promise.resolve("/tmp/chromium");
+    if (existsSync("/tmp/chromium")) {
+      return "/tmp/chromium";
     }
 
     /**
