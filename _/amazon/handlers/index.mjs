@@ -1,9 +1,9 @@
-const { ok } = require("node:assert");
-const { createHash } = require("node:crypto");
-const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium");
+import { ok } from "node:assert";
+import { createHash } from "node:crypto";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   let browser = null;
 
   try {
