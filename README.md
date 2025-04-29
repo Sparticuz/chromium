@@ -344,7 +344,7 @@ Font directories are specified inside of the `fonts.conf` file found inside of t
 
 ## Graphics
 
-By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
+By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Chromium still requires the extracting of the `bin/swiftshader.tar.br` file in order to launch. Testing needs to be done to determine if there is any speed impact from disabling WebGL.
 
 ## API
 
