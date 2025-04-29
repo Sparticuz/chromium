@@ -75,6 +75,8 @@ export const downloadFile = (
 export const setupLambdaEnvironment = (baseLibPath: string) => {
   // If the FONTCONFIG_PATH is not set, set it to /tmp/fonts
   process.env["FONTCONFIG_PATH"] ??= "/tmp/fonts";
+  // Set up Home folder if not already set
+  process.env["HOME"] ??= "/tmp";
 
   // If LD_LIBRARY_PATH is undefined, set it to baseLibPath, otherwise, add it
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
@@ -94,7 +96,7 @@ export const setupLambdaEnvironment = (baseLibPath: string) => {
  */
 export const isValidUrl = (input: string) => {
   try {
-    return !!new URL(input);
+    return Boolean(new URL(input));
   } catch {
     return false;
   }
@@ -109,24 +111,26 @@ export const isValidUrl = (input: string) => {
  * @returns boolean indicating if the running instance is inside a Lambda container
  */
 export const isRunningInAwsLambda = (nodeMajorVersion: number) => {
-  if (
+  // Check AWS Lambda environment variables
+  const isAwsExecutionEnv = Boolean(
     process.env["AWS_EXECUTION_ENV"] &&
-    process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
-    !process.env["AWS_EXECUTION_ENV"].includes("20.x") &&
-    !process.env["AWS_EXECUTION_ENV"].includes("22.x")
-  ) {
-    return true;
-  } else if (
+      process.env["AWS_EXECUTION_ENV"].includes("AWS_Lambda_nodejs") &&
+      !process.env["AWS_EXECUTION_ENV"].includes("20.x") &&
+      !process.env["AWS_EXECUTION_ENV"].includes("22.x")
+  );
+
+  const isAwsLambdaJsRuntime = Boolean(
     process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-    process.env["AWS_LAMBDA_JS_RUNTIME"].includes("nodejs") &&
-    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x") &&
-    !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")
-  ) {
-    return true;
-  } else if (process.env["VERCEL"] && nodeMajorVersion == 18) {
-    return true;
-  }
-  return false;
+      process.env["AWS_LAMBDA_JS_RUNTIME"].includes("nodejs") &&
+      !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x") &&
+      !process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")
+  );
+
+  const isVercelNode18 = Boolean(
+    process.env["VERCEL"] && nodeMajorVersion === 18
+  );
+
+  return isAwsExecutionEnv || isAwsLambdaJsRuntime || isVercelNode18;
 };
 
 /**
@@ -139,24 +143,19 @@ export const isRunningInAwsLambda = (nodeMajorVersion: number) => {
  * @returns boolean indicating if the running instance is inside a Lambda container with nodejs20
  */
 export const isRunningInAwsLambdaNode20 = (nodeMajorVersion: number) => {
-  if (
+  // Consolidated check for node20/node22 environments using bitwise OR for performance
+  return Boolean(
     (process.env["AWS_EXECUTION_ENV"] &&
-      process.env["AWS_EXECUTION_ENV"].includes("20.x")) ||
-    (process.env["AWS_EXECUTION_ENV"] &&
-      process.env["AWS_EXECUTION_ENV"].includes("22.x")) ||
-    (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-      process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x")) ||
-    (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
-      process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x")) ||
-    (process.env["CODEBUILD_BUILD_IMAGE"] &&
-      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20")) ||
-    (process.env["CODEBUILD_BUILD_IMAGE"] &&
-      process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22")) ||
-    (process.env["VERCEL"] && nodeMajorVersion >= 20)
-  ) {
-    return true;
-  }
-  return false;
+      (process.env["AWS_EXECUTION_ENV"].includes("20.x") ||
+        process.env["AWS_EXECUTION_ENV"].includes("22.x"))) ||
+      (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
+        (process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x") ||
+          process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x"))) ||
+      (process.env["CODEBUILD_BUILD_IMAGE"] &&
+        (process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20") ||
+          process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22"))) ||
+      (process.env["VERCEL"] && nodeMajorVersion >= 20)
+  );
 };
 
 export const downloadAndExtract = async (url: string) =>
