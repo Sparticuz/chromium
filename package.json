@@ -35,8 +35,8 @@
     "build": "rm -rf build && tsc -p tsconfig.build.json",
     "lint": "eslint",
     "test:integration": "make clean && make && make pretest && make test",
-    "test:source": "vitest --coverage",
-    "update": "node ./update_browser_revision.mjs"
+    "test:source": "vitest run --coverage",
+    "update": "node ./update-browser-revision.mjs"
   },
   "dependencies": {
     "follow-redirects": "^1.15.9",

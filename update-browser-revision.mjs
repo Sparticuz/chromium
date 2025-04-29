@@ -3,44 +3,15 @@
  * based on the current stable version of chromium
  */
 
-import { readFile, writeFile } from "fs/promises";
-import { fileURLToPath } from "url";
-import path from "path";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- *
- * @param {*} browserVersion
- * @returns {
- *  timestamp: Date;
- *  channels: {
- *    "Stable": {
- *      "channel": string,
- *      "version": string,
- *      "revision": string
- *    },
- *    "Beta": {
- *      "channel": string,
- *      "version": string,
- *      "revision": string
- *    },
- *    "Dev": {
- *      "channel": string,
- *      "version": string,
- *      "revision": string
- *    },
- *    "Canary": {
- *      "channel": string,
- *      "version": string,
- *      "revision": string
- *    }
- *  }
- * }
- */
+const __dirname = dirname(__filename);
 
 async function updateDevToolsProtocolVersion() {
+  // eslint-disable-next-line n/no-unsupported-features/node-builtins
   const result = await fetch(
     "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json"
   );
@@ -65,8 +36,8 @@ async function updateInventoryFile(filePath, newRevision) {
     console.log(
       `Successfully updated ${filePath} with revision ${newRevision}`
     );
-  } catch (err) {
-    console.error(`Error updating inventory file: ${err}`);
+  } catch (error) {
+    console.error(`Error updating inventory file: ${error}`);
   }
 }
 
@@ -78,5 +49,5 @@ const newRevision = stableChannelInfo.revision;
 
 console.log(`Fetched stable Chromium revision: ${newRevision}`);
 
-const inventoryPath = path.resolve(__dirname, "_/ansible/inventory.ini");
+const inventoryPath = resolve(__dirname, "_/ansible/inventory.ini");
 await updateInventoryFile(inventoryPath, newRevision);
