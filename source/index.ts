@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { inflate } from "./lambdafs.js";
-import { join } from "node:path";
-import { URL } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath, URL } from "node:url";
 import {
   downloadAndExtract,
   isRunningInAwsLambda,
@@ -21,7 +21,7 @@ if (isRunningInAwsLambda(nodeMajorVersion)) {
   setupLambdaEnvironment("/tmp/al2023/lib");
 }
 
-export class Chromium {
+export default class {
   /**
    * If true, the graphics stack and webgl is enabled,
    * If false, webgl will be disabled.
@@ -168,7 +168,7 @@ export class Chromium {
      * otherwise, the default location is ../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
-    input ??= join(__dirname, "..", "bin");
+    input ??= join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
 
     /**
      * If the input directory doesn't exist, throw an error.

@@ -1,5 +1,5 @@
 import { unlink, access, createWriteStream, symlink } from "node:fs";
-import { https } from "follow-redirects";
+import fr from "follow-redirects";
 import { tmpdir } from "node:os";
 import { extract } from "tar-fs";
 import { join } from "node:path";
@@ -38,7 +38,7 @@ export const downloadFile = (
     const stream = createWriteStream(outputPath);
     stream.once("error", reject);
 
-    https
+    fr.https
       .get(url, (response) => {
         if (response.statusCode !== 200) {
           stream.close();
@@ -182,7 +182,7 @@ export const downloadAndExtract = async (url: string) => {
       resolve(destDir);
     });
 
-    const req = https.get(url, (response) => {
+    const req = fr.https.get(url, (response) => {
       if (response.statusCode !== 200) {
         return reject(`Unexpected status code: ${response.statusCode}.`);
       }
