@@ -24,9 +24,9 @@
   "author": {
     "name": "Kyle McNally"
   },
-  "type": "commonjs",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "type": "module",
+  "exports": "./build/index.js",
+  "types": ".build/index.d.ts",
   "files": [
     "bin",
     "build"
@@ -50,6 +50,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">= 16"
+    "node": ">=20"
   }
 }
