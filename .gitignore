@@ -4,6 +4,7 @@
 *.zip
 bin/chromium-*.br
 build
+coverage
 node_modules
 nodejs
 _/amazon/samconfig.toml
