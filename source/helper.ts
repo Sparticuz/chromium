@@ -1,11 +1,72 @@
-import { unlink } from "node:fs";
+import { unlink, access, createWriteStream, symlink } from "node:fs";
 import { https } from "follow-redirects";
 import { tmpdir } from "node:os";
 import { extract } from "tar-fs";
+import { join } from "node:path";
 
 interface FollowRedirOptions extends URL {
   maxBodyLength: number;
 }
+
+/**
+ * Creates a symlink to a file
+ */
+export const createSymlink = (
+  source: string,
+  target: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    access(source, (error) => {
+      if (error) {
+        return reject(error);
+      }
+      symlink(source, target, (error) => {
+        error ? reject(error) : resolve();
+      });
+    });
+  });
+};
+
+/**
+ * Downloads a file from a URL
+ */
+export const downloadFile = (
+  url: string,
+  outputPath: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const stream = createWriteStream(outputPath);
+    stream.once("error", reject);
+
+    https
+      .get(url, (response) => {
+        if (response.statusCode !== 200) {
+          stream.close();
+          return reject(`Unexpected status code: ${response.statusCode}.`);
+        }
+
+        // Pipe directly to file rather than manually writing chunks
+        // This is more efficient and uses less memory
+        response.pipe(stream);
+
+        // Listen for completion
+        stream.once("finish", () => {
+          stream.close();
+          resolve();
+        });
+
+        // Handle response errors
+        response.once("error", (error) => {
+          stream.close();
+          reject(error);
+        });
+      })
+      .on("error", (error) => {
+        stream.close();
+        reject(error);
+      });
+  });
+};
 
 /**
  * Adds the proper folders to the environment
