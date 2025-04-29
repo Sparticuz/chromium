@@ -11,6 +11,8 @@ export default defineConfig({
         "vitest.config.ts",
         "_",
       ],
+      reporter: ["json", "json-summary", "text"],
+      reportOnFailure: true,
     },
   },
 });
