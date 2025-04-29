@@ -204,7 +204,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : puppeteer.defaultArgs({ args: chromium.args }),,
+  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : puppeteer.defaultArgs({ args: chromium.args }),
   defaultViewport: viewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
