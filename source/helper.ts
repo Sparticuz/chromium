@@ -158,22 +158,49 @@ export const isRunningInAwsLambdaNode20 = (nodeMajorVersion: number) => {
   );
 };
 
-export const downloadAndExtract = async (url: string) =>
-  new Promise<string>((resolve, reject) => {
-    const getOptions = new URL(url) as FollowRedirOptions;
-    getOptions.maxBodyLength = 60 * 1024 * 1024; // 60mb
-    const destDir = `${tmpdir()}/chromium-pack`;
+export const downloadAndExtract = async (url: string) => {
+  const getOptions = new URL(url) as FollowRedirOptions;
+  // Increase the max body length to 60MB for larger files
+  getOptions.maxBodyLength = 60 * 1024 * 1024;
+  const destDir = join(tmpdir(), "chromium-pack");
+
+  return new Promise<string>((resolve, reject) => {
     const extractObj = extract(destDir);
-    https
-      .get(url, (response) => {
-        response.pipe(extractObj);
-        extractObj.on("finish", () => {
-          resolve(destDir);
-        });
-      })
-      .on("error", (err) => {
-        unlink(destDir, (_) => {
-          reject(err);
-        });
+
+    // Setup error handlers for better cleanup
+    const cleanupOnError = (err: Error) => {
+      unlink(destDir, () => {
+        reject(err);
       });
+    };
+
+    // Attach error handler to extract stream
+    extractObj.once("error", cleanupOnError);
+
+    // Handle extraction completion
+    extractObj.once("finish", () => {
+      resolve(destDir);
+    });
+
+    const req = https.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        return reject(`Unexpected status code: ${response.statusCode}.`);
+      }
+
+      // Pipe the response directly to the extraction stream
+      response.pipe(extractObj);
+
+      // Handle response errors
+      response.once("error", cleanupOnError);
+    });
+
+    // Handle request errors
+    req.once("error", cleanupOnError);
+
+    // Set a timeout to avoid hanging requests
+    req.setTimeout(60000, () => {
+      req.destroy();
+      cleanupOnError(new Error("Request timeout"));
+    });
   });
+};
