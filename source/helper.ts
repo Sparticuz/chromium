@@ -1,8 +1,8 @@
-import { unlink, access, createWriteStream, symlink } from "node:fs";
 import fr from "follow-redirects";
+import { access, createWriteStream, symlink, unlink } from "node:fs";
 import { tmpdir } from "node:os";
-import { extract } from "tar-fs";
 import { join } from "node:path";
+import { extract } from "tar-fs";
 
 interface FollowRedirOptions extends URL {
   maxBodyLength: number;
@@ -18,10 +18,15 @@ export const createSymlink = (
   return new Promise((resolve, reject) => {
     access(source, (error) => {
       if (error) {
-        return reject(error);
+        reject(error);
+        return;
       }
       symlink(source, target, (error) => {
-        error ? reject(error) : resolve();
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
       });
     });
   });
@@ -42,7 +47,14 @@ export const downloadFile = (
       .get(url, (response) => {
         if (response.statusCode !== 200) {
           stream.close();
-          return reject(`Unexpected status code: ${response.statusCode}.`);
+          reject(
+            new Error(
+              `Unexpected status code: ${
+                response.statusCode?.toFixed(0) ?? "UNK"
+              }.`
+            )
+          );
+          return;
         }
 
         // Pipe directly to file rather than manually writing chunks
@@ -74,14 +86,14 @@ export const downloadFile = (
  */
 export const setupLambdaEnvironment = (baseLibPath: string) => {
   // If the FONTCONFIG_PATH is not set, set it to /tmp/fonts
-  process.env["FONTCONFIG_PATH"] ??= "/tmp/fonts";
+  process.env["FONTCONFIG_PATH"] ??= join(tmpdir(), "fonts");
   // Set up Home folder if not already set
-  process.env["HOME"] ??= "/tmp";
+  process.env["HOME"] ??= tmpdir();
 
   // If LD_LIBRARY_PATH is undefined, set it to baseLibPath, otherwise, add it
   if (process.env["LD_LIBRARY_PATH"] === undefined) {
     process.env["LD_LIBRARY_PATH"] = baseLibPath;
-  } else if (process.env["LD_LIBRARY_PATH"].startsWith(baseLibPath) !== true) {
+  } else if (!process.env["LD_LIBRARY_PATH"].startsWith(baseLibPath)) {
     process.env["LD_LIBRARY_PATH"] = [
       baseLibPath,
       ...new Set(process.env["LD_LIBRARY_PATH"].split(":")),
@@ -147,13 +159,13 @@ export const isRunningInAwsLambdaNode20 = (nodeMajorVersion: number) => {
   return Boolean(
     (process.env["AWS_EXECUTION_ENV"] &&
       (process.env["AWS_EXECUTION_ENV"].includes("20.x") ||
-        process.env["AWS_EXECUTION_ENV"].includes("22.x"))) ||
+        process.env["AWS_EXECUTION_ENV"].includes("22.x"))) ??
       (process.env["AWS_LAMBDA_JS_RUNTIME"] &&
         (process.env["AWS_LAMBDA_JS_RUNTIME"].includes("20.x") ||
-          process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x"))) ||
+          process.env["AWS_LAMBDA_JS_RUNTIME"].includes("22.x"))) ??
       (process.env["CODEBUILD_BUILD_IMAGE"] &&
         (process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs20") ||
-          process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22"))) ||
+          process.env["CODEBUILD_BUILD_IMAGE"].includes("nodejs22"))) ??
       (process.env["VERCEL"] && nodeMajorVersion >= 20)
   );
 };
@@ -184,7 +196,14 @@ export const downloadAndExtract = async (url: string) => {
 
     const req = fr.https.get(url, (response) => {
       if (response.statusCode !== 200) {
-        return reject(`Unexpected status code: ${response.statusCode}.`);
+        reject(
+          new Error(
+            `Unexpected status code: ${
+              response.statusCode?.toFixed(0) ?? "UNK"
+            }.`
+          )
+        );
+        return;
       }
 
       // Pipe the response directly to the extraction stream
@@ -198,7 +217,7 @@ export const downloadAndExtract = async (url: string) => {
     req.once("error", cleanupOnError);
 
     // Set a timeout to avoid hanging requests
-    req.setTimeout(60000, () => {
+    req.setTimeout(60 * 1000, () => {
       req.destroy();
       cleanupOnError(new Error("Request timeout"));
     });

@@ -1,83 +1,32 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { inflate } from "./lambdafs.js";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, URL } from "node:url";
-import {
-  downloadAndExtract,
-  isRunningInAwsLambda,
-  isValidUrl,
-  isRunningInAwsLambdaNode20,
-  setupLambdaEnvironment,
-  createSymlink,
-  downloadFile,
-} from "./helper.js";
 
-const nodeMajorVersion = parseInt(process.versions.node.split(".")[0] ?? "");
+import {
+  createSymlink,
+  downloadAndExtract,
+  downloadFile,
+  isRunningInAwsLambda,
+  isRunningInAwsLambdaNode20,
+  isValidUrl,
+  setupLambdaEnvironment,
+} from "./helper.js";
+import { inflate } from "./lambdafs.js";
+
+const nodeMajorVersion = Number.parseInt(
+  process.versions.node.split(".")[0] ?? ""
+);
 
 // Setup the lambda environment
 if (isRunningInAwsLambda(nodeMajorVersion)) {
-  setupLambdaEnvironment("/tmp/al2/lib");
+  setupLambdaEnvironment(join(tmpdir(), "al2", "lib"));
 } else if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
-  setupLambdaEnvironment("/tmp/al2023/lib");
+  setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
 }
 
-export default class {
-  /**
-   * If true, the graphics stack and webgl is enabled,
-   * If false, webgl will be disabled.
-   * (If false, the swiftshader.tar.br file will also not extract)
-   */
-  private static graphicsMode: boolean = true;
-
-  /**
-   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   */
-  static async font(input: string): Promise<string> {
-    const fontsDir = `${process.env["HOME"]}/.fonts`;
-
-    // Create fonts directory if it doesn't exist
-    if (!existsSync(fontsDir)) {
-      mkdirSync(fontsDir);
-    }
-
-    // Convert local path to file URL if needed
-    if (!/^https?:[/][/]/i.test(input)) {
-      input = `file://${input}`;
-    }
-
-    const url = new URL(input);
-    const fontName = url.pathname.split("/").pop();
-
-    if (!fontName) {
-      throw new Error(`Invalid font name: ${url.pathname}`);
-    }
-    const outputPath = `${fontsDir}/${fontName}`;
-
-    // Return font name if it already exists
-    if (existsSync(outputPath)) {
-      return fontName;
-    }
-
-    // Handle local file
-    if (url.protocol === "file:") {
-      try {
-        await createSymlink(url.pathname, outputPath);
-        return fontName;
-      } catch (error) {
-        throw new Error(`Failed to create symlink for font: ${error}`);
-      }
-    }
-    // Handle remote file
-    else {
-      try {
-        await downloadFile(input, outputPath);
-        return fontName;
-      } catch (error) {
-        throw new Error(`Failed to download font: ${error}`);
-      }
-    }
-  }
-
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+class Chromium {
   /**
    * Returns a list of additional Chromium flags recommended for serverless environments.
    * The canonical list of flags can be found on https://peter.sh/experiments/chromium-command-line-switches/.
@@ -109,14 +58,16 @@ export default class {
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
-    this.graphics
-      ? graphicsFlags.push(
-          // As the unsafe WebGL fallback, SwANGLE (ANGLE + SwiftShader Vulkan)
-          "--use-gl=angle",
-          "--use-angle=swiftshader",
-          "--enable-unsafe-swiftshader"
-        )
-      : graphicsFlags.push("--disable-webgl");
+    if (this.graphics) {
+      graphicsFlags.push(
+        // As the unsafe WebGL fallback, SwANGLE (ANGLE + SwiftShader Vulkan)
+        "--use-gl=angle",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader"
+      );
+    } else {
+      graphicsFlags.push("--disable-webgl");
+    }
 
     const insecureFlags = [
       "--allow-running-insecure-content", // https://source.chromium.org/search?q=lang:cpp+symbol:kAllowRunningInsecureContent&ss=chromium
@@ -142,6 +93,36 @@ export default class {
   }
 
   /**
+   * Returns whether the graphics stack is enabled or disabled
+   * @returns boolean
+   */
+  public static get graphics() {
+    return this.graphicsMode;
+  }
+
+  /**
+   * Sets whether the graphics stack is enabled or disabled.
+   * @param true means the stack is enabled. WebGL will work.
+   * @param false means that the stack is disabled. WebGL will not work.
+   * @default true
+   */
+  public static set setGraphicsMode(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new TypeError(
+        `Graphics mode must be a boolean, you entered '${String(value)}'`
+      );
+    }
+    this.graphicsMode = value;
+  }
+
+  /**
+   * If true, the graphics stack and webgl is enabled,
+   * If false, webgl will be disabled.
+   * (If false, the swiftshader.tar.br file will also not extract)
+   */
+  private static graphicsMode = true;
+
+  /**
    * Inflates the included version of Chromium
    * @param input The location of the `bin` folder
    * @returns The path to the `chromium` binary
@@ -150,8 +131,8 @@ export default class {
     /**
      * If the `chromium` binary already exists in /tmp/chromium, return it.
      */
-    if (existsSync("/tmp/chromium")) {
-      return "/tmp/chromium";
+    if (existsSync(join(tmpdir(), "chromium"))) {
+      return join(tmpdir(), "chromium");
     }
 
     /**
@@ -174,49 +155,82 @@ export default class {
      * If the input directory doesn't exist, throw an error.
      */
     if (!existsSync(input)) {
-      throw new Error(`The input directory "${input}" does not exist.`);
+      throw new Error(
+        `The input directory "${input}" does not exist. Please provide the location of the brotli files.`
+      );
     }
 
     // Extract the required files
     const promises = [
-      inflate(`${input}/chromium.br`),
-      inflate(`${input}/fonts.tar.br`),
-      inflate(`${input}/swiftshader.tar.br`),
+      inflate(join(input, "chromium.br")),
+      inflate(join(input, "fonts.tar.br")),
+      inflate(join(input, "swiftshader.tar.br")),
     ];
     if (isRunningInAwsLambda(nodeMajorVersion)) {
       // If running in AWS Lambda, extract more required files
-      promises.push(inflate(`${input}/al2.tar.br`));
+      promises.push(inflate(join(input, "al2.tar.br")));
     }
     if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
-      promises.push(inflate(`${input}/al2023.tar.br`));
+      promises.push(inflate(join(input, "al2023.tar.br")));
     }
 
     // Await all extractions
     const result = await Promise.all(promises);
     // Returns the first result of the promise, which is the location of the `chromium` binary
-    return result.shift() as string;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return result.shift()!;
   }
 
   /**
-   * Returns whether the graphics stack is enabled or disabled
-   * @returns boolean
+   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
-  public static get graphics() {
-    return this.graphicsMode;
-  }
+  static async font(input: string): Promise<string> {
+    const fontsDir = join(process.env["HOME"] ?? tmpdir(), ".fonts");
 
-  /**
-   * Sets whether the graphics stack is enabled or disabled.
-   * @param true means the stack is enabled. WebGL will work.
-   * @param false means that the stack is disabled. WebGL will not work.
-   * @default true
-   */
-  public static set setGraphicsMode(value: boolean) {
-    if (typeof value !== "boolean") {
-      throw new Error(
-        `Graphics mode must be a boolean, you entered '${value}'`
-      );
+    // Create fonts directory if it doesn't exist
+    if (!existsSync(fontsDir)) {
+      mkdirSync(fontsDir);
     }
-    this.graphicsMode = value;
+
+    // Convert local path to file URL if needed
+    if (!/^https?:\/\//i.test(input)) {
+      input = `file://${input}`;
+    }
+
+    const url = new URL(input);
+    const fontName = url.pathname.split("/").pop();
+
+    if (!fontName) {
+      throw new Error(`Invalid font name: ${url.pathname}`);
+    }
+    const outputPath = `${fontsDir}/${fontName}`;
+
+    // Return font name if it already exists
+    if (existsSync(outputPath)) {
+      return fontName;
+    }
+
+    // Handle local file
+    if (url.protocol === "file:") {
+      try {
+        await createSymlink(url.pathname, outputPath);
+        return fontName;
+      } catch (error) {
+        throw new Error(
+          `Failed to create symlink for font: ${JSON.stringify(error)}`
+        );
+      }
+    }
+    // Handle remote file
+    else {
+      try {
+        await downloadFile(input, outputPath);
+        return fontName;
+      } catch (error) {
+        throw new Error(`Failed to download font: ${JSON.stringify(error)}`);
+      }
+    }
   }
 }
+
+export default Chromium;

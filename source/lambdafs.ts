@@ -1,8 +1,8 @@
 import { createReadStream, createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { extract } from "tar-fs";
 import { createBrotliDecompress, createUnzip } from "node:zlib";
+import { extract } from "tar-fs";
 
 /**
  * Decompresses a (tarballed) Brotli or Gzip compressed file and returns the path to the decompressed file/folder.
@@ -16,7 +16,7 @@ export const inflate = (filePath: string): Promise<string> => {
     : join(
         tmpdir(),
         basename(filePath).replace(
-          /[.](?:t(?:ar(?:[.](?:br|gz))?|br|gz)|br|gz)$/i,
+          /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i,
           ""
         )
       );
@@ -25,17 +25,19 @@ export const inflate = (filePath: string): Promise<string> => {
     // Quick return if the file is already decompressed
     if (filePath.includes("swiftshader")) {
       if (existsSync(`${output}/libGLESv2.so`)) {
-        return resolve(output);
+        resolve(output);
+        return;
       }
     } else if (existsSync(output)) {
-      return resolve(output);
+      resolve(output);
+      return;
     }
 
     // Optimize chunk size based on file type - use smaller chunks for better memory usage
     // Brotli files tend to decompress to much larger sizes
     const isBrotli = /br$/i.test(filePath);
     const isGzip = /gz$/i.test(filePath);
-    const isTar = /[.]t(?:ar(?:[.](?:br|gz))?|br|gz)$/i.test(filePath);
+    const isTar = /\.t(?:ar(?:\.(?:br|gz))?|br|gz)$/i.test(filePath);
 
     // Use a smaller highWaterMark for better memory efficiency
     // For most serverless environments, 4MB (2**22) is more memory-efficient than 8MB
@@ -54,10 +56,14 @@ export const inflate = (filePath: string): Promise<string> => {
     // Setup the appropriate target stream based on file type
     if (isTar) {
       target = extract(output);
-      target.once("finish", () => resolve(output));
+      target.once("finish", () => {
+        resolve(output);
+      });
     } else {
       target = createWriteStream(output, { mode: 0o700 });
-      target.once("close", () => resolve(output));
+      target.once("close", () => {
+        resolve(output);
+      });
     }
 
     target.once("error", handleError);

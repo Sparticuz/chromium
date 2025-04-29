@@ -4,12 +4,13 @@ export default defineConfig({
   test: {
     coverage: {
       exclude: [
-        "update_browser_revision.mjs",
+        "update-browser-revision.mjs",
         "build",
         "docker",
         "examples",
         "vitest.config.ts",
         "_",
+        "eslint.config.js",
       ],
       reporter: ["json", "json-summary", "text"],
       reportOnFailure: true,
