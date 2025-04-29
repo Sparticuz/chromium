@@ -1,5 +1,5 @@
 import fr from "follow-redirects";
-import { access, createWriteStream, symlink, unlink } from "node:fs";
+import { access, createWriteStream, rm, symlink } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { extract } from "tar-fs";
@@ -181,7 +181,7 @@ export const downloadAndExtract = async (url: string) => {
 
     // Setup error handlers for better cleanup
     const cleanupOnError = (err: Error) => {
-      unlink(destDir, () => {
+      rm(destDir, { force: true, recursive: true }, () => {
         reject(err);
       });
     };
