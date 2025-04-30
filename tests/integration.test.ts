@@ -31,7 +31,6 @@ describe("Test Chromium", () => {
         isMobile: false,
         width: 1920,
       },
-      dumpio: true,
       executablePath: await chromium.executablePath(),
       headless: "shell",
     });

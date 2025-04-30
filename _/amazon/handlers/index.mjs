@@ -1,9 +1,12 @@
+import chromium from "@sparticuz/chromium";
 import { ok } from "node:assert";
 import { createHash } from "node:crypto";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 
-export const handler = async (event, context) => {
+export const handler = async (
+  /** @type {{url: string; expected: {title: string; remove: string; screenshot: string}}[]} */ event
+  // eslint-disable-next-line sonarjs/cognitive-complexity
+) => {
   let browser = null;
 
   try {
@@ -11,6 +14,7 @@ export const handler = async (event, context) => {
       args: puppeteer.defaultArgs({
         // Add in more args for serverless environments
         args: chromium.args,
+        headless: "shell",
       }),
       defaultViewport: {
         deviceScaleFactor: 1,
@@ -20,10 +24,8 @@ export const handler = async (event, context) => {
         isMobile: false,
         width: 1920,
       },
-      dumpio: true,
       executablePath: await chromium.executablePath(),
       headless: "shell",
-      acceptInsecureCerts: true,
     });
 
     console.log("Chromium version", await browser.version());
@@ -31,36 +33,39 @@ export const handler = async (event, context) => {
     for (let job of event) {
       const page = await browser.newPage();
 
-      if (job.hasOwnProperty("url") === true) {
+      if (Object.prototype.hasOwnProperty.call(job, "url") === true) {
         await page.goto(job.url, { waitUntil: ["domcontentloaded", "load"] });
 
-        if (job.hasOwnProperty("expected") === true) {
-          if (job.expected.hasOwnProperty("title") === true) {
+        if (Object.prototype.hasOwnProperty.call(job, "expected") === true) {
+          if (
+            Object.prototype.hasOwnProperty.call(job.expected, "title") === true
+          ) {
             ok(
               (await page.title()) === job.expected.title,
               `Title assertion failed.`
             );
           }
 
-          if (job.expected.hasOwnProperty("screenshot") === true) {
-            if (job.expected.hasOwnProperty("remove") === true) {
+          if (
+            Object.prototype.hasOwnProperty.call(job.expected, "screenshot") ===
+            true
+          ) {
+            if (
+              Object.prototype.hasOwnProperty.call(job.expected, "remove") ===
+              true
+            ) {
               await page.evaluate((selector) => {
-                document.getElementById(selector).remove();
+                // eslint-disable-next-line unicorn/prefer-query-selector
+                document.getElementById(selector)?.remove();
               }, job.expected.remove);
             }
             const screenshot = Buffer.from(await page.screenshot());
-            /*
-            console.log(
-              `data:image/png;base64,${screenshot.toString("base64")}`,
-              createHash("sha1")
-                .update(screenshot.toString("base64"))
-                .digest("hex")
-            );
-            */
+            const base64 = `data:image/png;base64,${screenshot.toString(
+              "base64"
+            )}`;
             ok(
-              createHash("sha1")
-                .update(screenshot.toString("base64"))
-                .digest("hex") === job.expected.screenshot,
+              createHash("sha256").update(base64).digest("hex") ===
+                job.expected.screenshot,
               `Screenshot assertion failed.`
             );
           }
@@ -68,6 +73,7 @@ export const handler = async (event, context) => {
       }
     }
   } catch (error) {
+    // @ts-expect-error It's an error
     throw error.message;
   } finally {
     if (browser !== null) {
