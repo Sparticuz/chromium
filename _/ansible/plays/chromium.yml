@@ -155,6 +155,7 @@
       with_items:
         - build
         - source
+        - lib
       when: structure.stat.exists != true
 
     - name: Cloning Depot Tools
@@ -319,6 +320,30 @@
     - name: Downloading OpenGL ES driver
       fetch:
         src: /srv/build/chromium/swiftshader.tar.br
+        dest: ../../../bin/
+        flat: yes
+        fail_on_missing: true
+
+    - name: Creating AL2023 Package
+      shell: |
+        tar --directory /usr/lib64 --create --file al2023.tar \
+         --transform='s,^libexpat\.so\.1\.9\.3$,libexpat.so.1,' \
+         --transform='s,^,lib/,' \
+         libexpat.so.1.9.3 libfreebl3.so libfreeblpriv3.so libnspr4.so libnss3.so libnssutil3.so libplc4.so libplds4.so libsoftokn3.so libfreebl3.chk libfreeblpriv3.chk libsoftokn3.chk
+      args:
+        chdir: /srv/lib
+        creates: /srv/lib/al2023.tar
+
+    - name: Compressing AL2023 Package
+      shell: |
+        brotli --best --force al2023.tar
+      args:
+        chdir: /srv/lib
+        creates: /srv/lib/al2023.tar.br
+
+    - name: Downloading AL2023 Package
+      fetch:
+        src: /srv/lib/al2023.tar.br
         dest: ../../../bin/
         flat: yes
         fail_on_missing: true
