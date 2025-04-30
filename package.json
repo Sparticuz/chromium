@@ -38,7 +38,7 @@
     "lint": "eslint",
     "test:integration": "make clean && make && make pretest && make test",
     "test:source": "vitest run --coverage",
-    "update": "node ./update-browser-revision.mjs"
+    "update": "node ./tools/update-browser-revision.mjs"
   },
   "dependencies": {
     "follow-redirects": "^1.15.9",
