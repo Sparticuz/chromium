@@ -40,6 +40,6 @@ await execAsync(`tar -cf ${tarFile} -C fonts fonts.conf fonts`);
 console.log(`Fonts folder archived to ${tarFile}`);
 
 const brotliFile = `${tarFile}.br`;
-await execAsync(`brotli -f -o ${brotliFile} ${tarFile}`);
+await execAsync(`brotli --best --force --rm --output=${brotliFile} ${tarFile}`);
 
 console.log(`Tar file compressed to ${brotliFile}`);
