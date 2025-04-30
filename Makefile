@@ -10,12 +10,6 @@ pretest:
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
 
-test16:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node16
-
-test18:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node18
-
 test20:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 

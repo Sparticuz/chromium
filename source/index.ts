@@ -185,7 +185,9 @@ class Chromium {
    * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
    */
   static async font(input: string): Promise<string> {
-    const fontsDir = join(process.env["HOME"] ?? tmpdir(), ".fonts");
+    const fontsDir =
+      process.env["FONTCONFIG_PATH"] ??
+      join(process.env["HOME"] ?? tmpdir(), ".fonts");
 
     // Create fonts directory if it doesn't exist
     if (!existsSync(fontsDir)) {
