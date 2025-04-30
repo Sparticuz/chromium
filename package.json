@@ -32,7 +32,9 @@
     "build"
   ],
   "scripts": {
-    "build": "rm -rf build && tsc -p tsconfig.build.json",
+    "build": "npm run build:fonts && npm run build:source",
+    "build:source": "rm -rf build && tsc -p tsconfig.build.json",
+    "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "lint": "eslint",
     "test:integration": "make clean && make && make pretest && make test",
     "test:source": "vitest run --coverage",
