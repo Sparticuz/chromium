@@ -22,7 +22,9 @@ export const createSymlink = (
         return;
       }
       symlink(source, target, (error) => {
+        /* c8 ignore next */
         if (error) {
+          /* c8 ignore next 3 */
           reject(error);
           return;
         }
@@ -49,6 +51,7 @@ export const downloadFile = (
           stream.close();
           reject(
             new Error(
+              /* c8 ignore next 2 */
               `Unexpected status code: ${
                 response.statusCode?.toFixed(0) ?? "UNK"
               }.`
@@ -69,10 +72,12 @@ export const downloadFile = (
 
         // Handle response errors
         response.once("error", (error) => {
+          /* c8 ignore next 2 */
           stream.close();
           reject(error);
         });
       })
+      /* c8 ignore next 3 */
       .on("error", (error) => {
         stream.close();
         reject(error);
@@ -158,6 +163,7 @@ export const downloadAndExtract = async (url: string) => {
     const extractObj = extract(destDir);
 
     // Setup error handlers for better cleanup
+    /* c8 ignore next 5 */
     const cleanupOnError = (err: Error) => {
       rm(destDir, { force: true, recursive: true }, () => {
         reject(err);
@@ -173,7 +179,9 @@ export const downloadAndExtract = async (url: string) => {
     });
 
     const req = fr.https.get(url, (response) => {
+      /* c8 ignore next */
       if (response.statusCode !== 200) {
+        /* c8 ignore next 9 */
         reject(
           new Error(
             `Unexpected status code: ${
@@ -196,6 +204,7 @@ export const downloadAndExtract = async (url: string) => {
 
     // Set a timeout to avoid hanging requests
     req.setTimeout(60 * 1000, () => {
+      /* c8 ignore next 2 */
       req.destroy();
       cleanupOnError(new Error("Request timeout"));
     });

@@ -70,7 +70,7 @@ describe("Test Chromium", () => {
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(
       "base64"
     )}`;
-    console.log(base64Screenshot);
+    // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
       "5b115cbbb6e7981eafd23953c95c0e6ae065557ca52a88ebe2702bd543a71af6"
