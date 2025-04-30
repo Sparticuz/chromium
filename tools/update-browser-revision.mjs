@@ -49,5 +49,5 @@ const newRevision = stableChannelInfo.revision;
 
 console.log(`Fetched stable Chromium revision: ${newRevision}`);
 
-const inventoryPath = resolve(__dirname, "_/ansible/inventory.ini");
+const inventoryPath = resolve(__dirname, "../_/ansible/inventory.ini");
 await updateInventoryFile(inventoryPath, newRevision);
