@@ -15,8 +15,7 @@ import {
   createSymlink,
   downloadAndExtract,
   downloadFile,
-  isRunningInAwsLambda,
-  isRunningInAwsLambdaNode20,
+  isRunningInAmazonLinux2023,
   isValidUrl,
   setupLambdaEnvironment,
 } from "../source/helper.js";
@@ -183,53 +182,21 @@ describe("Helper", () => {
     });
   });
 
-  describe("isRunningInAwsLambda", () => {
-    it("should return true for AWS Lambda Node.js 18 environment", () => {
-      process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs18.x";
-      expect(isRunningInAwsLambda(18)).toBe(true);
-    });
-
-    it("should return true for AWS Lambda JS Runtime Node.js 18 environment", () => {
-      delete process.env["AWS_EXECUTION_ENV"];
-      process.env["AWS_LAMBDA_JS_RUNTIME"] = "nodejs18.x";
-      expect(isRunningInAwsLambda(18)).toBe(true);
-    });
-
-    it("should return true for Vercel with Node.js 18", () => {
-      delete process.env["AWS_EXECUTION_ENV"];
-      delete process.env["AWS_LAMBDA_JS_RUNTIME"];
-      process.env["VERCEL"] = "1";
-      expect(isRunningInAwsLambda(18)).toBe(true);
-    });
-
-    it("should return false for Node.js 20 AWS Lambda environment", () => {
-      process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs20.x";
-      expect(isRunningInAwsLambda(20)).toBe(false);
-    });
-
-    it("should return false for non-Lambda environments", () => {
-      delete process.env["AWS_EXECUTION_ENV"];
-      delete process.env["AWS_LAMBDA_JS_RUNTIME"];
-      delete process.env["VERCEL"];
-      expect(isRunningInAwsLambda(18)).toBe(false);
-    });
-  });
-
   describe("isRunningInAwsLambdaNode20", () => {
     it("should return true for AWS Lambda Node.js 20 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs20.x";
-      expect(isRunningInAwsLambdaNode20(20)).toBe(true);
+      expect(isRunningInAmazonLinux2023(20)).toBe(true);
     });
 
     it("should return true for AWS Lambda Node.js 22 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs22.x";
-      expect(isRunningInAwsLambdaNode20(22)).toBe(true);
+      expect(isRunningInAmazonLinux2023(22)).toBe(true);
     });
 
     it("should return true for AWS Lambda JS Runtime Node.js 20 environment", () => {
       delete process.env["AWS_EXECUTION_ENV"];
       process.env["AWS_LAMBDA_JS_RUNTIME"] = "nodejs20.x";
-      expect(isRunningInAwsLambdaNode20(20)).toBe(true);
+      expect(isRunningInAmazonLinux2023(20)).toBe(true);
     });
 
     it("should return true for CodeBuild with Node.js 20", () => {
@@ -237,7 +204,7 @@ describe("Helper", () => {
       delete process.env["AWS_LAMBDA_JS_RUNTIME"];
       process.env["CODEBUILD_BUILD_IMAGE"] =
         "aws/codebuild/amazonlinux2-x86_64-standard:4.0-nodejs20";
-      expect(isRunningInAwsLambdaNode20(20)).toBe(true);
+      expect(isRunningInAmazonLinux2023(20)).toBe(true);
     });
 
     it("should return true for Vercel with Node.js 20", () => {
@@ -245,12 +212,12 @@ describe("Helper", () => {
       delete process.env["AWS_LAMBDA_JS_RUNTIME"];
       delete process.env["CODEBUILD_BUILD_IMAGE"];
       process.env["VERCEL"] = "1";
-      expect(isRunningInAwsLambdaNode20(20)).toBe(true);
+      expect(isRunningInAmazonLinux2023(20)).toBe(true);
     });
 
     it("should return false for Node.js 18 AWS Lambda environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs18.x";
-      expect(isRunningInAwsLambdaNode20(18)).toBe(false);
+      expect(isRunningInAmazonLinux2023(18)).toBe(false);
     });
 
     it("should return false for non-Lambda environments", () => {
@@ -258,7 +225,7 @@ describe("Helper", () => {
       delete process.env["AWS_LAMBDA_JS_RUNTIME"];
       delete process.env["CODEBUILD_BUILD_IMAGE"];
       delete process.env["VERCEL"];
-      expect(isRunningInAwsLambdaNode20(20)).toBe(false);
+      expect(isRunningInAmazonLinux2023(20)).toBe(false);
     });
   });
 

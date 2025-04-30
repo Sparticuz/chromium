@@ -7,8 +7,7 @@ import {
   createSymlink,
   downloadAndExtract,
   downloadFile,
-  isRunningInAwsLambda,
-  isRunningInAwsLambdaNode20,
+  isRunningInAmazonLinux2023,
   isValidUrl,
   setupLambdaEnvironment,
 } from "./helper.js";
@@ -19,9 +18,7 @@ const nodeMajorVersion = Number.parseInt(
 );
 
 // Setup the lambda environment
-if (isRunningInAwsLambda(nodeMajorVersion)) {
-  setupLambdaEnvironment(join(tmpdir(), "al2", "lib"));
-} else if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
+if (isRunningInAmazonLinux2023(nodeMajorVersion)) {
   setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
 }
 
@@ -166,11 +163,7 @@ class Chromium {
       inflate(join(input, "fonts.tar.br")),
       inflate(join(input, "swiftshader.tar.br")),
     ];
-    if (isRunningInAwsLambda(nodeMajorVersion)) {
-      // If running in AWS Lambda, extract more required files
-      promises.push(inflate(join(input, "al2.tar.br")));
-    }
-    if (isRunningInAwsLambdaNode20(nodeMajorVersion)) {
+    if (isRunningInAmazonLinux2023(nodeMajorVersion)) {
       promises.push(inflate(join(input, "al2023.tar.br")));
     }
 
