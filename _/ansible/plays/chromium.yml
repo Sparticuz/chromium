@@ -40,8 +40,7 @@
         count: 1
         ebs_optimized: yes
         image:
-          id: "{{ image }}"
-        #         id: "{{ lookup('amazon.aws.aws_ssm', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region=aws_region) }}"
+          id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64') }}"
         instance_initiated_shutdown_behavior: terminate
         instance_type: "{{ instance_size }}"
         key_name: ansible
@@ -88,7 +87,7 @@
       become: true
       become_user: root
       shell: |
-        dnf update --releasever=2023.6.20250211 -y
+        dnf update -y
 
     - name: Installing Packages
       become: true
