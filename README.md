@@ -53,7 +53,7 @@ const chromium = require("@sparticuz/chromium");
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
 
-// Optional: Load any fonts you need. Open Sans is included by default in AWS Lambda instances
+// Optional: Load any fonts you need.
 await chromium.font(
   "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
 );
@@ -68,7 +68,7 @@ test("Check the page title of example.com", async (t) => {
     width: 1920,
   };
   const browser = await puppeteer.launch({
-    args: puppeteer.defaultArgs({ args: chromium.args }),
+    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: "shell",
@@ -123,7 +123,7 @@ In this example, /opt/chromium contains all the brotli files
 ```
 /opt
   /chromium
-    /aws.tar.br
+    /al2023.tar.br
     /chromium.br
     /swiftshader.tar.br
 ```
@@ -138,7 +138,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({ args: chromium.args }),
+  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
   headless: "shell",
@@ -161,7 +161,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({ args: chromium.args }),
+  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
@@ -203,13 +203,16 @@ const viewport = {
   isMobile: false,
   width: 1920,
 };
+const headlessType = process.env.IS_LOCAL ? false : "shell";
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : puppeteer.defaultArgs({ args: chromium.args }),
+  args: process.env.IS_LOCAL
+    ? puppeteer.defaultArgs()
+    : puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
   defaultViewport: viewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
-  headless: process.env.IS_LOCAL ? false : "shell",
+  headless: headlessType,
 });
 ```
 
@@ -293,7 +296,7 @@ index b42c740..49111d7 100644
 
 ## Fonts
 
-The Amazon Linux 2 AWS Lambda runtime is not provisioned with any font faces.
+The AWS Lambda runtime is not provisioned with any font faces.
 
 Because of this, this package ships with [Open Sans](https://fonts.google.com/specimen/Open+Sans), which supports the following scripts:
 

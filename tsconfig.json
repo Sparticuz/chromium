@@ -13,7 +13,6 @@
     "tests",
     "vitest.config.ts",
     "eslint.config.js",
-    "update-browser-revision.mjs",
     "tools",
     "_/amazon/handlers"
   ]
