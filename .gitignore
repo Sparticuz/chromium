@@ -14,3 +14,4 @@ _/amazon/.aws-sam
 examples/**/package-lock.json
 examples/**/.serverless
 docker
+fonts/fonts
