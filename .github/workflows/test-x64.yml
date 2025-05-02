@@ -27,6 +27,12 @@ jobs:
       - name: Install Packages
         run: npm ci
 
+      - name: Build special chromium x64 package for testing
+        run: |
+          mv ./bin/x64/chromium.br ./bin/chromium.br
+          mv ./bin/x64/al2023.tar.br ./bin/al2023.tar.br
+          mv ./bin/x64/swiftshader.tar.br ./bin/swiftshader.tar.br
+
       - name: Run Source Tests
         run: npm run test:source
 
@@ -37,13 +43,13 @@ jobs:
         run: npm run build
 
       - name: Create Lambda Layer
-        run: make chromium.zip
+        run: make chromium.x64.zip
 
       - name: Upload Layer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: chromium
-          path: chromium.zip
+          path: chromium.x64.zip
 
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)

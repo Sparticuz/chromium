@@ -43,13 +43,13 @@ jobs:
         run: npm run build
 
       - name: Create Lambda Layer
-        run: make chromium.zip
+        run: make chromium.arm64.zip
 
       - name: Upload Layer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: chromium
-          path: chromium.zip
+          path: chromium.arm64.zip
 
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)
