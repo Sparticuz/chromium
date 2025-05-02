@@ -44,7 +44,8 @@ test20:
 	zip -9 --filesync --move --recurse-paths $@ nodejs
 
 pack-x64:
-	cd bin && \
+	cd bin/x64 && \
+	cp ../fonts.tar.br . && \
 	tar -cvf chromium-pack.x64.tar al2023.tar.br chromium.br fonts.tar.br swiftshader.tar.br && \
 	mv chromium-pack.x64.tar ..
 
