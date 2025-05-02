@@ -364,7 +364,7 @@
       when: arch == "x64"
       fetch:
         src: /srv/lib/al2023.tar.br
-        dest: ../../../bin/
+        dest: ../../../bin/{{ arch }}/
         flat: yes
         fail_on_missing: true
 
