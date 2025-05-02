@@ -1,0 +1,21 @@
+{
+  "name": "serverless-graviton-with-pack",
+  "version": "0.0.0",
+  "description": "This package demonstrates using @sparticuz/chromium-min with a pack for Graviton (arm64)",
+  "license": "ISC",
+  "author": {
+    "name": "Kyle McNally"
+  },
+  "main": "index.js",
+  "scripts": {
+    "deploy": "sls deploy",
+    "test": "sls invoke --function chromium-arm-test --log"
+  },
+  "dependencies": {
+    "@sparticuz/chromium-min": "133.0.0",
+    "puppeteer-core": "24.7.2"
+  },
+  "devDependencies": {
+    "serverless": "^3.40.0"
+  }
+}
