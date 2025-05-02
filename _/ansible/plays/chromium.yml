@@ -52,13 +52,6 @@
         state: present
         tags:
           Name: Chromium
-        volumes:
-          - device_name: /dev/xvda
-            ebs:
-              delete_on_termination: true
-              volume_type: io2
-              volume_size: 256
-              iops: 3000
       register: ec2
 
     - name: Registering Host
@@ -83,6 +76,14 @@
     PATH: "{{ ansible_env.PATH }}:/srv/source/depot_tools"
 
   tasks:
+    - name: Mount NVME drive
+      become: true
+      become_user: root
+      shell: |
+        mkfs -t ext4 -m 0 /dev/nvme1n1
+        echo "/dev/nvme1n1 /srv ext4 defaults,noatime,nofail 0 2" >> /etc/fstab
+        mount -a
+
     - name: Update system
       become: true
       become_user: root
