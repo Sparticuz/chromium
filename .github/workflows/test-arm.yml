@@ -29,9 +29,9 @@ jobs:
 
       - name: Build special chromium arm64 package for testing
         run: |
-          mv ./bin/arm64/chromium.br ./bin/chromium.br
-          mv ./bin/arm64/al2023.tar.br ./bin/al2023.tar.br
-          mv ./bin/arm64/swiftshader.tar.br ./bin/swiftshader.tar.br
+          cp ./bin/arm64/chromium.br ./bin/chromium.br
+          cp ./bin/arm64/al2023.tar.br ./bin/al2023.tar.br
+          cp ./bin/arm64/swiftshader.tar.br ./bin/swiftshader.tar.br
 
       - name: Run Source Tests
         run: npm run test:source
