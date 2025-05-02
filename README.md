@@ -364,7 +364,7 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 
 Running `npm run update` will update Ansible's `inventory.ini` with the latest version of Chromium stable.
 
-To compile your own version of Chromium, check the [Ansible playbook instructions](_/ansible).
+To compile your own version of Chromium, check the [Ansible playbook instructions](_/ansible/plays/chromium.yml) and [Makefile](_/ansible/Makefile).
 
 ## AWS Lambda Layer
 
@@ -373,23 +373,21 @@ To compile your own version of Chromium, check the [Ansible playbook instruction
 The following set of (Linux) commands will create a layer of this package:
 
 ```shell
+archType="x64" && \
 git clone --depth=1 https://github.com/sparticuz/chromium.git && \
 cd chromium && \
-make chromium.zip
+make chromium.${archType}$.zip
 ```
 
-The above will create a `chromium.zip` file, which can be uploaded to your Layers console. You can and should upload using the `aws cli`. (Replace the variables with your own values.)
+The above will create a `chromium.x64.zip` file, which can be uploaded to your Layers console. If you are using `arm64`, replace the value accordingly. You can and should upload using the `aws cli`. (Replace the variables with your own values.)
 
 ```shell
-bucketName="chromiumUploadBucket" && \
-versionNumber="107" && \
-aws s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumber}.zip" && \
-aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
+bucketName="chromiumUploadBucket" && archType="x64" && versionNumber="v135.0.0" && \
+aws s3 cp chromium.${archType}.zip "s3://${bucketName}/chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" && \
+aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
 ```
 
 Alternatively, you can also download the layer artifact from one of our [releases](https://github.com/Sparticuz/chromium/releases).
-
-According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
 
 ## Compression
 
