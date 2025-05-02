@@ -1,0 +1,83 @@
+name: AWS Lambda CI (x64)
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build Lambda Layer
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install Packages
+        run: npm ci
+
+      - name: Run Source Tests
+        run: npm run test:source
+
+      - name: "Report Coverage"
+        uses: davelosert/vitest-coverage-report-action@v2
+
+      - name: Compile Typescript
+        run: npm run build
+
+      - name: Create Lambda Layer
+        run: make chromium.zip
+
+      - name: Upload Layer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium
+          path: chromium.zip
+
+  execute:
+    name: Lambda (Node ${{ matrix.version }}.x)
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        event:
+          - example.com
+        version:
+          - 20
+          - 22
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Download Layer Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chromium
+
+      - name: Provision Layer
+        run: unzip chromium.zip -d _/amazon/code
+
+      - name: Install test dependencies
+        run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+
+      - name: Invoke Lambda on SAM
+        run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/${{ matrix.event }}.json node${{ matrix.version }} 2>&1 | (grep 'Error' && exit 1 || exit 0)

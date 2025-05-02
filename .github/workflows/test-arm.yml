@@ -1,4 +1,4 @@
-name: AWS Lambda CI
+name: AWS Lambda CI (arm64)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build Lambda Layer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       # Required to checkout the code
       contents: read
@@ -48,7 +48,7 @@ jobs:
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         event:
