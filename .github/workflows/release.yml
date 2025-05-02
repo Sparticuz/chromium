@@ -30,8 +30,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
-      - name: Create Lambda Layer
-        run: make chromium-${{ github.ref_name }}-layer.zip
+      - name: Create Lambda Layer (x64)
+        run: make chromium-${{ github.ref_name }}-layer.x64.zip
+
+      - name: Create Lambda Layer (arm64)
+        run: make chromium-${{ github.ref_name }}-layer.arm64.zip
 
       # Change the package name to chromium-min,
       # delete the bin folder from the files array
@@ -39,7 +42,7 @@ jobs:
       - name: Cleanup and prepare for chromium-min
         run: |
           jq '.name="@sparticuz/chromium-min"' package.json > .package.json
-          jq 'del(.files[] | select(. == "bin" or . == "!bin/arm64"))' .package.json > package.json
+          jq 'del(.files[] | select(. == "bin" or . == "!bin/arm64" or . == "!bin/x64"))' .package.json > package.json
           jq '.homepage="https://github.com/Sparticuz/chromium#-min-package"' package.json > .package.json
           mv .package.json package.json
           rm package-lock.json
@@ -75,7 +78,7 @@ jobs:
             The `chromium-${{ github.ref_name }}-pack.ARCH.tar` file may be uploaded to any https endpoint and the remote location may be used as the `input` variable in the `chromium.executablePath(input)` function.
 
             Support this project's continued development by becoming a [sponsor on GitHub](https://github.com/sponsors/Sparticuz). Your contribution helps cover monthly maintenance costs and ensures ongoing improvements.
-          artifacts: "chromium-${{ github.ref_name }}-layer.zip,chromium-${{ github.ref_name }}-pack.x64.tar,chromium-${{ github.ref_name }}-pack.arm64.tar"
+          artifacts: "chromium-${{ github.ref_name }}-layer.x64.zip,chromium-${{ github.ref_name }}-layer.arm64.zip,chromium-${{ github.ref_name }}-pack.x64.tar,chromium-${{ github.ref_name }}-pack.arm64.tar"
           prerelease: false
           draft: true
           generateReleaseNotes: true

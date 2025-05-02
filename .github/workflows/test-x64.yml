@@ -27,6 +27,12 @@ jobs:
       - name: Install Packages
         run: npm ci
 
+      - name: Build special chromium x64 package for testing
+        run: |
+          cp ./bin/x64/chromium.br ./bin/chromium.br
+          cp ./bin/x64/al2023.tar.br ./bin/al2023.tar.br
+          cp ./bin/x64/swiftshader.tar.br ./bin/swiftshader.tar.br
+
       - name: Run Source Tests
         run: npm run test:source
 
@@ -37,13 +43,13 @@ jobs:
         run: npm run build
 
       - name: Create Lambda Layer
-        run: make chromium.zip
+        run: make chromium.x64.zip
 
       - name: Upload Layer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chromium
-          path: chromium.zip
+          name: chromium.x64.zip
+          path: chromium.x64.zip
 
   execute:
     name: Lambda (Node ${{ matrix.version }}.x)
@@ -71,10 +77,10 @@ jobs:
       - name: Download Layer Artifact
         uses: actions/download-artifact@v4
         with:
-          name: chromium
+          name: chromium.x64.zip
 
       - name: Provision Layer
-        run: unzip chromium.zip -d _/amazon/code
+        run: unzip chromium.x64.zip -d _/amazon/code
 
       - name: Install test dependencies
         run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
