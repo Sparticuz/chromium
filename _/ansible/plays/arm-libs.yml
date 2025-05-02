@@ -1,0 +1,213 @@
+---
+- name: Bootstrap AWS
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Creating SSH Key
+      shell: |
+        ssh-keygen -b 2048 -t rsa -f ansible.pem -q -N '' && \
+        chmod 0600 ansible.pem.pub
+      args:
+        chdir: ..
+        creates: ansible.pem
+
+    - name: Creating EC2 Key Pair
+      amazon.aws.ec2_key:
+        name: ansible
+        state: present
+        region: "{{ aws_region }}"
+        key_material: "{{ item }}"
+      with_file: ../ansible.pem.pub
+
+    - name: Creating Security Group
+      amazon.aws.ec2_group:
+        name: Chromium
+        description: SSH Access
+        state: present
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            to_port: 22
+            from_port: 22
+            cidr_ip: 0.0.0.0/0
+        rules_egress:
+          - proto: all
+            cidr_ip: 0.0.0.0/0
+
+    - name: Request EC2 Instance
+      amazon.aws.ec2_instance:
+        count: 1
+        ebs_optimized: yes
+        image:
+          id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64') }}"
+        instance_initiated_shutdown_behavior: terminate
+        instance_type: "{{ arm64_instance }}"
+        key_name: ansible
+        network_interfaces:
+          - assign_public_ip: yes
+            groups: Chromium
+        region: "{{ aws_region }}"
+        security_group: Chromium
+        state: present
+        tags:
+          Name: Chromium
+        volumes:
+          - device_name: /dev/xvda
+            ebs:
+              delete_on_termination: true
+              volume_type: io2
+              volume_size: 256
+              iops: 3000
+      register: ec2
+
+    - name: Registering Host
+      add_host:
+        hostname: "{{ ec2.instances[0].public_ip_address }}"
+        groupname: aws
+
+    - name: Waiting for SSH
+      wait_for:
+        host: "{{ ec2.instances[0].public_ip_address }}"
+        port: 22
+        timeout: 320
+        state: started
+
+- name: AWS
+  user: ec2-user
+  hosts: aws
+  gather_facts: true
+  environment:
+    LANG: en_US.UTF-8
+    LC_ALL: en_US.UTF-8
+    PATH: "{{ ansible_env.PATH }}"
+
+  tasks:
+    - name: Update system
+      become: true
+      become_user: root
+      shell: |
+        dnf update -y
+
+    - name: Installing Packages
+      become: true
+      become_user: root
+      dnf:
+        name:
+          - "@Development Tools"
+          - alsa-lib-devel
+          - atk-devel
+          - bc
+          - bluez-libs-devel
+          - bzip2-devel
+          - cairo-devel
+          - cmake
+          - cups-devel
+          - dbus-devel
+          - dbus-glib-devel
+          - dbus-x11
+          - expat-devel
+          - glibc
+          - glibc-langpack-en
+          - gperf
+          - gtk3-devel
+          - httpd
+          - java-17-amazon-corretto
+          - libatomic
+          - libcap-devel
+          - libjpeg-devel
+          - libstdc++
+          - libXScrnSaver-devel
+          - libxkbcommon-x11-devel
+          - mod_ssl
+          - ncurses-compat-libs
+          - nspr-devel
+          - nss-devel
+          - pam-devel
+          - pciutils-devel
+          - perl
+          - php
+          - php-cli
+          - pulseaudio-libs-devel
+          - python
+          - python-psutil
+          - python-setuptools
+          - ruby
+          - xorg-x11-server-Xvfb
+          - zlib
+        state: latest
+        update_cache: true
+
+    - name: Checking for Directory Structure
+      stat:
+        path: /srv/source/chromium
+      register: structure
+
+    - name: Creating Directory Structure
+      become: true
+      become_user: root
+      file:
+        path: /srv/{{ item }}/chromium
+        state: directory
+        group: ec2-user
+        owner: ec2-user
+        recurse: true
+      with_items:
+        - lib
+      when: structure.stat.exists != true
+
+    - name: Creating AL2023 Package
+      shell: |
+        tar --directory /usr/lib64 --create --file al2023.tar \
+         --transform='s,^libexpat\.so\.1\.9\.3$,libexpat.so.1,' \
+         --transform='s,^,lib/,' \
+         libexpat.so.1.9.3 libfreebl3.so libfreeblpriv3.so libnspr4.so libnss3.so libnssutil3.so libplc4.so libplds4.so libsoftokn3.so libfreebl3.chk libfreeblpriv3.chk libsoftokn3.chk
+      args:
+        chdir: /srv/lib
+        creates: /srv/lib/al2023.tar
+
+    - name: Compressing AL2023 Package
+      shell: |
+        brotli --best --force al2023.tar
+      args:
+        chdir: /srv/lib
+        creates: /srv/lib/al2023.tar.br
+
+    - name: Downloading AL2023 Package
+      fetch:
+        src: /srv/lib/al2023.tar.br
+        dest: ../../../bin/{{ arch }}/
+        flat: yes
+        fail_on_missing: true
+
+- name: Teardown AWS
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Terminating EC2 Instance
+      amazon.aws.ec2_instance:
+        wait: yes
+        state: absent
+        instance_ids: "{{ ec2.instance_ids }}"
+        region: "{{ aws_region }}"
+
+    - name: Deleting Security Group
+      amazon.aws.ec2_group:
+        name: Chromium
+        state: absent
+        region: "{{ aws_region }}"
+
+    - name: Deleting EC2 Key Pair
+      amazon.aws.ec2_key:
+        name: ansible
+        state: absent
+        region: "{{ aws_region }}"
+
+    - name: Deleting SSH Key
+      file:
+        path: "../{{ item }}"
+        state: absent
+      with_items:
+        - ansible.pem
+        - ansible.pem.pub
