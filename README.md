@@ -6,44 +6,45 @@
 [![npm](https://img.shields.io/npm/dw/@sparticuz/chromium-min?label=%40sparticuz%2Fchromium-min&style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium-min)
 [![Donate](https://img.shields.io/badge/donate-paypal-orange.svg?style=for-the-badge)](https://paypal.me/sparticuz)
 
-## Chromium for Serverless platforms
+## Chromium for Serverless Platforms
 
 [sparticuz/chrome-aws-lambda](https://github.com/sparticuz/chrome-aws-lambda) was originally forked from [alixaxel/chrome-aws-lambda#264](https://github.com/alixaxel/chrome-aws-lambda/pull/264).
-The biggest difference, besides the chromium version, is the inclusion of some code from https://github.com/alixaxel/lambdafs, as well as dropping that as a dependency. Due to some changes in WebGL, the files in bin/swiftshader.tar.br need to be extracted to `/tmp` instead of `/tmp/swiftshader`. This necessitated changes in lambdafs.
 
-However, it quickly became difficult to maintain because of the pace of `puppeteer` updates. This package, `@sparticuz/chromium`, is not chained to `puppeteer` versions, but also does not include the overrides and hooks that the original package contained. It is only `chromium`, as well as the special code needed to decompress the brotli package, and a set of predefined arguments tailored to serverless usage.
+The main difference, aside from the Chromium version, is the inclusion of some code from https://github.com/alixaxel/lambdafs, while removing it as a dependency. Due to changes in WebGL, the files in `bin/swiftshader.tar.br` must now be extracted to `/tmp` instead of `/tmp/swiftshader`. This required changes in lambdafs.
+
+However, maintaining the package became difficult due to the rapid pace of `puppeteer` updates. `@sparticuz/chromium` is not tied to specific `puppeteer` versions and does not include the overrides and hooks found in the original package. It provides only Chromium, the code required to decompress the Brotli package, and a set of predefined arguments tailored for serverless environments.
 
 ## Install
 
-[`puppeteer` ships with a preferred version of `chromium`](https://pptr.dev/faq/#q-why-doesnt-puppeteer-vxxx-work-with-chromium-vyyy). In order to figure out what version of `@sparticuz/chromium` you will need, please visit [Puppeteer's Chromium Support page](https://pptr.dev/chromium-support).
+[`puppeteer` ships with a preferred version of `chromium`](https://pptr.dev/faq#q-why-doesnt-puppeteer-vxxx-work-with-a-certain-version-of-chrome-or-firefox). To determine which version of `@sparticuz/chromium` you need, visit the [Puppeteer Chromium Support page](https://pptr.dev/chromium-support).
 
-> For example, as of today, the latest version of `puppeteer` is `18.0.5`. The latest version of `chromium` stated on `puppeteer`'s support page is `106.0.5249.0`. So you need to install `@sparticuz/chromium@106`.
+> For example, as of today, the latest version of `puppeteer` is `18.0.5`, and the latest supported version of Chromium is `106.0.5249.0`. Therefore, you should install `@sparticuz/chromium@106`.
 
 ```shell
 # Puppeteer or Playwright is a production dependency
 npm install --save puppeteer-core@$PUPPETEER_VERSION
-# @sparticuz/chromium can be a DEV dependency IF YOU ARE USING A LAYER, if you are not using a layer, use as a production dependency!
+# @sparticuz/chromium can be a DEV dependency IF YOU ARE USING A LAYER. If you are not using a layer, use it as a production dependency!
 npm install --save-dev @sparticuz/chromium@$CHROMIUM_VERSION
 ```
 
-If your vendor does not allow large deploys (`chromium.br` is 50+ MB), you'll need to host the `chromium-v#-pack.tar` separately and use the [`@sparticuz/chromium-min` package](https://github.com/Sparticuz/chromium#-min-package).
+If your vendor does not allow large deployments (since `chromium.br` is over 50 MB), you will need to host the `chromium-v#-pack.tar` separately and use the [`@sparticuz/chromium-min` package](https://github.com/Sparticuz/chromium#-min-package).
 
 ```shell
 npm install --save @sparticuz/chromium-min@$CHROMIUM_VERSION
 ```
 
-If you wish to install an older version of Chromium, take a look at [@sparticuz/chrome-aws-lambda](https://github.com/Sparticuz/chrome-aws-lambda#versioning) or [@alixaxel/chrome-aws-lambda](https://github.com/alixaxel/chrome-aws-lambda).
+If you need to install an older version of Chromium, see [@sparticuz/chrome-aws-lambda](https://github.com/Sparticuz/chrome-aws-lambda#versioning) or [@alixaxel/chrome-aws-lambda](https://github.com/alixaxel/chrome-aws-lambda).
 
 ## Versioning
 
 The @sparticuz/chromium version schema is as follows:
 `MajorChromiumVersion.MinorChromiumIncrement.@Sparticuz/chromiumPatchLevel`
 
-Because this package follows Chromium's releases, it does NOT follow semantic versioning. **Breaking changes can occur with the 'patch' level.** Please check the release notes for information on breaking changes.
+Because this package follows Chromium's release cycle, it does NOT follow semantic versioning. **Breaking changes may occur at the 'patch' level.** Please check the release notes for details on breaking changes.
 
 ## Usage
 
-This package works with all the currently supported AWS Lambda Node.js runtimes out of the box.
+This package works with all currently supported AWS Lambda Node.js runtimes out of the box.
 
 ```javascript
 const test = require("node:test");
@@ -53,17 +54,25 @@ const chromium = require("@sparticuz/chromium");
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
 
-// Optional: Load any fonts you need. Open Sans is included by default in AWS Lambda instances
+// Optional: Load any fonts you need.
 await chromium.font(
   "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
 );
 
 test("Check the page title of example.com", async (t) => {
+  const viewport = {
+    deviceScaleFactor: 1,
+    hasTouch: false,
+    height: 1080,
+    isLandscape: true,
+    isMobile: false,
+    width: 1920,
+  };
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+    defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: "shell",
   });
 
   const page = await browser.newPage();
@@ -85,9 +94,9 @@ const chromium = require("@sparticuz/chromium");
 
 test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
-    args: chromium.args,
+    args: chromium.args, // Playwright merges the args
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    // headless: true, /* true is the default */
   });
 
   const context = await browser.newContext();
@@ -100,55 +109,72 @@ test("Check the page title of example.com", async (t) => {
 });
 ```
 
-You should allocate at least 512 MB of RAM to your instance, however 1600 MB (or more) is recommended.
+You should allocate at least 512 MB of RAM to your instance; however, 1600 MB (or more) is recommended.
 
-### -min package
+### -min Package
 
-The -min package DOES NOT include the chromium brotli files. There are a few instances where this is useful. Primarily, this is useful when your host has file size limits.
+The -min package does NOT include the Chromium Brotli files. This is useful when your host has file size limits.
 
-To use the -min package please install the `@sparticuz/chromium-min` package.
+To use the -min package, install the `@sparticuz/chromium-min` package instead of `@sparticuz/chromium`
 
-When using the -min package, you need to specify the location of the brotli files.
+When using the -min package, you must specify the location of the Brotli files.
 
-In this example, /opt/chromium contains all the brotli files
+In this example, `/opt/chromium` contains all the Brotli files:
 
 ```
 /opt
   /chromium
-    /aws.tar.br
+    /al2023.tar.br
     /chromium.br
+    /fonts.tar.br
     /swiftshader.tar.br
 ```
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
 const browser = await puppeteer.launch({
-  args: chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
-In the following example, https://www.example.com/chromiumPack.tar contains all the brotli files. Generally, this would be a location on S3, or another very fast downloadable location, that is in close proximity to your function's execution location.
+In the following example, `https://www.example.com/chromiumPack.tar` contains all the Brotli files. Generally, this would be a location on S3 or another very fast downloadable location that is close to your function's execution environment.
 
-On the initial iteration, `@sparticuz/chromium` will download the pack tar file, untar the files to `/tmp/chromium-pack`, then will un-brotli the `chromium` binary to `/tmp/chromium`. The following iterations will see that `/tmp/chromium` exists and will use the already downloaded files.
+On the first run, `@sparticuz/chromium` will download the pack tar file, untar the files to `/tmp/chromium-pack`, and then decompress the `chromium` binary to `/tmp/chromium`. Subsequent runs (during a warm start) will detect that `/tmp/chromium` exists and use the already downloaded files.
 
-The latest chromium-pack.tar file will be on the latest [release](https://github.com/Sparticuz/chromium/releases).
+The latest `chromium-pack.arch.tar` file is available in the latest [release](https://github.com/Sparticuz/chromium/releases).
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
 const browser = await puppeteer.launch({
-  args: chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  defaultViewport: viewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar"
   ),
-  headless: chromium.headless,
+  headless: "shell",
 });
 ```
 
 ### Examples
 
-Here are some example projects and help with other services
+Here are some example projects and guides for other services:
 
 - [Production Dependency](https://github.com/Sparticuz/chromium/tree/master/examples/production-dependency)
 - [Serverless Framework with Lambda Layer](https://github.com/Sparticuz/chromium/tree/master/examples/serverless-with-lambda-layer)
@@ -158,9 +184,9 @@ Here are some example projects and help with other services
 - [Webpack](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1343196897)
 - [Netlify](https://github.com/Sparticuz/chromium/issues/24#issuecomment-1414107620)
 
-### Running Locally & Headless/Headful mode
+### Running Locally & Headless/Headful Mode
 
-This version of `chromium` is built using the `headless.gn` build variables, which does not even include a GUI. Also, this package does not include an ARM version yet, which means it will not work on any M Series Apple products. If you need to test your code using a headful or ARM version, please use your locally installed version of `chromium/chrome`, or you may use the `puppeteer` provided version. Users have reported installing `rosetta` on MacOS will also work.
+This version of Chromium is built using the `headless.gn` build variables, which do not include a GUI. If you need to test your code using a headful instance, use your locally installed version of Chromium/Chrome, or the version provided by Puppeteer.
 
 ```shell
 npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
@@ -168,30 +194,39 @@ npx @puppeteer/browsers install chromium@latest --path /tmp/localChromium
 
 For more information on installing a specific version of `chromium`, check out [@puppeteer/browsers](https://www.npmjs.com/package/@puppeteer/browsers).
 
-For example, you can set your code to use an ENV variable such as `IS_LOCAL`, then use if/else statements to direct puppeteer to the correct environment.
+For example, you can set your code to use an environment variable such as `IS_LOCAL`, then use if/else statements to direct Puppeteer to the correct environment.
 
 ```javascript
+const viewport = {
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  height: 1080,
+  isLandscape: true,
+  isMobile: false,
+  width: 1920,
+};
+const headlessType = process.env.IS_LOCAL ? false : "shell";
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL ? puppeteer.defaultArgs() : chromium.args,
-  defaultViewport: chromium.defaultViewport,
+  args: process.env.IS_LOCAL
+    ? puppeteer.defaultArgs()
+    : puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
+  defaultViewport: viewport,
   executablePath: process.env.IS_LOCAL
     ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
-  headless: process.env.IS_LOCAL ? false : chromium.headless,
+  headless: headlessType,
 });
 ```
 
-## Frequently asked questions
+## Frequently Asked Questions
 
 ### Can I use ARM or Graviton instances?
 
-At this point, @sparticuz/chromium does not support ARM.
+YES! Starting at Chromium v135, @sparticuz/chromium includes an arm64 pack.
 
-- https://github.com/Sparticuz/chrome-aws-lambda/pull/11
+### Can I use Google Chrome or Chrome for Testing? What is chrome-headless-shell?
 
-### Can I use Google Chrome or Chrome for Testing, what is chrome-headless-shell?
-
-`headless_shell` is a purpose built version of `chromium` specific for headless purposes. It does not include the GUI at all and only works via remote debugging connection. This is what this package is built on.
+`headless_shell` is a purpose-built version of Chromium specifically for headless purposes. It does not include a GUI and only works via remote debugging connection. This is what this package is built on.
 
 - https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
 - https://source.chromium.org/chromium/chromium/src/+/main:headless/app/headless_shell.cc
@@ -201,15 +236,15 @@ At this point, @sparticuz/chromium does not support ARM.
 
 From what I can tell, `headless_shell` does not seem to include support for the "new" headless mode.
 
-### It doesn't work with Webpack!?!
+### It doesn't work with Webpack!?
 
-Try marking this package as an external.
+Try marking this package as an external dependency.
 
 - https://webpack.js.org/configuration/externals/
 
 ### I'm experiencing timeouts or failures closing Chromium
 
-This is a common issue. Chromium sometimes opens up more pages than you ask for. You can try the following
+This is a common issue. Chromium sometimes opens more pages than you expect. You can try the following:
 
 ```typescript
 for (const page of await browser.pages()) {
@@ -218,7 +253,7 @@ for (const page of await browser.pages()) {
 await browser.close();
 ```
 
-You can also try the following if one of the calls is hanging for some reason.
+You can also try the following if one of the calls is hanging for some reason:
 
 ```typescript
 await Promise.race([browser.close(), browser.close(), browser.close()]);
@@ -228,16 +263,16 @@ Always `await browser.close()`, even if your script is returning an error.
 
 ### `BrowserContext` isn't working properly (Target.closed)
 
-You may not be able to create a new context, you can try to use the default context as seen in this patch: https://github.com/Sparticuz/chromium/issues/298
+You may not be able to create a new context. You can try to use the default context as seen in this patch: https://github.com/Sparticuz/chromium/issues/298
 
 ### Do I need to use @sparticuz/chromium?
 
-This package is designed to be run on a vanilla Lambda instance. If you are using a dockerfile to publish your code to Lambda, it may be a better idea to install `chromium` and it's dependencies from the distribution's repositories.
+This package is designed to be run on a vanilla Lambda instance. If you are using a Dockerfile to publish your code to Lambda, it may be better to install Chromium and its dependencies from the distribution's repositories.
 
-### I need Accessible pdf files
+### I need accessible PDF files
 
-This is due to the way @sparticuz/chromium is built. If you require accessible pdf's, you'll need to
-recompile chromium yourself with the following patch. You can then use that binary with @sparticuz/chromium-min.
+This is due to the way @sparticuz/chromium is built. If you require accessible PDFs, you'll need to
+recompile Chromium yourself with the following patch. You can then use that binary with @sparticuz/chromium-min.
 
 _Note_: This will increase the time required to generate a PDF.
 
@@ -261,7 +296,7 @@ index b42c740..49111d7 100644
 
 ## Fonts
 
-The Amazon Linux 2 AWS Lambda runtime is not provisioned with any font faces.
+The AWS Lambda runtime is not provisioned with any font faces.
 
 Because of this, this package ships with [Open Sans](https://fonts.google.com/specimen/Open+Sans), which supports the following scripts:
 
@@ -269,7 +304,7 @@ Because of this, this package ships with [Open Sans](https://fonts.google.com/sp
 - Greek
 - Cyrillic
 
-To provision additional fonts, simply call the `font()` method with an absolute path or URL:
+To provision additional fonts, call the `font()` method with an absolute path or URL:
 
 ```typescript
 await chromium.font("/var/task/fonts/NotoColorEmoji.ttf");
@@ -281,15 +316,15 @@ await chromium.font(
 
 > `Noto Color Emoji` (or similar) is needed if you want to [render emojis](https://getemoji.com/).
 
-> For URLs, it's recommended that you use a CDN, like [raw.githack.com](https://raw.githack.com/) or [gitcdn.xyz](https://gitcdn.xyz/).
+> For URLs, it's recommended that you use a CDN, such as [raw.githack.com](https://raw.githack.com/) or [gitcdn.xyz](https://gitcdn.xyz/).
 
 This method should be invoked _before_ launching Chromium.
 
 ---
 
-Alternatively, it's also possible to provision fonts via AWS Lambda Layers.
+Alternatively, you can also provision fonts via AWS Lambda Layers.
 
-Simply create a directory named `.fonts` or `fonts` and place any font faces you want there:
+Create a directory named `.fonts` or `fonts` and place any font faces you want there:
 
 ```
 .fonts
@@ -297,13 +332,13 @@ Simply create a directory named `.fonts` or `fonts` and place any font faces you
 └── Roboto.ttf
 ```
 
-Afterwards, you just need to ZIP the directory and upload it as a AWS Lambda Layer:
+Afterwards, zip the directory and upload it as an AWS Lambda Layer:
 
 ```shell
 zip -9 --filesync --move --recurse-paths fonts.zip fonts/
 ```
 
-Font directories are specified inside of the `fonts.conf` file found inside of the `bin/fonts.tar.br` file. These are the default folders:
+Font directories are specified inside the `fonts.conf` file found inside the `bin/fonts.tar.br` file. These are the default folders:
 
 - `/var/task/.fonts`
 - `/var/task/fonts`
@@ -312,7 +347,7 @@ Font directories are specified inside of the `fonts.conf` file found inside of t
 
 ## Graphics
 
-By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphiceMode = false;` _before_ launching Chromium. Disabling this will also skip the extract of the `bin/swiftshader.tar.br` file, which saves about a second of initial execution time. Disabling graphics is recommended if you know you are not using any WebGL.
+By default, this package uses `swiftshader`/`angle` to do CPU acceleration for WebGL. This is the only known way to enable WebGL on a serverless platform. You can disable WebGL by setting `chromium.setGraphicsMode = false;` _before_ launching Chromium. Chromium still requires extracting the `bin/swiftshader.tar.br` file in order to launch. Testing is needed to determine if there is any positive speed impact from disabling WebGL.
 
 ## API
 
@@ -320,20 +355,19 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                      |
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
-| `defaultViewport`                   | `Object`          | Returns a sensible default viewport for serverless.                                                                                                     |
-| `executablePath(location?: string)` | `Promise<string>` | Returns the path the Chromium binary was extracted to.                                                                                                  |
-|                                     |
-| `headless`                          | `"shell"`         | Returns `"shell"` which is what `chrome-headless-shell` requires                                                                                        |
-| `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`                                                                                                      |
-| `graphics`                          | `boolean`         | Returns a boolean depending on whether webgl is enabled or disabled                                                                                     |
+| `executablePath(location?: string)` | `Promise<string>` | Returns the path where the Chromium binary was extracted.                                                                                               |
+| `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`.                                                                                                     |
+| `graphics`                          | `boolean`         | Returns a boolean indicating whether WebGL is enabled or disabled.                                                                                      |
 
 ## Compiling
 
-To compile your own version of Chromium check the [Ansible playbook instructions](_/ansible).
+Running `npm run update` will update Ansible's `inventory.ini` with the latest version of Chromium stable.
+
+To compile your own version of Chromium, check the [Ansible playbook instructions](_/ansible).
 
 ## AWS Lambda Layer
 
-[Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) is a convenient way to manage common dependencies between different Lambda Functions.
+[Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) are a convenient way to manage common dependencies between different Lambda Functions.
 
 The following set of (Linux) commands will create a layer of this package:
 
@@ -343,7 +377,7 @@ cd chromium && \
 make chromium.zip
 ```
 
-The above will create a `chromium.zip` file, which can be uploaded to your Layers console. You can and should upload using the `aws cli`. (Replace the variables with your own values)
+The above will create a `chromium.zip` file, which can be uploaded to your Layers console. You can and should upload using the `aws cli`. (Replace the variables with your own values.)
 
 ```shell
 bucketName="chromiumUploadBucket" && \
@@ -356,55 +390,11 @@ Alternatively, you can also download the layer artifact from one of our [release
 
 According to our benchmarks, it's 40% to 50% faster than using the off-the-shelf `puppeteer` bundle.
 
-## Migration from `chrome-aws-lambda`
-
-- Change the import or require to be `@sparticuz/chromium`
-- Add the import or require for `puppeteer-core`
-- Change the browser launch to use the native `puppeteer.launch()` function
-- Change the `executablePath` to be a function.
-
-```diff
--const chromium = require('@sparticuz/chrome-aws-lambda');
-+const chromium = require("@sparticuz/chromium");
-+const puppeteer = require("puppeteer-core");
-
-exports.handler = async (event, context, callback) => {
-  let result = null;
-  let browser = null;
-
-  try {
--    browser = await chromium.puppeteer.launch({
-+    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
--      executablePath: await chromium.executablePath,
-+      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
-
-    let page = await browser.newPage();
-
-    await page.goto(event.url || 'https://example.com');
-
-    result = await page.title();
-  } catch (error) {
-    return callback(error);
-  } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
-  }
-
-  return callback(null, result);
-};
-```
-
 ## Compression
 
 The Chromium binary is compressed using the Brotli algorithm.
 
-This allows us to get the best compression ratio and faster decompression times.
+This provides the best compression ratio and faster decompression times.
 
 | File          | Algorithm | Level | Bytes     | MiB       | %          | Inflation  |
 | ------------- | --------- | ----- | --------- | --------- | ---------- | ---------- |

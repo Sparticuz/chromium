@@ -10,12 +10,6 @@ pretest:
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
 
-test16:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node16
-
-test18:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node18
-
 test20:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 
@@ -31,5 +25,16 @@ test20:
 	rm sparticuz-chromium-*.tgz
 	mkdir -p $(dir $@)
 	zip -9 --filesync --move --recurse-paths $@ nodejs
+
+pack-x64:
+	cd bin && \
+	tar -cvf chromium-pack.x64.tar al2023.tar.br chromium.br fonts.tar.br swiftshader.tar.br && \
+	mv chromium-pack.x64.tar ..
+
+pack-arm64:
+	cd bin/arm64 && \
+	cp ../fonts.tar.br . && \
+	tar -cvf chromium-pack.arm64.tar al2023.tar.br chromium.br fonts.tar.br swiftshader.tar.br && \
+	mv chromium-pack.arm64.tar ../..
 
 .DEFAULT_GOAL := chromium.zip

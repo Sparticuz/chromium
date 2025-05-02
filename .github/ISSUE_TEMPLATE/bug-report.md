@@ -6,7 +6,7 @@ labels: bug
 ---
 
 <!---
-For Chromium-specific bugs, please refer to: https://bugs.chromium.org/p/chromium
+For Chromium-specific bugs, please refer to: https://issues.chromium.org/issues?q=status:open%20componentid:1456776
 For Puppeteer-specific bugs, please refer to: https://github.com/puppeteer/puppeteer/issues
 For Playwright-specific bugs, please refer to: https://github.com/microsoft/playwright/issues
 -->
@@ -15,8 +15,9 @@ For Playwright-specific bugs, please refer to: https://github.com/microsoft/play
 
 - `chromium` Version:
 - `puppeteer` / `puppeteer-core` Version:
-- Node.js Version: <!-- 16.x | 18.x -->
-- Lambda / GCF Runtime: <!-- `nodejs16` | `nodejs18.x` -->
+- Node.js Version: <!-- 20.x | 22.x -->
+- Lambda / GCF Runtime: <!-- `nodejs20` | `nodejs22.x` -->
+- Runtime Architecture: <!-- `x64` | `arm64` -->
 
 ## Expected Behavior
 

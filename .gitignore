@@ -4,6 +4,7 @@
 *.zip
 bin/chromium-*.br
 build
+coverage
 node_modules
 nodejs
 _/amazon/samconfig.toml
@@ -13,3 +14,4 @@ _/amazon/.aws-sam
 examples/**/package-lock.json
 examples/**/.serverless
 docker
+fonts/fonts

@@ -2,10 +2,18 @@
   "extends": ["@tsconfig/node20/tsconfig", "@tsconfig/strictest"],
   "compilerOptions": {
     "declaration": true,
+    "rootDir": "source",
     "lib": ["dom", "ES2023"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "build"
   },
-  "include": ["source"]
+  "include": [
+    "source",
+    "tests",
+    "vitest.config.ts",
+    "eslint.config.js",
+    "tools",
+    "_/amazon/handlers"
+  ]
 }
