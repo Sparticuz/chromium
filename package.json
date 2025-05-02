@@ -33,8 +33,7 @@
     "build"
   ],
   "scripts": {
-    "build": "npm run build:fonts && npm run build:source",
-    "build:source": "rm -rf build && tsc -p tsconfig.build.json",
+    "build": "rm -rf build && tsc -p tsconfig.build.json",
     "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "lint": "eslint",
     "pack:x64": "make pack-x64",
