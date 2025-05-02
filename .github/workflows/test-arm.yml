@@ -85,5 +85,8 @@ jobs:
       - name: Install test dependencies
         run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
+      - name: Patch template.yml file with arm64 support
+        run: sed -i 's/x86_64/arm64/g' _/amazon/template.yml
+
       - name: Invoke Lambda on SAM
         run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/${{ matrix.event }}.json node${{ matrix.version }} 2>&1 | (grep 'Error' && exit 1 || exit 0)

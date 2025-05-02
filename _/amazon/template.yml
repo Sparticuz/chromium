@@ -18,6 +18,8 @@ Resources:
   node20:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures:
+        - x86_64
       Layers:
         - !Ref layer
       Handler: handlers/index.handler
@@ -29,6 +31,8 @@ Resources:
   node22:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures:
+        - x86_64
       Layers:
         - !Ref layer
       Handler: handlers/index.handler
