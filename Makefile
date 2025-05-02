@@ -26,4 +26,15 @@ test20:
 	mkdir -p $(dir $@)
 	zip -9 --filesync --move --recurse-paths $@ nodejs
 
+pack-x64:
+	cd bin && \
+	tar -cvf chromium-pack.x64.tar al2023.tar.br chromium.br fonts.tar.br swiftshader.tar.br && \
+	mv chromium-pack.x64.tar ..
+
+pack-arm64:
+	cd bin/arm64 && \
+	cp ../fonts.tar.br . && \
+	tar -cvf chromium-pack.arm64.tar al2023.tar.br chromium.br fonts.tar.br swiftshader.tar.br && \
+	mv chromium-pack.arm64.tar ../..
+
 .DEFAULT_GOAL := chromium.zip

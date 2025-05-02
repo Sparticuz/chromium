@@ -29,6 +29,7 @@
   "types": ".build/index.d.ts",
   "files": [
     "bin",
+    "!bin/arm64",
     "build"
   ],
   "scripts": {
@@ -36,6 +37,8 @@
     "build:source": "rm -rf build && tsc -p tsconfig.build.json",
     "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "lint": "eslint",
+    "pack:x64": "make pack-x64",
+    "pack:arm64": "make pack-arm64",
     "test:integration": "make clean && make && make pretest && make test",
     "test:source": "vitest run --coverage",
     "update": "node ./tools/update-browser-revision.mjs"
