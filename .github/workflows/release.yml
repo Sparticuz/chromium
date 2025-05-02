@@ -69,7 +69,7 @@ jobs:
           tag: ${{ github.ref_name }}
           body: |
             # [@sparticuz/chromium ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium), [@sparticuz/chromium-min ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium-min)
-            The `chromium-${{ github.ref_name }}-layer.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
+            The `chromium-${{ github.ref_name }}-layer.ARCH.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
             ```
             bucketName="chromiumUploadBucket" && archType="x64" && \
             aws s3 cp chromium-${{ github.ref_name }}-layer.${archType}.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.${archType}.zip" && \

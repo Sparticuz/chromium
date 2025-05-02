@@ -1,7 +1,7 @@
 # @sparticuz/chromium
 
 [![@sparticuz/chromium](https://img.shields.io/npm/v/@sparticuz/chromium.svg?style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium)
-[![Chromium](https://img.shields.io/github/size/sparticuz/chromium/bin/chromium.br?label=Chromium&style=for-the-badge)](bin/)
+[![Chromium](https://img.shields.io/github/size/sparticuz/chromium/bin/x64/chromium.br?label=Chromium&style=for-the-badge)](bin/)
 [![npm](https://img.shields.io/npm/dw/@sparticuz/chromium?label=%40sparticuz%2Fchromium&style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium)
 [![npm](https://img.shields.io/npm/dw/@sparticuz/chromium-min?label=%40sparticuz%2Fchromium-min&style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium-min)
 [![GitHub Downloads](https://img.shields.io/github/downloads/Sparticuz/chromium/total?style=for-the-badge)](https://github.com/Sparticuz/chromium/releases)
@@ -429,24 +429,13 @@ This provides the best compression ratio and faster decompression times.
 
 ## Backers
 
-Thank you for your support!
+If you or your organization have benefited financially from this package, please consider supporting.
+
+Thank you to the following users and companies for your support!
 
 [![Munawwar](https://avatars.githubusercontent.com/Munawwar?size=100)](https://github.com/munawwar)
 [![syntaxfm](https://avatars.githubusercontent.com/syntaxfm?size=100)](https://github.com/syntaxfm)
 [![th3madhack3r](https://avatars.githubusercontent.com/th3madhack3r?size=100)](https://github.com/th3madhack3r)
-
-### Past
-
-![C2BB](https://avatars.githubusercontent.com/C2BB?size=30)
-![acchou](https://avatars.githubusercontent.com/acchou?size=30)
-![infr](https://avatars.githubusercontent.com/infr?size=30)
-![aarmora](https://avatars.githubusercontent.com/aarmora?size=30)
-![azymnis](https://avatars.githubusercontent.com/azymnis?size=30)
-![mushilabs](https://avatars.githubusercontent.com/mushilabs?size=30)
-![omgovich](https://avatars.githubusercontent.com/omgovich?size=30)
-<img src="https://avatars.githubusercontent.com/kuda1992" width="30" />
-![jlee512](https://avatars.githubusercontent.com/jlee512?size=30)
-![swain](https://avatars.githubusercontent.com/swain?size=30)
 
 ## License
 

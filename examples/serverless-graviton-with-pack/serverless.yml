@@ -1,0 +1,13 @@
+service: sls-graviton-with-pack
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  architecture: arm64
+  stage: dev
+  region: us-east-1
+  timeout: 300
+
+functions:
+  chromium-arm-test:
+    handler: index.handler
