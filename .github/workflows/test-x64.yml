@@ -77,10 +77,10 @@ jobs:
       - name: Download Layer Artifact
         uses: actions/download-artifact@v4
         with:
-          name: chromium
+          name: chromium.x64.zip
 
       - name: Provision Layer
-        run: unzip chromium.zip -d _/amazon/code
+        run: unzip chromium.x64.zip -d _/amazon/code
 
       - name: Install test dependencies
         run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
