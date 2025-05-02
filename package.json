@@ -30,6 +30,7 @@
   "files": [
     "bin",
     "!bin/arm64",
+    "!bin/x64",
     "build"
   ],
   "scripts": {
