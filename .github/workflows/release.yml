@@ -71,13 +71,13 @@ jobs:
             # [@sparticuz/chromium ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium), [@sparticuz/chromium-min ${{ github.ref_name }}](https://www.npmjs.com/package/@sparticuz/chromium-min)
             The `chromium-${{ github.ref_name }}-layer.zip` file may be uploaded directly as a layer in AWS Lambda using the following code
             ```
-            bucketName="chromiumUploadBucket" && \
-            aws s3 cp chromium-${{ github.ref_name }}-layer.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" && \
-            aws lambda publish-layer-version --layer-name chromium --description "Chromium ${{ github.ref_name }}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${{ github.ref_name }}-layer.zip" --compatible-runtimes nodejs --compatible-architectures x86_64
+            bucketName="chromiumUploadBucket" && archType="x64" && \
+            aws s3 cp chromium-${{ github.ref_name }}-layer.${archType}.zip "s3://${bucketName}/chromiumLayers/chromium-${{ github.ref_name }}-layer.${archType}.zip" && \
+            aws lambda publish-layer-version --layer-name chromium --description "Chromium ${{ github.ref_name }}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${{ github.ref_name }}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
             ```
             The `chromium-${{ github.ref_name }}-pack.ARCH.tar` file may be uploaded to any https endpoint and the remote location may be used as the `input` variable in the `chromium.executablePath(input)` function.
 
-            Support this project's continued development by becoming a [sponsor on GitHub](https://github.com/sponsors/Sparticuz). Your contribution helps cover monthly maintenance costs and ensures ongoing improvements.
+            Support this project's continued development by becoming a [monthly sponsor on GitHub](https://github.com/sponsors/Sparticuz). Your contribution helps cover monthly maintenance costs and ensures ongoing improvements.
           artifacts: "chromium-${{ github.ref_name }}-layer.x64.zip,chromium-${{ github.ref_name }}-layer.arm64.zip,chromium-${{ github.ref_name }}-pack.x64.tar,chromium-${{ github.ref_name }}-pack.arm64.tar"
           prerelease: false
           draft: true
