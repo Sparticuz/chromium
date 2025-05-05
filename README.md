@@ -360,6 +360,12 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`.                                                                                                     |
 | `graphics`                          | `boolean`         | Returns a boolean indicating whether WebGL is enabled or disabled.                                                                                      |
 
+## Extra Args documentation
+
+- [Comparisons](https://docs.google.com/spreadsheets/d/1n-vw_PCPS45jX3Jt9jQaAhFqBY6Ge1vWF_Pa0k7dCk4)
+- [Puppeteer Default Args](https://github.com/puppeteer/puppeteer/blob/729c160cba596a9b7b505abd4be99cba1af2e1f3/packages/puppeteer-core/src/node/ChromeLauncher.ts#L156)
+- [Playwright Default Args](https://github.com/microsoft/playwright/blob/ed23a935121687d246cb61f4146b50a7972864d9/packages/playwright-core/src/server/chromium/chromium.ts#L276)
+
 ## Compiling
 
 Running `npm run update` will update Ansible's `inventory.ini` with the latest version of Chromium stable.
