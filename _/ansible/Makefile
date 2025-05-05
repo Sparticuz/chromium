@@ -7,8 +7,11 @@ dependencies:
 build:
 	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini
 
+build-x64:
+	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars "archs=[x64]"
+
 build-arm:
-	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars "arch=arm64"
+	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars "archs=[arm64]"
 
 build-arm-libs:
 	/usr/bin/ansible-playbook plays/arm-libs.yml -i inventory.ini
