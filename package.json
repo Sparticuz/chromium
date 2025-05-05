@@ -26,7 +26,7 @@
   },
   "type": "module",
   "exports": "./build/index.js",
-  "types": ".build/index.d.ts",
+  "types": "./build/index.d.ts",
   "files": [
     "bin",
     "!bin/arm64",
