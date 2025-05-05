@@ -176,7 +176,7 @@
     - name: Downloading AL2023 Package
       fetch:
         src: /srv/lib/al2023.tar.br
-        dest: ../../../bin/{{ arch }}/
+        dest: ../../../bin/arm64/
         flat: yes
         fail_on_missing: true
 
