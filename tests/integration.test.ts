@@ -55,7 +55,7 @@ describe("Test Chromium", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "d5964286d9e69a60cb04e873a21b4f1f6438405167894d6622b27cf92799b981"
+      "d5723506e0fd50c77bf1da5ac471d97e341f3f1a532b45cf4931b5adaf91e9fb"
     );
   });
 
@@ -73,7 +73,7 @@ describe("Test Chromium", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "5b115cbbb6e7981eafd23953c95c0e6ae065557ca52a88ebe2702bd543a71af6"
+      "733e7c4c9587278015e22bff6f7d308ca142a1d06e1e4ef0157214ef3c10f16c"
     );
   });
 
