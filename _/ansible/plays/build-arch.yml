@@ -1,3 +1,27 @@
+- name: Creating Headless Chromium Configuration
+  copy:
+    content: |
+      import("//build/args/headless.gn")
+      blink_symbol_level = 0
+      dcheck_always_on = false
+      disable_histogram_support = false
+      enable_basic_print_dialog = false
+      enable_keystone_registration_framework = false
+      enable_linux_installer = false
+      enable_media_remoting = false
+      ffmpeg_branding = "Chrome"
+      is_component_build = false
+      is_debug = false
+      is_official_build = true
+      proprietary_codecs = true
+      symbol_level = 0
+      target_os = "linux"
+      use_sysroot = true
+      v8_symbol_level = 0
+      target_cpu="{{ arch }}"
+      v8_target_cpu="{{ arch}}"
+    dest: /srv/source/chromium/src/out/Headless/{{ arch }}/args.gn
+
 - name: Building ARM64 Sysroot
   when: arch == "arm64"
   shell: |
@@ -7,7 +31,7 @@
 
 - name: Generating Headless Chromium Configuration
   shell: |
-    gn gen out/Headless/{{ arch }} --args='target_cpu="{{ arch }}" v8_target_cpu="{{ arch}}"'
+    gn gen out/Headless/{{ arch }}
   args:
     chdir: /srv/source/chromium/src
 

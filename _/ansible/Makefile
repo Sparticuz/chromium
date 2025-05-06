@@ -5,6 +5,7 @@ dependencies:
 	echo "aws-sam-cli-bin is also required in order to test the package"
 
 build:
+	echo "Building both architectures takes roughly 5 hours"
 	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini
 
 build-x64:
