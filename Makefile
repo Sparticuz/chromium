@@ -1,10 +1,12 @@
 .PHONY: clean
 
+ARCH = $(shell uname -m | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/')
+
 clean:
 	rm -rf chromium.zip _/amazon/code/nodejs _/amazon/handlers/node_modules
 
 pretest:
-	unzip chromium.zip -d _/amazon/code
+	unzip chromium.$(ARCH).zip -d _/amazon/code
 	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
