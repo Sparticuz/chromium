@@ -366,11 +366,30 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 - [Puppeteer Default Args](https://github.com/puppeteer/puppeteer/blob/729c160cba596a9b7b505abd4be99cba1af2e1f3/packages/puppeteer-core/src/node/ChromeLauncher.ts#L156)
 - [Playwright Default Args](https://github.com/microsoft/playwright/blob/ed23a935121687d246cb61f4146b50a7972864d9/packages/playwright-core/src/server/chromium/chromium.ts#L276)
 
-## Compiling
+## Contributing
 
-Running `npm run update` will update Ansible's `inventory.ini` with the latest version of Chromium stable.
+### Updating the binaries
 
-To compile your own version of Chromium, check the [Ansible playbook instructions](_/ansible/plays/chromium.yml) and [Makefile](_/ansible/Makefile).
+> **Note:** For security reasons, we do not accept PRs that include updated binary files. Please submit the changes to build files only, and the maintainers will compile and update the binary files.
+
+1. Run `npm run update` to update [inventory.ini](_/ansible/inventory.ini) with the latest stable version of Chromium.
+2. Make any necessary changes to the [build-arch.yml](_/ansible/plays/build-arch.yml) file.
+3. Make any necessary changes to [inventory.ini](_/ansible/inventory.ini).
+4. Run the appropriate command from the [Makefile](_/ansible/Makefile). Use `make build` to compile both x64 and arm64 versions.
+5. If compiling both architectures and [al2023.tar.br](bin/x64/al2023.tar.br) has been modified, update the arm64 version by running `make build-arm-libs`.
+6. Verify that the `chromium-###.#.#.#.br` files are valid.
+7. Rename them to `chromium.br`.
+8. If necessary, update the Open Sans font using `npm run build:fonts`.
+9. Run tests on the new version of Chromium. (`npm run test:source` and `npm run test:integration`). Integration tests requires AWS SAM cli and docker installed.
+
+### Updating Typescript application code
+
+1. Edit any of the source files in [source](source/).
+2. Create or update tests in [tests](tests/).
+3. Lint the package using `npm run lint`.
+4. Build the package using `npm run build`.
+5. Test the updates using `npm run test:source`.
+6. Run a full integration test using `npm run test:integration`. This requires AWS SAM cli and docker installed.
 
 ## AWS Lambda Layer
 
