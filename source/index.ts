@@ -48,10 +48,8 @@ class Chromium {
     const chromiumEnableFeatures = ["SharedArrayBuffer"];
 
     const graphicsFlags = [
-      "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
       "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
       "--in-process-gpu", // Saves some memory by moving GPU process into a browser process thread
-      "--window-size=1920,1080", // Sets the initial window size. Provided as string in the format "800,600".
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
