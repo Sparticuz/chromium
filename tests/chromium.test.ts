@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -342,6 +343,14 @@ describe("Integration", () => {
     // Force the setup of Lambda environment
     setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
     await inflate(join("bin", "al2023.tar.br"));
+    // Console log the contents of /tmp
+    try {
+      const tmpContents = execSync("ls -la /tmp").toString();
+      console.log("Contents of /tmp directory:");
+      console.log(tmpContents);
+    } catch (error) {
+      console.error("Error listing /tmp directory:", error);
+    }
     browser = await puppeteer.launch({
       args: args,
       defaultViewport: {
@@ -355,7 +364,9 @@ describe("Integration", () => {
       executablePath: await chromium.executablePath(),
       headless: "shell",
     });
+    console.log("Browser", browser.connected, process.env["LD_LIBRARY_PATH"]);
     const version = await browser.version();
+    expect(browser.connected).toBe(true);
     expect(version).toContain("HeadlessChrome");
   });
 
