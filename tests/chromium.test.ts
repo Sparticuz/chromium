@@ -339,6 +339,9 @@ describe("Integration", () => {
       headless: "shell",
     });
     console.log("Args", args);
+    // Force the setup of Lambda environment
+    setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
+    await inflate(join("bin", "al2023.tar.br"));
     browser = await puppeteer.launch({
       args: args,
       defaultViewport: {
@@ -403,15 +406,17 @@ describe("Integration", () => {
     }
 
     // Clean up the tmpdir
-    unlinkSync(join(tmpdir(), "chromium"));
-    unlinkSync(join(tmpdir(), "libEGL.so"));
-    unlinkSync(join(tmpdir(), "libGLESv2.so"));
-    unlinkSync(join(tmpdir(), "libvk_swiftshader.so"));
-    unlinkSync(join(tmpdir(), "libvulkan.so.1"));
-    unlinkSync(join(tmpdir(), "vk_swiftshader_icd.json"));
-    /*unlinkSync(join(tmpdir(), "swiftshader.tar"));
-    unlinkSync(join(tmpdir(), "al2023.tar"));
-    unlinkSync(join(tmpdir(), "chromium.br"));
-    unlinkSync(join(tmpdir(), "fonts.tar.br"));*/
+    for (const file of [
+      "al2023",
+      "chromium",
+      "fonts",
+      "libEGL.so",
+      "libGLESv2.so",
+      "libvk_swiftshader.so",
+      "libvulkan.so.1",
+      "vk_swiftshader_icd.json",
+    ]) {
+      rmSync(join(tmpdir(), file), { force: true, recursive: true });
+    }
   });
 });
