@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-commented-code */
 import chromium from "@sparticuz/chromium";
 import { ok } from "node:assert";
 import { createHash } from "node:crypto";
@@ -63,9 +64,10 @@ export const handler = async (
             const base64 = `data:image/png;base64,${screenshot.toString(
               "base64"
             )}`;
+            const hash = createHash("sha256").update(base64).digest("hex");
+            // console.log(base64, hash);
             ok(
-              createHash("sha256").update(base64).digest("hex") ===
-                job.expected.screenshot,
+              hash === job.expected.screenshot,
               `Screenshot assertion failed.`
             );
           }
