@@ -15,6 +15,12 @@ test:
 test20:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
 
+presource:
+	cp -R bin/$(ARCH)/* bin
+
+postsource:
+	rm bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
+
 %.x64.zip:
 	npm install --fund=false --package-lock=false
 	npm run build
