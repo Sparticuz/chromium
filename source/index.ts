@@ -165,9 +165,12 @@ class Chromium {
       promises.push(inflate(join(input, "al2023.tar.br")));
     }
 
+    console.log("inflating");
+
     // Await all extractions
     const result = await Promise.all(promises);
     // Returns the first result of the promise, which is the location of the `chromium` binary
+    console.log("inflated", result);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return result.shift()!;
   }
