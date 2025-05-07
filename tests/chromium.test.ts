@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -9,7 +10,16 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import puppeteer from "puppeteer-core";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 
 import {
   createSymlink,
@@ -19,6 +29,7 @@ import {
   isValidUrl,
   setupLambdaEnvironment,
 } from "../source/helper.js";
+import chromium from "../source/index.js";
 import { inflate } from "../source/lambdafs.js";
 
 describe("Helper", () => {
@@ -291,5 +302,116 @@ describe("Helper", () => {
         }
       }
     });
+  });
+
+  afterAll(() => {
+    // Clean up the tmpdir
+    for (const file of [
+      "aws",
+      "chromium-pack",
+      "chromium",
+      "file.zip",
+      "libEGL.so",
+      "libGLESv2.so",
+      "libvk_swiftshader.so",
+      "libvulkan.so.1",
+      "vk_swiftshader_icd.json",
+    ]) {
+      rmSync(join(tmpdir(), file), { force: true, recursive: true });
+    }
+  });
+});
+
+describe("Integration", () => {
+  let browser: puppeteer.Browser;
+
+  /**
+   * Setup FONTCONFIG_PATH for non-lambda environments
+   * This is needed for the fontconfig library to find the fonts
+   */
+  beforeAll(() => {
+    process.env["FONTCONFIG_PATH"] = join(tmpdir(), "fonts");
+  });
+
+  it("should open a Chromium window", async () => {
+    const args = puppeteer.defaultArgs({
+      args: chromium.args,
+      headless: "shell",
+    });
+    console.log("Args", args);
+    browser = await puppeteer.launch({
+      args: args,
+      defaultViewport: {
+        deviceScaleFactor: 1,
+        hasTouch: false,
+        height: 1080,
+        isLandscape: true,
+        isMobile: false,
+        width: 1920,
+      },
+      executablePath: await chromium.executablePath(),
+      headless: "shell",
+    });
+    const version = await browser.version();
+    expect(version).toContain("HeadlessChrome");
+  });
+
+  it("should open a new page", async () => {
+    const page = await browser.newPage();
+    await page.goto("https://example.com");
+    const title = await page.title();
+    expect(title).toBe("Example Domain");
+  });
+
+  it("should take a screenshot", async () => {
+    const page = await browser.newPage();
+    await page.goto("https://example.com", { waitUntil: "networkidle0" });
+    const screenshot = Buffer.from(await page.screenshot());
+    const base64Screenshot = `data:image/png;base64,${screenshot.toString(
+      "base64"
+    )}`;
+    // console.log(base64Screenshot);
+    const hash = createHash("sha256").update(base64Screenshot).digest("hex");
+    expect(hash).toBe(
+      "d5723506e0fd50c77bf1da5ac471d97e341f3f1a532b45cf4931b5adaf91e9fb"
+    );
+  });
+
+  it("should take a screenshot of get.webgl.org without the logo", async () => {
+    const page = await browser.newPage();
+    await page.goto("https://get.webgl.org", { waitUntil: "networkidle0" });
+    await page.evaluate(() => {
+      const el = document.querySelector("#logo-container");
+      if (el) el.remove();
+    });
+    const screenshot = Buffer.from(await page.screenshot());
+    const base64Screenshot = `data:image/png;base64,${screenshot.toString(
+      "base64"
+    )}`;
+    // console.log(base64Screenshot);
+    const hash = createHash("sha256").update(base64Screenshot).digest("hex");
+    expect(hash).toBe(
+      "733e7c4c9587278015e22bff6f7d308ca142a1d06e1e4ef0157214ef3c10f16c"
+    );
+  });
+
+  afterAll(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (browser) {
+      console.log("Closing browser");
+      await browser.close();
+    }
+
+    // Clean up the tmpdir
+    unlinkSync(join(tmpdir(), "chromium"));
+    unlinkSync(join(tmpdir(), "libEGL.so"));
+    unlinkSync(join(tmpdir(), "libGLESv2.so"));
+    unlinkSync(join(tmpdir(), "libvk_swiftshader.so"));
+    unlinkSync(join(tmpdir(), "libvulkan.so.1"));
+    unlinkSync(join(tmpdir(), "vk_swiftshader_icd.json"));
+    /*unlinkSync(join(tmpdir(), "swiftshader.tar"));
+    unlinkSync(join(tmpdir(), "al2023.tar"));
+    unlinkSync(join(tmpdir(), "chromium.br"));
+    unlinkSync(join(tmpdir(), "fonts.tar.br"));*/
   });
 });

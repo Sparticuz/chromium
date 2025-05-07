@@ -40,7 +40,7 @@
     "pack:x64": "make pack-x64",
     "pack:arm64": "make pack-arm64",
     "test:integration": "make clean && make && make pretest && make test",
-    "test:source": "vitest run --coverage",
+    "test:source": "make presource && vitest run --coverage && make postsource",
     "update": "node ./tools/update-browser-revision.mjs"
   },
   "dependencies": {
