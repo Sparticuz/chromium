@@ -5,9 +5,9 @@
   "description": "AWS Lambda Function that loads Chromium. Refer to https://github.com/Sparticuz/chromium#install for compatible versions.",
   "main": "app.mjs",
   "devDependencies": {
-    "@sparticuz/chromium": "^119.0.0"
+    "@sparticuz/chromium": "^133.0.0"
   },
   "dependencies": {
-    "puppeteer-core": "^21.5.1"
+    "puppeteer-core": "^24.9.0"
   }
 }
