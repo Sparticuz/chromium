@@ -19,6 +19,8 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         project: "tsconfig.json",
+        // I have engines already set to >=20.11
+        // eslint-disable-next-line n/no-unsupported-features/node-builtins
         tsconfigRootDir: import.meta.dirname,
       },
     },

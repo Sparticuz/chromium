@@ -34,8 +34,8 @@ class Chromium {
       "--ash-no-nudges", // Avoids blue bubble "user education" nudges (eg., "… give your browser a new look", Memory Saver)
       "--disable-domain-reliability", // Disables Domain Reliability Monitoring, which tracks whether the browser has difficulty contacting Google-owned sites and uploads reports to Google.
       "--disable-print-preview", // https://source.chromium.org/search?q=lang:cpp+symbol:kDisablePrintPreview&ss=chromium
-      "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium
-      "--no-default-browser-check", // Disable the default browser check, do not prompt to set it as such
+      "--disk-cache-size=33554432", // https://source.chromium.org/search?q=lang:cpp+symbol:kDiskCacheSize&ss=chromium Forces the maximum disk space to be used by the disk cache, in bytes.
+      "--no-default-browser-check", // Disable the default browser check, do not prompt to set it as such. (This is already set by Playwright, but not Puppeteer)
       "--no-pings", // Don't send hyperlink auditing pings
       "--single-process", // Runs the renderer and plugins in the same process as the browser. NOTES: Needs to be single-process to avoid `prctl(PR_SET_NO_NEW_PRIVS) failed` error
       "--font-render-hinting=none", // https://github.com/puppeteer/puppeteer/issues/2410#issuecomment-560573612
@@ -48,10 +48,8 @@ class Chromium {
     const chromiumEnableFeatures = ["SharedArrayBuffer"];
 
     const graphicsFlags = [
-      "--hide-scrollbars", // https://source.chromium.org/search?q=lang:cpp+symbol:kHideScrollbars&ss=chromium
       "--ignore-gpu-blocklist", // https://source.chromium.org/search?q=lang:cpp+symbol:kIgnoreGpuBlocklist&ss=chromium
       "--in-process-gpu", // Saves some memory by moving GPU process into a browser process thread
-      "--window-size=1920,1080", // Sets the initial window size. Provided as string in the format "800,600".
     ];
 
     // https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
@@ -167,9 +165,12 @@ class Chromium {
       promises.push(inflate(join(input, "al2023.tar.br")));
     }
 
+    console.log("inflating");
+
     // Await all extractions
     const result = await Promise.all(promises);
     // Returns the first result of the promise, which is the location of the `chromium` binary
+    console.log("inflated", result);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return result.shift()!;
   }
