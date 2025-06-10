@@ -20,12 +20,156 @@
         key_material: "{{ item }}"
       with_file: ../ansible.pem.pub
 
+    - name: Check if VPC ID is already specified
+      debug:
+        msg: "Using pre-specified VPC ID: {{ vpc_id }}"
+      when: vpc_id is defined
+
+    - name: Get default VPC ID
+      shell: |
+        aws ec2 describe-vpcs --region {{ aws_region }} --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text 2>/dev/null || echo "None"
+      register: default_vpc_result
+      when: vpc_id is not defined
+
+    - name: Debug - Show VPC lookup result
+      debug:
+        msg: "VPC lookup result: '{{ default_vpc_result.stdout }}'"
+      when: vpc_id is not defined
+
+    - name: Create custom VPC if none exists
+      shell: |
+        aws ec2 create-vpc --region {{ aws_region }} --cidr-block 10.0.0.0/16 --query "Vpc.VpcId" --output text
+      register: created_vpc_result
+      when: vpc_id is not defined and (default_vpc_result.stdout == "None" or default_vpc_result.stdout == "")
+      ignore_errors: yes
+
+    - name: Enable DNS support for VPC
+      shell: |
+        aws ec2 modify-vpc-attribute --region {{ aws_region }} --vpc-id {{ created_vpc_result.stdout }} --enable-dns-support
+      when: created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != ""
+
+    - name: Enable DNS hostnames for VPC
+      shell: |
+        aws ec2 modify-vpc-attribute --region {{ aws_region }} --vpc-id {{ created_vpc_result.stdout }} --enable-dns-hostnames
+      when: created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != ""
+
+    - name: Create subnet in VPC
+      shell: |
+        aws ec2 create-subnet --region {{ aws_region }} --vpc-id {{ created_vpc_result.stdout }} --cidr-block 10.0.1.0/24 --availability-zone {{ aws_region }}a --query "Subnet.SubnetId" --output text
+      register: subnet_result
+      when: created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != ""
+
+    - name: Set flag for subnet creation tracking
+      set_fact:
+        subnet_created_by_us: "{{ subnet_result is defined and subnet_result.stdout is defined and subnet_result.stdout != '' }}"
+      when: created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != ""
+
+    - name: Set subnet ID from created subnet
+      set_fact:
+        subnet_id: "{{ subnet_result.stdout }}"
+      when: created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != ""
+
+    - name: Debug - Show VPC creation result
+      debug:
+        msg: "VPC creation result: '{{ created_vpc_result.stdout | default('not created') }}'"
+      when: vpc_id is not defined and created_vpc_result is defined
+
+    - name: Check if we have a valid VPC ID
+      set_fact:
+        has_valid_vpc: "{{ vpc_id is defined or (default_vpc_result.stdout != 'None' and default_vpc_result.stdout != '') or (created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != '') }}"
+
+    - name: Set VPC ID from results
+      set_fact:
+        vpc_id: "{{ created_vpc_result.stdout if (created_vpc_result is defined and created_vpc_result.stdout is defined and created_vpc_result.stdout != '') else default_vpc_result.stdout }}"
+      when: vpc_id is not defined and has_valid_vpc
+
+    - name: Fail if no VPC available and ask for manual intervention
+      fail:
+        msg: |
+          No VPC found and failed to create one in region {{ aws_region }}.
+          
+          Please either:
+          1. Create a VPC manually: aws ec2 create-vpc --region {{ aws_region }} --cidr-block 10.0.0.0/16
+          2. Or specify a VPC ID by adding 'vpc_id' variable to your inventory
+          3. Or ensure you have appropriate permissions to create a VPC
+          
+          You can also list available VPCs with: aws ec2 describe-vpcs --region {{ aws_region }}
+      when: not has_valid_vpc
+
+    - name: Debug - Show final VPC ID
+      debug:
+        msg: "Final VPC ID: '{{ vpc_id }}' - Created by us: {{ vpc_created_by_us | default('unknown') }}"
+
+    - name: Get subnet from VPC (only if not already set)
+      shell: |
+        aws ec2 describe-subnets --region {{ aws_region }} --filters "Name=vpc-id,Values={{ vpc_id }}" --query "Subnets[0].SubnetId" --output text
+      register: existing_subnet_result
+      when: subnet_id is not defined
+
+    - name: Set subnet ID from existing subnet
+      set_fact:
+        subnet_id: "{{ existing_subnet_result.stdout }}"
+      when: subnet_id is not defined and existing_subnet_result.stdout is defined
+
+    - name: Check for internet gateway
+      shell: |
+        aws ec2 describe-internet-gateways --region {{ aws_region }} --filters "Name=attachment.vpc-id,Values={{ vpc_id }}" --query "InternetGateways[0].InternetGatewayId" --output text
+      register: igw_result
+
+    - name: Set flag for pre-existing IGW
+      set_fact:
+        igw_existed: "{{ igw_result.stdout != 'None' and igw_result.stdout != '' }}"
+
+    - name: Create internet gateway if none exists
+      shell: |
+        aws ec2 create-internet-gateway --region {{ aws_region }} --query "InternetGateway.InternetGatewayId" --output text
+      register: created_igw_result
+      when: igw_result.stdout == "None" or igw_result.stdout == ""
+
+    - name: Attach internet gateway to VPC
+      shell: |
+        aws ec2 attach-internet-gateway --region {{ aws_region }} --internet-gateway-id {{ created_igw_result.stdout }} --vpc-id {{ vpc_id }}
+      when: igw_result.stdout == "None" or igw_result.stdout == ""
+
+    - name: Set internet gateway ID
+      set_fact:
+        igw_id: "{{ created_igw_result.stdout if (igw_result.stdout == 'None' or igw_result.stdout == '') else igw_result.stdout }}"
+
+    - name: Set flag for created IGW
+      set_fact:
+        igw_created_by_us: "{{ igw_result.stdout == 'None' or igw_result.stdout == '' }}"
+
+    - name: Get main route table ID
+      shell: |
+        aws ec2 describe-route-tables --region {{ aws_region }} --filters "Name=vpc-id,Values={{ vpc_id }}" --query "RouteTables[0].RouteTableId" --output text
+      register: route_table_result
+
+    - name: Add internet route if not exists
+      shell: |
+        aws ec2 create-route --region {{ aws_region }} --route-table-id {{ route_table_result.stdout }} --destination-cidr-block 0.0.0.0/0 --gateway-id {{ igw_id }}
+      ignore_errors: yes
+
+    - name: Get latest AMI ID if not specified
+      shell: |
+        aws ssm get-parameter --region {{ aws_region }} --name "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64" --query "Parameter.Value" --output text
+      register: latest_ami_result
+      when: image is not defined or image == ""
+
+    - name: Set AMI ID
+      set_fact:
+        ami_id: "{{ image if (image is defined and image != '') else latest_ami_result.stdout }}"
+
+    - name: Debug - Show AMI ID
+      debug:
+        msg: "Using AMI ID: '{{ ami_id }}'"
+
     - name: Creating Security Group
       amazon.aws.ec2_group:
         name: Chromium
         description: SSH Access
         state: present
         region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
         rules:
           - proto: tcp
             to_port: 22
@@ -34,23 +178,44 @@
         rules_egress:
           - proto: all
             cidr_ip: 0.0.0.0/0
+      register: security_group
+
+    - name: Check for existing Chromium instances
+      shell: |
+        aws ec2 describe-instances --region {{ aws_region }} --filters "Name=tag:Name,Values=Chromium" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].[InstanceId,PublicIpAddress]" --output text
+      register: existing_instances
+
+    - name: Use existing instance if available
+      set_fact:
+        ec2:
+          instances:
+            - instance_id: "{{ existing_instances.stdout.split()[0] }}"
+              public_ip_address: "{{ existing_instances.stdout.split()[1] }}"
+          instance_ids: ["{{ existing_instances.stdout.split()[0] }}"]
+      when: existing_instances.stdout != ""
+
+    - name: Debug - Instance selection
+      debug:
+        msg: "{{ 'Using existing instance: ' + existing_instances.stdout.split()[0] + ' (' + existing_instances.stdout.split()[1] + ')' if existing_instances.stdout != '' else 'No existing instance found, will create new one' }}"
 
     - name: Request EC2 Instance
       amazon.aws.ec2_instance:
         count: 1
         ebs_optimized: yes
         image:
-          id: "{{ image }}"
-        #         id: "{{ lookup('amazon.aws.aws_ssm', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region=aws_region) }}"
+          id: "{{ ami_id }}"
         instance_initiated_shutdown_behavior: terminate
         instance_type: "{{ instance_size }}"
         key_name: ansible
-        network:
-          assign_public_ip: yes
-          delete_on_termination: yes
-          groups: Chromium
+        network_interfaces:
+          - assign_public_ip: true
+            delete_on_termination: true
+            device_index: 0
+            groups: 
+              - "{{ security_group.group_id }}"
+            subnet_id: "{{ subnet_id }}"
+        vpc_subnet_id: "{{ subnet_id }}"
         region: "{{ aws_region }}"
-        security_group: Chromium
         state: present
         tags:
           Name: Chromium
@@ -62,6 +227,7 @@
               volume_size: 256
               iops: 3000
       register: ec2
+      when: existing_instances.stdout == ""
 
     - name: Registering Host
       add_host:
@@ -160,6 +326,7 @@
       when: structure.stat.exists != true
 
     - name: Cloning Depot Tools
+      tags: get-chrome
       git:
         repo: https://chromium.googlesource.com/chromium/tools/depot_tools.git
         dest: /srv/source/depot_tools
@@ -167,6 +334,7 @@
         update: yes
 
     - name: Upload .gclient
+      tags: get-chrome
       copy:
         src: .gclient
         dest: /srv/source/chromium/.gclient
@@ -175,34 +343,40 @@
         mode: "0664"
 
     - name: Checking for Chromium
+      tags: get-chrome
       stat:
         path: /srv/source/chromium/.gclient
       register: gclient
 
     - name: Resolving Git Commit from Chromium Revision
+      tags: get-chrome
       uri:
         url: "https://cr-rev.appspot.com/_ah/api/crrev/v1/redirect/{{ chromium_revision }}"
         return_content: yes
       register: revision
 
     - name: Parse Result
+      tags: get-chrome
       set_fact:
         gitsha: >
           {{ revision.content | regex_search('"git_sha":"([a-zA-Z0-9_]*)"', '\1') | trim }}
 
     - name: Checking Out Chromium revision
+      tags: get-chrome
       shell: |
         gclient sync --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
       args:
         chdir: /srv/source/chromium
 
     - name: Run Chromium hooks
+      tags: get-chrome
       shell: |
         gclient runhooks
       args:
         chdir: /srv/source/chromium
 
     - name: Patching Chromium
+      tags: get-chrome
       lineinfile:
         path: "/srv/source/chromium/src/content/browser/{{ item.path }}"
         line: "{{ item.line }}"
@@ -232,12 +406,14 @@
           }
 
     - name: Creating Build Configuration Directory
+      tags: build-chrome
       file:
         mode: 0755
         path: /srv/source/chromium/src/out/Headless
         state: directory
 
     - name: Creating Headless Chromium Configuration
+      tags: build-chrome
       copy:
         content: |
           import("//build/args/headless.gn")
@@ -263,18 +439,21 @@
         dest: /srv/source/chromium/src/out/Headless/args.gn
 
     - name: Generating Headless Chromium Configuration
+      tags: build-chrome
       shell: |
         gn gen out/Headless
       args:
         chdir: /srv/source/chromium/src
 
     - name: Compiling Headless Chromium
+      tags: build-chrome
       shell: |
         autoninja -C out/Headless headless_shell
       args:
         chdir: /srv/source/chromium/src
 
     - name: Getting Chromium Version
+      tags: [build-chrome, compress-and-download-chrome]
       shell: |
         sed --regexp-extended 's~[^0-9]+~~g' chrome/VERSION | tr '\n' '.' | sed 's~[.]$~~'
       args:
@@ -282,12 +461,14 @@
       register: version
 
     - name: Striping Symbols from Chromium Binary
+      tags: build-chrome
       shell: |
         strip -o /srv/build/chromium/chromium-{{ version.stdout | quote }} out/Headless/headless_shell
       args:
         chdir: /srv/source/chromium/src
 
     - name: Compressing Chromium
+      tags: compress-and-download-chrome
       shell: |
         brotli --best --force {{ item }}
       args:
@@ -296,6 +477,7 @@
         - "chromium-{{ version.stdout }}"
 
     - name: Downloading Chromium
+      tags: compress-and-download-chrome
       fetch:
         src: "/srv/build/chromium/{{ item }}"
         dest: ../../../bin/
@@ -305,6 +487,7 @@
         - "chromium-{{ version.stdout }}.br"
 
     - name: Archiving OpenGL ES driver
+      tags: compress-and-download-chrome
       shell: |
         tar --directory /srv/source/chromium/src/out/Headless --create --file swiftshader.tar libEGL.so libGLESv2.so libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
       args:
@@ -312,6 +495,7 @@
         creates: /srv/build/chromium/swiftshader.tar
 
     - name: Compressing OpenGL ES driver
+      tags: compress-and-download-chrome
       shell: |
         brotli --best --force swiftshader.tar
       args:
@@ -319,6 +503,7 @@
         creates: /srv/build/chromium/swiftshader.tar.br
 
     - name: Downloading OpenGL ES driver
+      tags: compress-and-download-chrome
       fetch:
         src: /srv/build/chromium/swiftshader.tar.br
         dest: ../../../bin/
@@ -328,31 +513,133 @@
 - name: Teardown AWS
   hosts: localhost
   gather_facts: false
+  tags: teardown
 
   tasks:
+    - name: Find running Chromium instances
+      tags: teardown
+      shell: |
+        aws ec2 describe-instances --region {{ aws_region }} --filters "Name=tag:Name,Values=Chromium" --query "Reservations[*].Instances[?State.Name!='terminated'].InstanceId" --output text
+      register: chromium_instances
+
+    - name: Debug - Show found instances
+      tags: teardown
+      debug:
+        msg: "Found instances: '{{ chromium_instances.stdout }}' (length: {{ chromium_instances.stdout | length }})"
+
     - name: Terminating EC2 Instance
+      tags: teardown
       amazon.aws.ec2_instance:
         wait: yes
         state: absent
-        instance_ids: "{{ ec2.instance_ids }}"
+        instance_ids: "{{ chromium_instances.stdout.split() }}"
         region: "{{ aws_region }}"
+      when: chromium_instances.stdout | trim != ""
+
+    - name: Get VPC ID for teardown
+      tags: teardown
+      set_fact:
+        teardown_vpc_result:
+          stdout: "{{ vpc_id }}"
+          failed: false
+      when: vpc_id is defined
+
+    - name: Get default VPC ID for teardown (fallback)
+      tags: teardown
+      shell: |
+        aws ec2 describe-vpcs --region {{ aws_region }} --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text
+      register: default_vpc_result
+      ignore_errors: yes
+      when: vpc_id is not defined
+
+    - name: Set teardown VPC result (fallback)
+      tags: teardown
+      set_fact:
+        teardown_vpc_result: "{{ default_vpc_result }}"
+      when: vpc_id is not defined
+
+    - name: Get subnets in VPC
+      tags: teardown
+      shell: |
+        aws ec2 describe-subnets --region {{ aws_region }} --filters "Name=vpc-id,Values={{ teardown_vpc_result.stdout }}" --query "Subnets[*].SubnetId" --output text
+      register: subnet_list
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
+
+    - name: Delete subnets (only if we created them)
+      tags: teardown
+      shell: |
+        aws ec2 delete-subnet --region {{ aws_region }} --subnet-id {{ item }}
+      with_items: "{{ subnet_list.stdout.split() }}"
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed and subnet_list.stdout != "None" and subnet_created_by_us is defined and subnet_created_by_us
+      ignore_errors: yes
 
     - name: Deleting Security Group
+      tags: teardown
       amazon.aws.ec2_group:
         name: Chromium
         state: absent
         region: "{{ aws_region }}"
+        vpc_id: "{{ teardown_vpc_result.stdout }}"
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
+
+    - name: Get internet gateway for teardown
+      tags: teardown
+      shell: |
+        aws ec2 describe-internet-gateways --region {{ aws_region }} --filters "Name=attachment.vpc-id,Values={{ teardown_vpc_result.stdout }}" --query "InternetGateways[0].InternetGatewayId" --output text
+      register: teardown_igw_result
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
+
+    - name: Detach internet gateway (only if we created it)
+      tags: teardown
+      shell: |
+        aws ec2 detach-internet-gateway --region {{ aws_region }} --internet-gateway-id {{ teardown_igw_result.stdout }} --vpc-id {{ teardown_vpc_result.stdout }}
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed and teardown_igw_result.stdout != "None" and igw_created_by_us is defined and igw_created_by_us
+      ignore_errors: yes
+
+    - name: Delete internet gateway (only if we created it)
+      tags: teardown
+      shell: |
+        aws ec2 delete-internet-gateway --region {{ aws_region }} --internet-gateway-id {{ teardown_igw_result.stdout }}
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed and teardown_igw_result.stdout != "None" and igw_created_by_us is defined and igw_created_by_us
+      ignore_errors: yes
+
+    - name: Debug - IGW teardown decision
+      tags: teardown
+      debug:
+        msg: "IGW {{ teardown_igw_result.stdout | default('none') }} - Created by us: {{ igw_created_by_us | default('unknown') }} - Will delete: {{ (igw_created_by_us is defined and igw_created_by_us) | default(false) }}"
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
+
+    - name: Debug - VPC teardown decision
+      tags: teardown
+      debug:
+        msg: "VPC {{ teardown_vpc_result.stdout | default('none') }} - Created by us: {{ vpc_created_by_us | default('unknown') }} - Will delete: {{ (vpc_created_by_us is defined and vpc_created_by_us) | default(false) }}"
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
+
+    - name: Delete VPC (only if we created it)
+      tags: teardown
+      shell: |
+        aws ec2 delete-vpc --region {{ aws_region }} --vpc-id {{ teardown_vpc_result.stdout }}
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed and vpc_created_by_us is defined and vpc_created_by_us
+      ignore_errors: yes
 
     - name: Deleting EC2 Key Pair
+      tags: teardown
       amazon.aws.ec2_key:
         name: ansible
         state: absent
         region: "{{ aws_region }}"
 
     - name: Deleting SSH Key
+      tags: teardown
       file:
         path: "../{{ item }}"
         state: absent
       with_items:
         - ansible.pem
         - ansible.pem.pub
+
+    - name: Debug - Subnet teardown decision
+      tags: teardown
+      debug:
+        msg: "Subnets {{ subnet_list.stdout | default('none') }} - Created by us: {{ subnet_created_by_us | default('unknown') }} - Will delete: {{ (subnet_created_by_us is defined and subnet_created_by_us) | default(false) }}"
+      when: teardown_vpc_result.stdout != "None" and not teardown_vpc_result.failed
