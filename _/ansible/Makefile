@@ -11,7 +11,7 @@ build:
 build-x64:
 	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars 'archs=["x64"]'
 
-build-arm:
+build-arm64:
 	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars 'archs=["arm64"]'
 
 build-arm-libs:
