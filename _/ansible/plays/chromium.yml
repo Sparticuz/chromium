@@ -192,7 +192,7 @@
 
     - name: Checking Out Chromium revision
       shell: |
-        gclient sync --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
+        gclient sync --force --reset --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
       args:
         chdir: /srv/source/chromium
 
@@ -240,11 +240,13 @@
         - x64
         - arm64
 
-    - name: Compile and package Chromium for all architectures
-      include_tasks: build-arch.yml
-      loop: "{{ archs }}"
-      loop_control:
-        loop_var: arch
+    - name: Compile and package Chromium for x64
+      include_tasks: build-x64.yml
+      when: "'x64' in archs"
+
+    - name: Compile and package Chromium for arm64
+      include_tasks: build-arm64.yml
+      when: "'arm64' in archs"
 
 - name: Teardown AWS
   hosts: localhost
