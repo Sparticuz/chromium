@@ -1,0 +1,95 @@
+- name: Creating Headless Chromium Configuration
+  copy:
+    content: |
+      import("//build/args/headless.gn")
+      blink_symbol_level = 0
+      dcheck_always_on = false
+      disable_histogram_support = false
+      enable_basic_print_dialog = false
+      enable_keystone_registration_framework = false
+      enable_linux_installer = false
+      enable_media_remoting = false
+      ffmpeg_branding = "Chrome"
+      is_component_build = false
+      is_debug = false
+      is_official_build = true
+      proprietary_codecs = true
+      symbol_level = 0
+      target_os = "linux"
+      use_sysroot = true
+      v8_symbol_level = 0
+      target_cpu="arm64"
+      v8_target_cpu="arm64"
+    dest: /srv/source/chromium/src/out/Headless/arm64/args.gn
+
+- name: Building ARM64 Sysroot
+  shell: |
+    ./build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
+  args:
+    chdir: /srv/source/chromium/src
+
+- name: Generating Headless Chromium Configuration
+  shell: |
+    gn gen out/Headless/arm64
+  args:
+    chdir: /srv/source/chromium/src
+
+- name: Compiling Headless Chromium
+  shell: |
+    autoninja -C out/Headless/arm64 headless_shell
+  args:
+    chdir: /srv/source/chromium/src
+
+- name: Getting Chromium Version
+  shell: |
+    sed --regexp-extended 's~[^0-9]+~~g' chrome/VERSION | tr '\n' '.' | sed 's~[.]$~~'
+  args:
+    chdir: /srv/source/chromium/src
+  register: version
+
+# TODO, switch to binutils
+- name: Striping Symbols from Chromium (arm64) Binary
+  shell: |
+    wget https://releases.linaro.org/components/toolchain/binaries/latest-7/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+    tar -xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+    ./gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-strip -o /srv/build/chromium/chromium-{{ version.stdout | quote }} out/Headless/arm64/headless_shell
+  args:
+    chdir: /srv/source/chromium/src
+
+- name: Compressing Chromium
+  shell: |
+    brotli --best --force {{ item }}
+  args:
+    chdir: /srv/build/chromium
+  with_items:
+    - "chromium-{{ version.stdout }}"
+
+- name: Downloading Chromium
+  fetch:
+    src: "/srv/build/chromium/{{ item }}"
+    dest: ../../../bin/arm64/
+    flat: yes
+    fail_on_missing: true
+  with_items:
+    - "chromium-{{ version.stdout }}.br"
+
+- name: Archiving OpenGL ES driver
+  shell: |
+    tar --directory /srv/source/chromium/src/out/Headless/arm64 --create --file swiftshader.tar libEGL.so libGLESv2.so libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
+  args:
+    chdir: /srv/build/chromium
+    creates: /srv/build/chromium/swiftshader.tar
+
+- name: Compressing OpenGL ES driver
+  shell: |
+    brotli --best --force swiftshader.tar
+  args:
+    chdir: /srv/build/chromium
+    creates: /srv/build/chromium/swiftshader.tar.br
+
+- name: Downloading OpenGL ES driver
+  fetch:
+    src: /srv/build/chromium/swiftshader.tar.br
+    dest: ../../../bin/arm64/
+    flat: yes
+    fail_on_missing: true

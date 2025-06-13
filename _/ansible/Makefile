@@ -5,10 +5,14 @@ dependencies:
 	echo "aws-sam-cli-bin is also required in order to test the package"
 
 build:
+	echo "Building both architectures takes roughly 5 hours"
 	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini
 
-build-arm:
-	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars "arch=arm64"
+build-x64:
+	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars 'archs=["x64"]'
+
+build-arm64:
+	/usr/bin/ansible-playbook plays/chromium.yml -i inventory.ini --extra-vars 'archs=["arm64"]'
 
 build-arm-libs:
-	/usr/bin/ansible-playbook plays/arm-libs.yml -i inventory.ini --extra-vars "arch=arm64"
+	/usr/bin/ansible-playbook plays/arm-libs.yml -i inventory.ini
