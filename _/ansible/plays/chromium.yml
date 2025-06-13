@@ -192,7 +192,7 @@
 
     - name: Checking Out Chromium revision
       shell: |
-        gclient sync --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
+        gclient sync --force --reset --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
       args:
         chdir: /srv/source/chromium
 
@@ -234,140 +234,19 @@
     - name: Creating Build Configuration Directory
       file:
         mode: 0755
-        path: /srv/source/chromium/src/out/Headless
+        path: /srv/source/chromium/src/out/Headless/{{ item }}
         state: directory
-
-    - name: Creating Headless Chromium Configuration
-      copy:
-        content: |
-          import("//build/args/headless.gn")
-          blink_symbol_level = 0
-          dcheck_always_on = false
-          disable_histogram_support = false
-          enable_basic_print_dialog = false
-          enable_keystone_registration_framework = false
-          enable_linux_installer = false
-          enable_media_remoting = false
-          ffmpeg_branding = "Chrome"
-          is_component_build = false
-          is_debug = false
-          is_official_build = true
-          proprietary_codecs = true
-          symbol_level = 0
-          target_cpu = "{{ arch }}"
-          target_os = "linux"
-          use_sysroot = true
-          v8_symbol_level = 0
-          v8_target_cpu = "{{ arch }}"
-        dest: /srv/source/chromium/src/out/Headless/args.gn
-
-    - name: Building ARM64 Sysroot
-      when: arch == "arm64"
-      shell: |
-        ./build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
-      args:
-        chdir: /srv/source/chromium/src
-
-    - name: Generating Headless Chromium Configuration
-      shell: |
-        gn gen out/Headless
-      args:
-        chdir: /srv/source/chromium/src
-
-    - name: Compiling Headless Chromium
-      shell: |
-        autoninja -C out/Headless headless_shell
-      args:
-        chdir: /srv/source/chromium/src
-
-    - name: Getting Chromium Version
-      shell: |
-        sed --regexp-extended 's~[^0-9]+~~g' chrome/VERSION | tr '\n' '.' | sed 's~[.]$~~'
-      args:
-        chdir: /srv/source/chromium/src
-      register: version
-
-    - name: Striping Symbols from Chromium (x64) Binary
-      when: arch == "x64"
-      shell: |
-        strip -o /srv/build/chromium/chromium-{{ version.stdout | quote }} out/Headless/headless_shell
-      args:
-        chdir: /srv/source/chromium/src
-
-    # TODO, switch to binutils
-    - name: Striping Symbols from Chromium (arm64) Binary
-      when: arch == "arm64"
-      shell: |
-        wget https://releases.linaro.org/components/toolchain/binaries/latest-7/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
-        tar -xf gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
-        ./gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-strip -o /srv/build/chromium/chromium-{{ version.stdout | quote }} out/Headless/headless_shell
-      args:
-        chdir: /srv/source/chromium/src
-
-    - name: Compressing Chromium
-      shell: |
-        brotli --best --force {{ item }}
-      args:
-        chdir: /srv/build/chromium
       with_items:
-        - "chromium-{{ version.stdout }}"
+        - x64
+        - arm64
 
-    - name: Downloading Chromium
-      fetch:
-        src: "/srv/build/chromium/{{ item }}"
-        dest: ../../../bin/{{ arch }}/
-        flat: yes
-        fail_on_missing: true
-      with_items:
-        - "chromium-{{ version.stdout }}.br"
+    - name: Compile and package Chromium for x64
+      include_tasks: build-x64.yml
+      when: "'x64' in archs"
 
-    - name: Archiving OpenGL ES driver
-      shell: |
-        tar --directory /srv/source/chromium/src/out/Headless --create --file swiftshader.tar libEGL.so libGLESv2.so libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
-      args:
-        chdir: /srv/build/chromium
-        creates: /srv/build/chromium/swiftshader.tar
-
-    - name: Compressing OpenGL ES driver
-      shell: |
-        brotli --best --force swiftshader.tar
-      args:
-        chdir: /srv/build/chromium
-        creates: /srv/build/chromium/swiftshader.tar.br
-
-    - name: Downloading OpenGL ES driver
-      fetch:
-        src: /srv/build/chromium/swiftshader.tar.br
-        dest: ../../../bin/{{ arch }}/
-        flat: yes
-        fail_on_missing: true
-
-    - name: Creating AL2023 Package
-      when: arch == "x64"
-      shell: |
-        tar --directory /usr/lib64 --create --file al2023.tar \
-         --transform='s,^libexpat\.so\.1\.9\.3$,libexpat.so.1,' \
-         --transform='s,^,lib/,' \
-         libexpat.so.1.9.3 libfreebl3.so libfreeblpriv3.so libnspr4.so libnss3.so libnssutil3.so libplc4.so libplds4.so libsoftokn3.so libfreebl3.chk libfreeblpriv3.chk libsoftokn3.chk
-      args:
-        chdir: /srv/lib
-        creates: /srv/lib/al2023.tar
-
-    - name: Compressing AL2023 Package
-      when: arch == "x64"
-      shell: |
-        brotli --best --force al2023.tar
-      args:
-        chdir: /srv/lib
-        creates: /srv/lib/al2023.tar.br
-
-    - name: Downloading AL2023 Package
-      when: arch == "x64"
-      fetch:
-        src: /srv/lib/al2023.tar.br
-        dest: ../../../bin/{{ arch }}/
-        flat: yes
-        fail_on_missing: true
+    - name: Compile and package Chromium for arm64
+      include_tasks: build-arm64.yml
+      when: "'arm64' in archs"
 
 - name: Teardown AWS
   hosts: localhost

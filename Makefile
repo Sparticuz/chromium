@@ -1,10 +1,12 @@
 .PHONY: clean
 
+ARCH = $(shell uname -m | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/')
+
 clean:
 	rm -rf chromium.zip _/amazon/code/nodejs _/amazon/handlers/node_modules
 
 pretest:
-	unzip chromium.zip -d _/amazon/code
+	unzip chromium.$(ARCH).zip -d _/amazon/code
 	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
 test:
@@ -12,6 +14,12 @@ test:
 
 test20:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
+
+presource:
+	cp -R bin/$(ARCH)/* bin
+
+postsource:
+	rm bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
 
 %.x64.zip:
 	npm install --fund=false --package-lock=false
