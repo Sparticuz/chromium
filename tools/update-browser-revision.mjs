@@ -45,9 +45,11 @@ async function updateInventoryFile(filePath, newRevision) {
  * The Command block
  */
 const stableChannelInfo = await updateDevToolsProtocolVersion();
-const newRevision = stableChannelInfo.revision;
+const { revision, version } = stableChannelInfo;
 
-console.log(`Fetched stable Chromium revision: ${newRevision}`);
+console.log(
+  `Fetched stable Chromium revision for Chromium ${version}: ${revision}`
+);
 
 const inventoryPath = resolve(__dirname, "../_/ansible/inventory.ini");
-await updateInventoryFile(inventoryPath, newRevision);
+await updateInventoryFile(inventoryPath, revision);
