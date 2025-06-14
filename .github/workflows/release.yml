@@ -25,10 +25,16 @@ jobs:
 
       - run: npm run build
 
+      - name: Copy x64 binaries to bin
+        run: cp -R bin/x64/* bin
+
       - name: Release chromium on npmjs
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+      - name: Cleanup bin after npm publish
+        run: rm -f bin/chromium.br bin/swiftshader.tar.br
 
       - name: Create Lambda Layer (x64)
         run: make chromium-${{ github.ref_name }}-layer.x64.zip
