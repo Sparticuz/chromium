@@ -25,8 +25,22 @@
     "name": "Kyle McNally"
   },
   "type": "module",
-  "exports": "./build/index.js",
-  "types": "./build/index.d.ts",
+  "main": "./build/cjs/index.cjs",
+  "module": "./build/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./build/esm/index.d.ts",
+      "import": {
+        "types": "./build/esm/index.d.ts",
+        "default": "./build/esm/index.js"
+      },
+      "require": {
+        "types": "./build/cjs/index.d.ts",
+        "default": "./build/cjs/index.cjs"
+      }
+    }
+  },
+  "types": "./build/esm/index.d.ts",
   "files": [
     "bin",
     "!bin/arm64",
@@ -34,7 +48,7 @@
     "build"
   ],
   "scripts": {
-    "build": "rm -rf build && tsc -p tsconfig.build.json",
+    "build": "./tools/build.sh",
     "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "layer:x64": "make chromium-layer.x64.zip",
     "layer:arm64": "make chromium-layer.arm64.zip",
