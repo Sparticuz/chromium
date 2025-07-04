@@ -144,7 +144,15 @@ class Chromium {
      * otherwise, the default location is ../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
-    input ??= join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
+    // Handle both ESM and CommonJS module systems
+    input ??=
+      // eslint-disable-next-line unicorn/prefer-module
+      typeof __dirname === "undefined" && typeof __filename === "undefined"
+        ? // eslint-disable-next-line unicorn/prefer-module
+          join(__dirname, "..", "bin")
+        : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore import.meta.url is not defined in CommonJS
+          join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
 
     /**
      * If the input directory doesn't exist, throw an error.
