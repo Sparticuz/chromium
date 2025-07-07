@@ -48,7 +48,7 @@
     "build"
   ],
   "scripts": {
-    "build": "./tools/build.sh",
+    "build": "chmod +x ./tools/build.sh && ./tools/build.sh",
     "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "layer:x64": "make chromium-layer.x64.zip",
     "layer:arm64": "make chromium-layer.arm64.zip",
