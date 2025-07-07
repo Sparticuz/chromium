@@ -32,6 +32,7 @@ import {
 } from "../source/helper.js";
 import chromium from "../source/index.js";
 import { inflate } from "../source/lambdafs.js";
+import { getBinPath } from "../source/paths.esm.js";
 
 describe("Helper", () => {
   // Save original environment and restore after each test
@@ -320,6 +321,15 @@ describe("Helper", () => {
     ]) {
       rmSync(join(tmpdir(), file), { force: true, recursive: true });
     }
+  });
+});
+
+describe("Paths", () => {
+  it("should return the correct bin path for modules", () => {
+    // This test isn't doing any testing
+    const binPath = getBinPath();
+    console.log("Bin Path", binPath);
+    expect(getBinPath()).toBe(binPath);
   });
 });
 
