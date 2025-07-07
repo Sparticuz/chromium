@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath, URL } from "node:url";
+import { join } from "node:path";
+import { URL } from "node:url";
 
 import {
   createSymlink,
@@ -12,6 +12,7 @@ import {
   setupLambdaEnvironment,
 } from "./helper.js";
 import { inflate } from "./lambdafs.js";
+import { getBinPath } from "./paths.esm.js";
 
 const nodeMajorVersion = Number.parseInt(
   process.versions.node.split(".")[0] ?? ""
@@ -144,7 +145,7 @@ class Chromium {
      * otherwise, the default location is ../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
-    input ??= join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
+    input ??= getBinPath();
 
     /**
      * If the input directory doesn't exist, throw an error.
