@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath, URL } from "node:url";
+import { join } from "node:path";
+import { URL } from "node:url";
 
 import {
   createSymlink,
@@ -12,6 +12,7 @@ import {
   setupLambdaEnvironment,
 } from "./helper.js";
 import { inflate } from "./lambdafs.js";
+import { getBinPath } from "./paths.esm.js";
 
 const nodeMajorVersion = Number.parseInt(
   process.versions.node.split(".")[0] ?? ""
@@ -144,15 +145,7 @@ class Chromium {
      * otherwise, the default location is ../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
-    // Handle both ESM and CommonJS module systems
-    input ??=
-      // eslint-disable-next-line unicorn/prefer-module
-      typeof __dirname === "undefined" && typeof __filename === "undefined"
-        ? // eslint-disable-next-line unicorn/prefer-module
-          join(__dirname, "..", "bin")
-        : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore import.meta.url is not defined in CommonJS
-          join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
+    input ??= getBinPath();
 
     /**
      * If the input directory doesn't exist, throw an error.
