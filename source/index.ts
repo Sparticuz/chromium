@@ -142,7 +142,7 @@ class Chromium {
 
     /**
      * If input is defined, use that as the location of the brotli files,
-     * otherwise, the default location is ../bin.
+     * otherwise, the default location is ../../bin.
      * A custom location is needed for workflows that using custom packaging.
      */
     input ??= getBinPath();
