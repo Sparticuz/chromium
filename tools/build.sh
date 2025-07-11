@@ -25,6 +25,9 @@ jq '.exclude += ["./source/paths.esm.ts"]' tsconfig.build.json > tsconfig.build.
 npx tsc -p tsconfig.build.json --outDir build/cjs
 # Rename .js files to .cjs in the CJS build
 find build/cjs -name "*.js" -exec sh -c 'mv "$1" "${1%.js}.cjs"' _ {} \;
+# Replace .js imports with .cjs imports in source files
+find build/cjs -name "*.cjs" -exec sed -i 's/\.js"/\.cjs"/g' {} \;
+
 # Restore original package.json and tsconfig.build.json
 mv package.json.orig package.json
 mv tsconfig.build.json.orig tsconfig.build.json
