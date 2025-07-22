@@ -27,6 +27,8 @@ npx tsc -p tsconfig.build.json --outDir build/cjs
 find build/cjs -name "*.js" -exec sh -c 'mv "$1" "${1%.js}.cjs"' _ {} \;
 # Replace .js imports with .cjs imports in source files
 find build/cjs -name "*.cjs" -exec sed -i 's/\.js"/\.cjs"/g' {} \;
+# Replace "exports.default = Chromium;" with "module.exports = Chromium;" in CJS build files
+find build/cjs -name "*.cjs" -exec sed -i 's/exports\.default = \(.*\);/module.exports = \1;/g' {} \;
 
 # Restore original package.json and tsconfig.build.json
 mv package.json.orig package.json
