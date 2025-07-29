@@ -295,6 +295,10 @@ index b42c740..49111d7 100644
            enable_media_remoting = false
 ```
 
+### Can I use a language other than Javascript (NodeJS)?
+Yes, you will need to write your own Brotli extraction algorithm and args inclusion. (Basically, rewrite the typescript files). The binaries, once extracted, will work with any language.
+- C Sharp: https://github.com/Podginator/lambda-chromium-playwright-CSharp/tree/main
+
 ## Fonts
 
 The AWS Lambda runtime is not provisioned with any font faces.
