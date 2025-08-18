@@ -13,7 +13,7 @@ jobs:
       # Install jq so I can edit package.json from the command line
       - run: sudo apt-get install jq -y
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
