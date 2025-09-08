@@ -70,7 +70,7 @@ jobs:
           mv chromium-pack.arm64.tar chromium-${{ github.ref_name }}-pack.arm64.tar
 
       - name: Upload items to Github Release
-        uses: ncipollo/release-action@v1.16.0
+        uses: ncipollo/release-action@v1.20.0
         with:
           tag: ${{ github.ref_name }}
           body: |
