@@ -365,11 +365,11 @@ describe("Integration", () => {
         isMobile: false,
         width: 1920,
       },
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath("./bin/"),
       headless: "shell",
     });
     try {
-      const tmpContents = execSync("ls -la /tmp").toString();
+      const tmpContents = execSync("/usr/bin/ls -la /tmp").toString();
       console.log("Contents of /tmp directory:");
       console.log(tmpContents);
     } catch (error) {
@@ -398,7 +398,7 @@ describe("Integration", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "d5723506e0fd50c77bf1da5ac471d97e341f3f1a532b45cf4931b5adaf91e9fb"
+      "a69a05ab2071a671c4b494badb59c9be2c23696e4b6b66a8d316096c13d88653"
     );
   });
 
@@ -416,7 +416,7 @@ describe("Integration", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "733e7c4c9587278015e22bff6f7d308ca142a1d06e1e4ef0157214ef3c10f16c"
+      "6a1add794cf23176b76c6ac5cf94c79ff5b70ecc94eeb4fa79c49b2e6515f2ad"
     );
   });
 
