@@ -13,10 +13,10 @@ jobs:
       # Install jq so I can edit package.json from the command line
       - run: sudo apt-get install jq -y
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org/
@@ -70,7 +70,7 @@ jobs:
           mv chromium-pack.arm64.tar chromium-${{ github.ref_name }}-pack.arm64.tar
 
       - name: Upload items to Github Release
-        uses: ncipollo/release-action@v1.16.0
+        uses: ncipollo/release-action@v1.20.0
         with:
           tag: ${{ github.ref_name }}
           body: |
