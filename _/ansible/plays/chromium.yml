@@ -187,12 +187,11 @@
 
     - name: Parse Result
       set_fact:
-        gitsha: >
-          {{ revision.content | regex_search('"git_sha":"([a-zA-Z0-9_]*)"', '\1') | trim }}
+        gitsha: "{{ revision.content | regex_search('\"git_sha\":\"([a-f0-9]+)\"', '\\1') | first }}"
 
     - name: Checking Out Chromium revision
       shell: |
-        gclient sync --force --reset --delete_unversioned_trees --revision {{ gitsha | first }} --with_branch_heads
+        gclient sync --force --reset --delete_unversioned_trees --revision {{ gitsha }} --with_branch_heads
       args:
         chdir: /srv/source/chromium
 
