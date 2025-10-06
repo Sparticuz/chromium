@@ -460,7 +460,8 @@ If you or your organization have benefited financially from this package, please
 
 Thank you to the following users and companies for your support!
 
-[![Qvalia](https://avatars.githubusercontent.com/u/12028907?s=100)](https://github.com/Qvalia)
+[![BeriMedia](https://avatars.githubusercontent.com/u/181623002?size=100)](https://github.com/BeriMedia)
+[![Qvalia](https://avatars.githubusercontent.com/u/12028907?size=100)](https://github.com/Qvalia)
 [![Munawwar](https://avatars.githubusercontent.com/Munawwar?size=100)](https://github.com/munawwar)
 [![syntaxfm](https://avatars.githubusercontent.com/syntaxfm?size=100)](https://github.com/syntaxfm)
 [![th3madhack3r](https://avatars.githubusercontent.com/th3madhack3r?size=100)](https://github.com/th3madhack3r)
