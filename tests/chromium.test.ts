@@ -206,6 +206,11 @@ describe("Helper", () => {
       expect(isRunningInAmazonLinux2023(22)).toBe(true);
     });
 
+    it("should return true for AWS Lambda Node.js 24 environment", () => {
+      process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs24.x";
+      expect(isRunningInAmazonLinux2023(24)).toBe(true);
+    });
+
     it("should return true for AWS Lambda JS Runtime Node.js 20 environment", () => {
       delete process.env["AWS_EXECUTION_ENV"];
       process.env["AWS_LAMBDA_JS_RUNTIME"] = "nodejs20.x";
