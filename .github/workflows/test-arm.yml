@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22.x
+          node-version: 24.x
 
       - name: Install Packages
         run: npm ci
@@ -57,6 +57,7 @@ jobs:
         version:
           - 20
           - 22
+          - 24
     steps:
       - name: Checkout
         uses: actions/checkout@v6
