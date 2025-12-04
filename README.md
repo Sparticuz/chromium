@@ -81,7 +81,7 @@ test("Check the page title of example.com", async (t) => {
   const pageTitle = await page.title();
   await browser.close();
 
-  assert.strictEqual(pageTitle, "Example Domain");
+  t.assert.strictEqual(pageTitle, "Example Domain");
 });
 ```
 
@@ -106,7 +106,7 @@ test("Check the page title of example.com", async (t) => {
   const pageTitle = await page.title();
   await browser.close();
 
-  assert.strictEqual(pageTitle, "Example Domain");
+  t.assert.strictEqual(pageTitle, "Example Domain");
 });
 ```
 
