@@ -145,7 +145,6 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
   }
 
   // Vercel: Node 20+ is AL2023 compatible
-  // eslint-disable-next-line sonarjs/prefer-single-boolean-return
   if (process.env["VERCEL"] && nodeMajorVersion >= 20) {
     return true;
   }
