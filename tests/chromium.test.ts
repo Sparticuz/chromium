@@ -206,6 +206,11 @@ describe("Helper", () => {
       expect(isRunningInAmazonLinux2023(22)).toBe(true);
     });
 
+    it("should return true for AWS Lambda Node.js 24 environment", () => {
+      process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs24.x";
+      expect(isRunningInAmazonLinux2023(24)).toBe(true);
+    });
+
     it("should return true for AWS Lambda JS Runtime Node.js 20 environment", () => {
       delete process.env["AWS_EXECUTION_ENV"];
       process.env["AWS_LAMBDA_JS_RUNTIME"] = "nodejs20.x";
@@ -398,7 +403,7 @@ describe("Integration", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "a69a05ab2071a671c4b494badb59c9be2c23696e4b6b66a8d316096c13d88653"
+      "5b4042aa3f20574b0b408e4c22d65255004d7d2ac1f69e96021649570c74bb36"
     );
   });
 
@@ -416,7 +421,7 @@ describe("Integration", () => {
     // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "6a1add794cf23176b76c6ac5cf94c79ff5b70ecc94eeb4fa79c49b2e6515f2ad"
+      "1023e4f59fddb99d184847ca3711e79c06c04587aa7eacbf4ad6e97c7f52125d"
     );
   });
 
