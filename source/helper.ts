@@ -136,16 +136,18 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
   if (
     awsExecEnv.includes("20.x") ||
     awsExecEnv.includes("22.x") ||
+    awsExecEnv.includes("24.x") ||
     awsLambdaJsRuntime.includes("20.x") ||
     awsLambdaJsRuntime.includes("22.x") ||
+    awsLambdaJsRuntime.includes("24.x") ||
     codebuildImage.includes("nodejs20") ||
-    codebuildImage.includes("nodejs22")
+    codebuildImage.includes("nodejs22") ||
+    codebuildImage.includes("nodejs24")
   ) {
     return true;
   }
 
   // Vercel: Node 20+ is AL2023 compatible
-  // eslint-disable-next-line sonarjs/prefer-single-boolean-return
   if (process.env["VERCEL"] && nodeMajorVersion >= 20) {
     return true;
   }
