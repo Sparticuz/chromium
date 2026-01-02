@@ -5,6 +5,10 @@ on:
     tags:
       - "*"
 
+permissions:
+  id-token: write # Required for OIDC, npm publishing
+  contents: read
+
 jobs:
   release:
     name: Build and release
@@ -18,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24.x
+          node-version: 24
           registry-url: https://registry.npmjs.org/
 
       - run: npm ci
@@ -29,7 +33,7 @@ jobs:
         run: cp -R bin/x64/* bin
 
       - name: Release chromium on npmjs
-        run: npm publish
+        run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
@@ -55,7 +59,7 @@ jobs:
           npm install
 
       - name: Release chromium-min on npmjs
-        run: npm publish
+        run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
