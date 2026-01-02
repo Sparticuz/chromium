@@ -1,12 +1,9 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { URL } from "node:url";
 
 import {
-  createSymlink,
   downloadAndExtract,
-  downloadFile,
   isRunningInAmazonLinux2023,
   isValidUrl,
   setupLambdaEnvironment,
@@ -171,59 +168,6 @@ class Chromium {
     // Returns the first result of the promise, which is the location of the `chromium` binary
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return result.shift()!;
-  }
-
-  /**
-   * Downloads or symlinks a custom font and returns its basename, patching the environment so that Chromium can find it.
-   */
-  static async font(input: string): Promise<string> {
-    const fontsDir =
-      process.env["FONTCONFIG_PATH"] ??
-      join(process.env["HOME"] ?? tmpdir(), ".fonts");
-
-    // Create fonts directory if it doesn't exist
-    if (!existsSync(fontsDir)) {
-      mkdirSync(fontsDir);
-    }
-
-    // Convert local path to file URL if needed
-    if (!/^https?:\/\//i.test(input)) {
-      input = `file://${input}`;
-    }
-
-    const url = new URL(input);
-    const fontName = url.pathname.split("/").pop();
-
-    if (!fontName) {
-      throw new Error(`Invalid font name: ${url.pathname}`);
-    }
-    const outputPath = `${fontsDir}/${fontName}`;
-
-    // Return font name if it already exists
-    if (existsSync(outputPath)) {
-      return fontName;
-    }
-
-    // Handle local file
-    if (url.protocol === "file:") {
-      try {
-        await createSymlink(url.pathname, outputPath);
-        return fontName;
-      } catch (error) {
-        throw new Error(
-          `Failed to create symlink for font: ${JSON.stringify(error)}`
-        );
-      }
-    }
-    // Handle remote file
-    else {
-      try {
-        await downloadFile(input, outputPath);
-        return fontName;
-      } catch (error) {
-        throw new Error(`Failed to download font: ${JSON.stringify(error)}`);
-      }
-    }
   }
 }
 

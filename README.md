@@ -55,11 +55,6 @@ const chromium = require("@sparticuz/chromium");
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
 
-// Optional: Load any fonts you need.
-await chromium.font(
-  "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
-);
-
 test("Check the page title of example.com", async (t) => {
   const viewport = {
     deviceScaleFactor: 1,
@@ -296,7 +291,9 @@ index b42c740..49111d7 100644
 ```
 
 ### Can I use a language other than Javascript (NodeJS)?
+
 Yes, you will need to write your own Brotli extraction algorithm and args inclusion. (Basically, rewrite the typescript files). The binaries, once extracted, will work with any language.
+
 - C Sharp: https://github.com/Podginator/lambda-chromium-playwright-CSharp/tree/main
 
 ## Fonts
@@ -309,25 +306,7 @@ Because of this, this package ships with [Open Sans](https://fonts.google.com/sp
 - Greek
 - Cyrillic
 
-To provision additional fonts, call the `font()` method with an absolute path or URL:
-
-```typescript
-await chromium.font("/var/task/fonts/NotoColorEmoji.ttf");
-// or
-await chromium.font(
-  "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
-);
-```
-
-> `Noto Color Emoji` (or similar) is needed if you want to [render emojis](https://getemoji.com/).
-
-> For URLs, it's recommended that you use a CDN, such as [raw.githack.com](https://raw.githack.com/) or [gitcdn.xyz](https://gitcdn.xyz/).
-
-This method should be invoked _before_ launching Chromium.
-
----
-
-Alternatively, you can also provision fonts via AWS Lambda Layers.
+You can provision additional fonts via AWS Lambda Layers.
 
 Create a directory named `.fonts` or `fonts` and place any font faces you want there:
 
@@ -358,7 +337,6 @@ By default, this package uses `swiftshader`/`angle` to do CPU acceleration for W
 
 | Method / Property                   | Returns           | Description                                                                                                                                             |
 | ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `font(url)`                         | `Promise<string>` | Provisions a custom font and returns its basename.                                                                                                      |
 | `args`                              | `Array<string>`   | Provides a list of recommended additional [Chromium flags](https://github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md). |
 | `executablePath(location?: string)` | `Promise<string>` | Returns the path where the Chromium binary was extracted.                                                                                               |
 | `setGraphicsMode`                   | `void`            | Sets the graphics mode to either `true` or `false`.                                                                                                     |
