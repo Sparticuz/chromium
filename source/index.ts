@@ -1,12 +1,9 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { URL } from "node:url";
 
 import {
-  createSymlink,
   downloadAndExtract,
-  downloadFile,
   isRunningInAmazonLinux2023,
   isValidUrl,
   setupLambdaEnvironment,

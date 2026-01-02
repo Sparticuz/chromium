@@ -56,7 +56,7 @@ export const handler = async (
               true
             ) {
               await page.evaluate((selector) => {
-                // eslint-disable-next-line unicorn/prefer-query-selector
+                // eslint-disable-next-line unicorn/prefer-query-selector, no-undef
                 document.getElementById(selector)?.remove();
               }, job.expected.remove);
             }
