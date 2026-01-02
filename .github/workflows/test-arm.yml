@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24.x
 
@@ -41,7 +41,7 @@ jobs:
         run: make chromium.arm64.zip
 
       - name: Upload Layer Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: chromium.arm64.zip
           path: chromium.arm64.zip
@@ -71,7 +71,7 @@ jobs:
         uses: aws-actions/setup-sam@v2
 
       - name: Download Layer Artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: chromium.arm64.zip
 

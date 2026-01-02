@@ -301,10 +301,13 @@ describe("Helper", () => {
 
         // Check that the file was extracted successfully
         if (filePath.includes("swiftshader")) {
+          // eslint-disable-next-line vitest/no-conditional-expect
           expect(existsSync(join(tmpdir(), "libGLESv2.so"))).toBe(true);
         } else if (filePath.includes("aws")) {
+          // eslint-disable-next-line vitest/no-conditional-expect
           expect(existsSync(join(tmpdir(), "aws", "fonts.conf"))).toBe(true);
         } else if (filePath.includes("chromium")) {
+          // eslint-disable-next-line vitest/no-conditional-expect
           expect(existsSync(join(tmpdir(), "chromium"))).toBe(true);
         }
       }
@@ -400,7 +403,6 @@ describe("Integration", () => {
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(
       "base64"
     )}`;
-    // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
       "5b4042aa3f20574b0b408e4c22d65255004d7d2ac1f69e96021649570c74bb36"
@@ -418,7 +420,6 @@ describe("Integration", () => {
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(
       "base64"
     )}`;
-    // console.log(base64Screenshot);
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
       "1023e4f59fddb99d184847ca3711e79c06c04587aa7eacbf4ad6e97c7f52125d"
