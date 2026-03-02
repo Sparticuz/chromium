@@ -41,7 +41,7 @@ jobs:
         run: make chromium.x64.zip
 
       - name: Upload Layer Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: chromium.x64.zip
           path: chromium.x64.zip
