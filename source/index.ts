@@ -12,7 +12,7 @@ import { inflate } from "./lambdafs.js";
 import { getBinPath } from "./paths.esm.js";
 
 const nodeMajorVersion = Number.parseInt(
-  process.versions.node.split(".")[0] ?? ""
+  process.versions.node.split(".")[0] ?? "",
 );
 
 // Setup the lambda environment
@@ -56,7 +56,7 @@ class Chromium {
         // As the unsafe WebGL fallback, SwANGLE (ANGLE + SwiftShader Vulkan)
         "--use-gl=angle",
         "--use-angle=swiftshader",
-        "--enable-unsafe-swiftshader"
+        "--enable-unsafe-swiftshader",
       );
     } else {
       graphicsFlags.push("--disable-webgl");
@@ -102,7 +102,7 @@ class Chromium {
   public static set setGraphicsMode(value: boolean) {
     if (typeof value !== "boolean") {
       throw new TypeError(
-        `Graphics mode must be a boolean, you entered '${String(value)}'`
+        `Graphics mode must be a boolean, you entered '${String(value)}'`,
       );
     }
     this.graphicsMode = value;
@@ -149,7 +149,7 @@ class Chromium {
      */
     if (!existsSync(input)) {
       throw new Error(
-        `The input directory "${input}" does not exist. Please provide the location of the brotli files.`
+        `The input directory "${input}" does not exist. Please provide the location of the brotli files.`,
       );
     }
 

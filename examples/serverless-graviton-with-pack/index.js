@@ -8,7 +8,7 @@ module.exports = {
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(
-          "https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.arm64.tar"
+          "https://github.com/Sparticuz/chromium/releases/download/v135.0.0-next.3/chromium-v135.0.0-next.3-pack.arm64.tar",
         ),
         headless: chromium.headless,
         ignoreHTTPSErrors: true,

@@ -73,6 +73,7 @@
     "@vitest/coverage-v8": "^4.1.4",
     "clean-modules": "^3.1.1",
     "eslint": "^9.39.4",
+    "prettier": "^3.8.2",
     "puppeteer-core": "^24.40.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.1",
