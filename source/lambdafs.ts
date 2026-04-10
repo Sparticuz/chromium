@@ -11,15 +11,16 @@ import { extract } from "tar-fs";
  */
 export const inflate = (filePath: string): Promise<string> => {
   // Determine the output path based on the file type
-  const output = filePath.includes("swiftshader")
-    ? tmpdir()
-    : join(
+  const output =
+    filePath.includes("swiftshader") ? tmpdir() : (
+      join(
         tmpdir(),
         basename(filePath).replace(
           /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i,
-          ""
-        )
-      );
+          "",
+        ),
+      )
+    );
 
   return new Promise((resolve, reject) => {
     // Quick return if the file is already decompressed
@@ -72,8 +73,9 @@ export const inflate = (filePath: string): Promise<string> => {
     if (isBrotli || isGzip) {
       // Use optimized chunk size for decompression
       // 2MB (2**21) is sufficient for most brotli/gzip files
-      const decompressor = isBrotli
-        ? createBrotliDecompress({ chunkSize: 2 ** 21 })
+      const decompressor =
+        isBrotli ?
+          createBrotliDecompress({ chunkSize: 2 ** 21 })
         : createUnzip({ chunkSize: 2 ** 21 });
 
       // Handle decompressor errors

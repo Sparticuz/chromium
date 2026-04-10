@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 async function updateDevToolsProtocolVersion() {
   // eslint-disable-next-line n/no-unsupported-features/node-builtins
   const result = await fetch(
-    "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json"
+    "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json",
   );
   const { channels } = await result.json();
 
@@ -30,11 +30,11 @@ async function updateInventoryFile(filePath, newRevision) {
     const data = await readFile(filePath, "utf8");
     const updatedData = data.replace(
       /^(chromium_revision=).*$/m,
-      `$1${newRevision}`
+      `$1${newRevision}`,
     );
     await writeFile(filePath, updatedData, "utf8");
     console.log(
-      `Successfully updated ${filePath} with revision ${newRevision}`
+      `Successfully updated ${filePath} with revision ${newRevision}`,
     );
   } catch (error) {
     console.error(`Error updating inventory file: ${error}`);
@@ -48,7 +48,7 @@ const stableChannelInfo = await updateDevToolsProtocolVersion();
 const { revision, version } = stableChannelInfo;
 
 console.log(
-  `Fetched stable Chromium revision for Chromium ${version}: ${revision}`
+  `Fetched stable Chromium revision for Chromium ${version}: ${revision}`,
 );
 
 const inventoryPath = resolve(__dirname, "../_/ansible/inventory.ini");

@@ -162,7 +162,7 @@ const browser = await puppeteer.launch({
   args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath(
-    "https://www.example.com/chromiumPack.tar"
+    "https://www.example.com/chromiumPack.tar",
   ),
   headless: "shell",
 });
@@ -203,12 +203,14 @@ const viewport = {
 };
 const headlessType = process.env.IS_LOCAL ? false : "shell";
 const browser = await puppeteer.launch({
-  args: process.env.IS_LOCAL
-    ? puppeteer.defaultArgs()
+  args:
+    process.env.IS_LOCAL ?
+      puppeteer.defaultArgs()
     : puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
   defaultViewport: viewport,
-  executablePath: process.env.IS_LOCAL
-    ? "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
+  executablePath:
+    process.env.IS_LOCAL ?
+      "/tmp/localChromium/chromium/linux-1122391/chrome-linux/chrome"
     : await chromium.executablePath(),
   headless: headlessType,
 });

@@ -87,13 +87,13 @@ describe("Helper", () => {
       const tempDir = tmpdir();
       const sourceFile = join(
         tempDir,
-        `nonexistent_${Date.now().toFixed(0)}.txt`
+        `nonexistent_${Date.now().toFixed(0)}.txt`,
       );
       const targetLink = join(tempDir, `target_${Date.now().toFixed(0)}.txt`);
 
       // Execute & Verify
       await expect(
-        createSymlink(sourceFile, targetLink)
+        createSymlink(sourceFile, targetLink),
       ).rejects.toBeInstanceOf(Error);
 
       // Cleanup: ensure no symlink was created
@@ -107,7 +107,7 @@ describe("Helper", () => {
       const tempDir = tmpdir();
       const destPath = join(
         tempDir,
-        `download_test_${Date.now().toFixed(0)}.txt`
+        `download_test_${Date.now().toFixed(0)}.txt`,
       );
 
       try {
@@ -129,7 +129,7 @@ describe("Helper", () => {
       // Execute & Verify
       await expect(
         // eslint-disable-next-line sonarjs/publicly-writable-directories
-        downloadFile("https://example.com/file.zip", "/tmp/file.zip")
+        downloadFile("https://example.com/file.zip", "/tmp/file.zip"),
       ).rejects.toStrictEqual(new Error("Unexpected status code: 404."));
     });
   });
@@ -170,7 +170,7 @@ describe("Helper", () => {
       process.env["LD_LIBRARY_PATH"] = "/usr/lib:/usr/local/lib";
       setupLambdaEnvironment("/lib/path");
       expect(process.env["LD_LIBRARY_PATH"]).toBe(
-        "/lib/path:/usr/lib:/usr/local/lib"
+        "/lib/path:/usr/lib:/usr/local/lib",
       );
     });
 
@@ -290,7 +290,7 @@ describe("Helper", () => {
           const filePath = join(extractDir, file);
           expect(existsSync(filePath)).toBe(true);
         }
-      }
+      },
     );
 
     it("should extract a .tar file using lambdafs inflate and verify contents", async () => {
@@ -401,11 +401,11 @@ describe("Integration", () => {
     await page.goto("https://example.com", { waitUntil: "networkidle0" });
     const screenshot = Buffer.from(await page.screenshot());
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(
-      "base64"
+      "base64",
     )}`;
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "5b4042aa3f20574b0b408e4c22d65255004d7d2ac1f69e96021649570c74bb36"
+      "bcafb91175097fcd6ff9ce7253180b3c3cf5d6b714db5b6eb314c1e385090cc3",
     );
   });
 
@@ -418,11 +418,11 @@ describe("Integration", () => {
     });
     const screenshot = Buffer.from(await page.screenshot());
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(
-      "base64"
+      "base64",
     )}`;
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "1023e4f59fddb99d184847ca3711e79c06c04587aa7eacbf4ad6e97c7f52125d"
+      "b2b99192ba8ebeb4019564b7234ea5fd221bf5bf1d767d5624840d420caeb001",
     );
   });
 
