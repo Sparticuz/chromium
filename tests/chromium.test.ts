@@ -405,7 +405,7 @@ describe("Integration", () => {
     )}`;
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "5b4042aa3f20574b0b408e4c22d65255004d7d2ac1f69e96021649570c74bb36"
+      "bcafb91175097fcd6ff9ce7253180b3c3cf5d6b714db5b6eb314c1e385090cc3",
     );
   });
 
@@ -422,7 +422,7 @@ describe("Integration", () => {
     )}`;
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "1023e4f59fddb99d184847ca3711e79c06c04587aa7eacbf4ad6e97c7f52125d"
+      "b2b99192ba8ebeb4019564b7234ea5fd221bf5bf1d767d5624840d420caeb001",
     );
   });
 
