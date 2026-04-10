@@ -1,5 +1,8 @@
 {
-  "extends": ["@tsconfig/node20/tsconfig", "@tsconfig/strictest"],
+  "extends": [
+    "@tsconfig/node20/tsconfig.json",
+    "@tsconfig/strictest/tsconfig.json"
+  ],
   "compilerOptions": {
     "declaration": true,
     "lib": ["dom", "ES2023"],
@@ -14,6 +17,7 @@
     "vitest.config.ts",
     "eslint.config.js",
     "tools",
-    "_/amazon/handlers"
+    "_/amazon/handlers",
+    "tsup.config.js"
   ]
 }
