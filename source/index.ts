@@ -9,7 +9,7 @@ import {
   setupLambdaEnvironment,
 } from "./helper.js";
 import { inflate } from "./lambdafs.js";
-import { getBinPath } from "./paths.esm.js";
+import { getBinPath } from "./paths.js";
 
 const nodeMajorVersion = Number.parseInt(
   process.versions.node.split(".")[0] ?? "",

@@ -32,7 +32,7 @@ import {
 } from "../source/helper.js";
 import chromium from "../source/index.js";
 import { inflate } from "../source/lambdafs.js";
-import { getBinPath } from "../source/paths.esm.js";
+import { getBinPath } from "../source/paths.js";
 
 describe("Helper", () => {
   // Save original environment and restore after each test

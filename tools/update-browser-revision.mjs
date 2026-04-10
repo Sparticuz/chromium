@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function updateDevToolsProtocolVersion() {
+async function getStableChromeVersion() {
   // eslint-disable-next-line n/no-unsupported-features/node-builtins
   const result = await fetch(
     "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json",
@@ -44,7 +44,7 @@ async function updateInventoryFile(filePath, newRevision) {
 /**
  * The Command block
  */
-const stableChannelInfo = await updateDevToolsProtocolVersion();
+const stableChannelInfo = await getStableChromeVersion();
 const { revision, version } = stableChannelInfo;
 
 console.log(
