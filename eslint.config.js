@@ -24,5 +24,5 @@ export default tseslint.config(
       "security/detect-non-literal-fs-filename": "off",
       "unicorn/prevent-abbreviations": "off",
     },
-  }
+  },
 );

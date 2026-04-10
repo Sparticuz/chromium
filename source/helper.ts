@@ -13,7 +13,7 @@ interface FollowRedirOptions extends URL {
  */
 export const createSymlink = (
   source: string,
-  target: string
+  target: string,
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
     access(source, (error) => {
@@ -39,7 +39,7 @@ export const createSymlink = (
  */
 export const downloadFile = (
   url: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
     const stream = createWriteStream(outputPath);
@@ -54,8 +54,8 @@ export const downloadFile = (
               /* c8 ignore next 2 */
               `Unexpected status code: ${
                 response.statusCode?.toFixed(0) ?? "UNK"
-              }.`
-            )
+              }.`,
+            ),
           );
           return;
         }
@@ -188,8 +188,8 @@ export const downloadAndExtract = async (url: string) => {
           new Error(
             `Unexpected status code: ${
               response.statusCode?.toFixed(0) ?? "UNK"
-            }.`
-          )
+            }.`,
+          ),
         );
         return;
       }

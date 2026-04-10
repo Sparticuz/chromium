@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import puppeteer from "puppeteer-core";
 
 export const handler = async (
-  /** @type {{url: string; expected: {title: string; remove: string; screenshot: string}}[]} */ event
+  /** @type {{url: string; expected: {title: string; remove: string; screenshot: string}}[]} */ event,
   // eslint-disable-next-line sonarjs/cognitive-complexity
 ) => {
   let browser = null;
@@ -43,7 +43,7 @@ export const handler = async (
           ) {
             ok(
               (await page.title()) === job.expected.title,
-              `Title assertion failed.`
+              `Title assertion failed.`,
             );
           }
 
@@ -62,13 +62,13 @@ export const handler = async (
             }
             const screenshot = Buffer.from(await page.screenshot());
             const base64 = `data:image/png;base64,${screenshot.toString(
-              "base64"
+              "base64",
             )}`;
             const hash = createHash("sha256").update(base64).digest("hex");
             // console.log(base64, hash);
             ok(
               hash === job.expected.screenshot,
-              `Screenshot assertion failed.`
+              `Screenshot assertion failed.`,
             );
           }
         }

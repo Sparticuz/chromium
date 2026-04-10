@@ -1,5 +1,5 @@
-import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 
 export const lambdaHandler = async (event, context) => {
   const browser = await puppeteer.launch({
@@ -20,5 +20,5 @@ export const lambdaHandler = async (event, context) => {
 
   await browser.close();
 
-  return { result: 'success', browserVersion, pageTitle };
-}
+  return { result: "success", browserVersion, pageTitle };
+};
