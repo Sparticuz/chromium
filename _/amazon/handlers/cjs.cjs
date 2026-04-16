@@ -77,8 +77,7 @@ exports.handler = async (
       }
     }
   } catch (error) {
-    // @ts-expect-error It's an error
-    throw error.message;
+    throw error;
   } finally {
     if (browser !== null) {
       for (const page of await browser.pages()) {

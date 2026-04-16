@@ -34,7 +34,7 @@ define build-zip
 	npm install --prefix nodejs/ tar-fs@3.1.2 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	cp -R bin/$(1)/* bin
 	npm pack
-	rm bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
+	rm -f bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
 	mkdir -p nodejs/node_modules/@sparticuz/chromium/
 	tar --directory nodejs/node_modules/@sparticuz/chromium/ --extract --file sparticuz-chromium-*.tgz --strip-components=1
 	npx clean-modules --directory nodejs "**/*.d.ts" "**/@types/**" "**/*.@(yaml|yml)" --yes
