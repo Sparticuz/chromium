@@ -14,9 +14,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import puppeteer from "puppeteer-core";
 
-import { setupLambdaEnvironment } from "../build/esm/helper.js";
-import chromium from "../build/esm/index.js";
-import { inflate } from "../build/esm/lambdafs.js";
+import chromium, {
+  inflate,
+  setupLambdaEnvironment,
+} from "../build/esm/index.js";
 
 const OUTPUT_DIR = process.argv[2];
 if (!OUTPUT_DIR) {
