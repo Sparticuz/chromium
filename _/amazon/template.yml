@@ -55,3 +55,16 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
       Tracing: Active
+  node24cjs:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref layer
+      Handler: handlers/cjs.handler
+      Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess
+      Tracing: Active

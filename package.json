@@ -48,7 +48,7 @@
     "build"
   ],
   "scripts": {
-    "build": "chmod +x ./tools/build.sh && ./tools/build.sh",
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly --outDir build/esm",
     "build:fonts": "rm bin/fonts.tar.br && node ./tools/download-open-sans.mjs",
     "layer:x64": "make chromium-layer.x64.zip",
     "layer:arm64": "make chromium-layer.arm64.zip",
@@ -75,6 +75,7 @@
     "eslint": "^9.39.4",
     "prettier": "^3.8.2",
     "puppeteer-core": "^24.40.0",
+    "tsup": "^8.5.1",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.1",
     "vitest": "^4.1.4"
