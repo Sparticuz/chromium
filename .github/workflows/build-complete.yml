@@ -90,7 +90,7 @@ jobs:
           gh pr comment "${PR_NUMBER}" --repo "${{ github.repository }}" --body "## Build Complete
 
           Chromium revision \`${REVISION}\` (Chrome ${CHROME_VERSION}) built successfully.
-          Binaries are available in S3. Tests will run automatically.
+          Binaries are available in S3. When ready to run tests, add the \`binaries:test\` label.
 
           | Architecture | Artifact | Size |
           |---|---|---|
