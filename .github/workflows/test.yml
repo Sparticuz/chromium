@@ -117,7 +117,7 @@ jobs:
           mkdir -p bin/${{ matrix.arch }}
 
           # Download arch-specific binaries
-          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json"
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json" --exclude "*.png"
 
           # Download fonts
           aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
@@ -255,7 +255,7 @@ jobs:
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
           mkdir -p bin/${{ matrix.arch }}
-          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json"
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json" --exclude "*.png"
           aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
           cp bin/${{ matrix.arch }}/* bin/ 2>/dev/null || true
 
