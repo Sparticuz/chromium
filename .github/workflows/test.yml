@@ -1,0 +1,805 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    types: [labeled]
+
+jobs:
+  check-trigger:
+    name: Check Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+      is_pr: ${{ steps.gate.outputs.is_pr }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine if tests should run
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          EVENT="${{ github.event_name }}"
+
+          if [ "$EVENT" = "push" ]; then
+            echo "Push event — running tests"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "is_pr=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LABEL="${{ github.event.label.name }}"
+          if [ "$LABEL" != "binaries:test" ]; then
+            echo "Label '${LABEL}' is not 'binaries:test' — skipping"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "is_pr=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Label 'binaries:test' added — running tests"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "is_pr=true" >> "$GITHUB_OUTPUT"
+
+          REPO="${{ github.repository }}"
+
+          # Swap labels: remove trigger + stale states, add testing
+          for LABEL_RM in "binaries:test" "binaries:failed"; do
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels/${LABEL_RM}" -X DELETE 2>/dev/null || true
+          done
+          gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" -f "labels[]=binaries:testing"
+
+          # Update PR checklist
+          BODY=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq .body)
+          CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
+          PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
+
+          if [ -z "$CURRENT_REV" ] || [ -z "$PREV_REV" ]; then
+            echo "::warning::Could not extract revision numbers from PR body — skipping checklist update"
+          else
+            # Preserve the binary size info if present
+            SIZE_LINE=$(echo "$BODY" | grep -oP 'Binaries built and uploaded to S3.*' | head -1)
+            if [ -z "$SIZE_LINE" ]; then
+              SIZE_LINE="Binaries built and uploaded to S3"
+            fi
+
+            NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [x] ${SIZE_LINE}
+          - [x] Tests started
+          - [ ] Tests and visual regression passed ← testing..."
+
+            UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --body "$UPDATED"
+          fi
+
+  build:
+    name: Build & Test (${{ matrix.arch }})
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get chromium revision
+        id: revision
+        run: |
+          REVISION=$(cat _/ec2/revision.txt)
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+
+      - name: Download binaries from S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+          S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          mkdir -p bin/${{ matrix.arch }}
+
+          # Download arch-specific binaries
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json"
+
+          # Download fonts
+          aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
+
+          # Copy to bin root for tests
+          cp bin/${{ matrix.arch }}/* bin/ 2>/dev/null || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install Packages
+        run: npm ci
+
+      - name: Run Source Tests
+        run: npm run test:source
+
+      - name: Report Coverage
+        if: matrix.arch == 'x64'
+        uses: davelosert/vitest-coverage-report-action@v2
+
+      - name: Compile Typescript
+        run: npm run build
+
+      - name: Create Lambda Layer
+        run: make chromium.${{ matrix.arch }}.zip
+
+      - name: Upload Layer Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: chromium.${{ matrix.arch }}.zip
+          path: chromium.${{ matrix.arch }}.zip
+
+  execute:
+    name: Lambda ${{ matrix.arch }} (${{ matrix.label }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+        function: [node22, node24]
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+          - function: node22
+            label: Node 22.x ESM
+          - function: node24
+            label: Node 24.x ESM
+          - arch: x64
+            function: node24cjs
+            label: Node 24.x CJS
+            runner: ubuntu-latest
+          - arch: arm64
+            function: node24cjs
+            label: Node 24.x CJS
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.13
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Download Layer Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: chromium.${{ matrix.arch }}.zip
+
+      - name: Provision Layer
+        run: unzip chromium.${{ matrix.arch }}.zip -d _/amazon/code
+
+      - name: Install test dependencies
+        run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+
+      - name: Patch template for arm64
+        if: matrix.arch == 'arm64'
+        run: sed -i 's/x86_64/arm64/g' _/amazon/template.yml
+
+      - name: Invoke Lambda on SAM
+        env:
+          SAM_FUNCTION: ${{ matrix.function }}
+        run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json "$SAM_FUNCTION" 2>&1 | (grep 'Error' && exit 1 || exit 0)
+
+  visual-regression:
+    name: Visual Regression (${{ matrix.arch }})
+    needs: [check-trigger, build]
+    if: needs.check-trigger.outputs.is_pr == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Need origin/master for baseline resolution
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Get chromium revision
+        id: revision
+        run: |
+          REVISION=$(cat _/ec2/revision.txt)
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+
+      - name: Download binaries from S3
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          mkdir -p bin/${{ matrix.arch }}
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" bin/${{ matrix.arch }}/ --exclude "*.json"
+          aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
+          cp bin/${{ matrix.arch }}/* bin/ 2>/dev/null || true
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install --no-save odiff-bin
+
+      - name: Build package
+        run: npm run build
+
+      - name: Take screenshots
+        run: node tools/visual-regression.mjs /tmp/screenshots/current
+
+      - name: Upload current screenshots to S3
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          aws s3 sync /tmp/screenshots/current/ "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" \
+            --exclude "manifest.json"
+
+      - name: Update revision manifest with screenshot hashes
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          ARCH="${{ matrix.arch }}"
+          MANIFEST_S3="s3://${S3_BUCKET}/${REVISION}/manifest.json"
+          MANIFEST_TMP="/tmp/manifest-update.json"
+
+          aws s3 cp "$MANIFEST_S3" "$MANIFEST_TMP" 2>/dev/null || echo '{}' > "$MANIFEST_TMP"
+
+          # Merge screenshot hashes into arch.screenshots
+          jq --arg arch "$ARCH" --slurpfile vr /tmp/screenshots/current/manifest.json '
+            .[$arch] //= {} |
+            .[$arch].screenshots = ($vr[0] | to_entries | map({(.key): .value.hash}) | add)
+          ' "$MANIFEST_TMP" > "${MANIFEST_TMP}.new" && mv "${MANIFEST_TMP}.new" "$MANIFEST_TMP"
+
+          aws s3 cp "$MANIFEST_TMP" "$MANIFEST_S3"
+
+      - name: Resolve baseline revision
+        id: baseline
+        run: |
+          # Read master's revision as the baseline
+          BASELINE_REV=$(git show origin/master:_/ec2/revision.txt 2>/dev/null || echo "")
+          if [ -z "$BASELINE_REV" ]; then
+            echo "Could not read revision.txt from master"
+            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_REV="${{ steps.revision.outputs.revision }}"
+          if [ "$BASELINE_REV" = "$CURRENT_REV" ]; then
+            echo "Current revision matches master — no baseline comparison needed"
+            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Check if baseline screenshots exist in S3
+          if aws s3 ls "s3://${S3_BUCKET}/${BASELINE_REV}/${{ matrix.arch }}/example.com.png" >/dev/null 2>&1; then
+            echo "Baseline found: master (revision ${BASELINE_REV})"
+            echo "has_baseline=true" >> "$GITHUB_OUTPUT"
+            echo "revision=${BASELINE_REV}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No baseline screenshots in S3 for ${BASELINE_REV}"
+            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download baseline screenshots
+        if: steps.baseline.outputs.has_baseline == 'true'
+        run: |
+          mkdir -p /tmp/screenshots/baseline
+          aws s3 sync "s3://${S3_BUCKET}/${{ steps.baseline.outputs.revision }}/${{ matrix.arch }}/" \
+            /tmp/screenshots/baseline/ --exclude "*.json" --exclude "*-diff.png" --exclude "*.br"
+
+      - name: Run odiff comparison
+        if: steps.baseline.outputs.has_baseline == 'true'
+        id: diff
+        run: |
+          mkdir -p /tmp/screenshots/diff
+          DIFF_RESULTS=""
+
+          for PAGE in example.com webgl; do
+            BASELINE="/tmp/screenshots/baseline/${PAGE}.png"
+            CURRENT="/tmp/screenshots/current/${PAGE}.png"
+            DIFF_OUT="/tmp/screenshots/diff/${PAGE}-diff.png"
+
+            if [ ! -f "$BASELINE" ]; then
+              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|no-baseline|0|0\n"
+              continue
+            fi
+
+            # Run odiff — exit code 0=match, 1=diff, 2=error
+            RESULT=$(npx odiff "$BASELINE" "$CURRENT" "$DIFF_OUT" 2>&1) || true
+            DIFF_COUNT=$(echo "$RESULT" | grep -oP 'diffCount:\s*\K\d+' || echo "0")
+            DIFF_PCT=$(echo "$RESULT" | grep -oP 'diffPercentage:\s*\K[\d.]+' || echo "0")
+
+            # Check if diff image was created (only created if pixels differ)
+            if [ -f "$DIFF_OUT" ]; then
+              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|changed|${DIFF_COUNT}|${DIFF_PCT}\n"
+            else
+              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|match|0|0.00\n"
+            fi
+          done
+
+          echo "results<<EOF" >> "$GITHUB_OUTPUT"
+          printf '%b' "$DIFF_RESULTS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload diff images to S3
+        if: steps.baseline.outputs.has_baseline == 'true'
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          if ls /tmp/screenshots/diff/*-diff.png 1>/dev/null 2>&1; then
+            aws s3 sync /tmp/screenshots/diff/ "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" \
+              --exclude "*" --include "*-diff.png"
+          fi
+
+      - name: Generate pre-signed URLs
+        id: urls
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          BASELINE_REV="${{ steps.baseline.outputs.revision }}"
+          HAS_BASELINE="${{ steps.baseline.outputs.has_baseline }}"
+          ARCH="${{ matrix.arch }}"
+          URLS=""
+          EXPIRES=604800  # 7 days
+
+          presign() {
+            local S3_KEY="$1" VAR_NAME="$2"
+            URL=$(aws s3 presign "s3://${S3_BUCKET}/${S3_KEY}" --expires-in "$EXPIRES" 2>/dev/null) || return 1
+            URLS="${URLS}${VAR_NAME}=${URL}\n"
+          }
+
+          for PAGE in example.com webgl; do
+            SAFE="${PAGE//./_}"
+            presign "${REVISION}/${ARCH}/${PAGE}.png" "${SAFE}_current" || true
+
+            if [ "$HAS_BASELINE" = "true" ] && [ -n "$BASELINE_REV" ]; then
+              presign "${BASELINE_REV}/${ARCH}/${PAGE}.png" "${SAFE}_baseline" || true
+              # Only presign diff if one was actually generated
+              if [ -f "/tmp/screenshots/diff/${PAGE}-diff.png" ]; then
+                presign "${REVISION}/${ARCH}/${PAGE}-diff.png" "${SAFE}_diff" || true
+              fi
+            fi
+          done
+
+          printf '%b' "$URLS" > /tmp/screenshots/urls.txt
+
+      - name: Post PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          BASELINE_REV="${{ steps.baseline.outputs.revision }}"
+          MANIFEST=$(cat /tmp/screenshots/current/manifest.json)
+
+          # Parse URLs into env vars
+          while IFS='=' read -r KEY VAL; do
+            [ -n "$KEY" ] && export "URL_${KEY}=${VAL}"
+          done < /tmp/screenshots/urls.txt
+
+          # Read current hashes
+          EXAMPLE_HASH=$(echo "$MANIFEST" | jq -r '.["example.com"].hash')
+          WEBGL_HASH=$(echo "$MANIFEST" | jq -r '.webgl.hash')
+
+          if [ "$HAS_BASELINE" = "true" ]; then
+            BASELINE_MANIFEST=$(aws s3 cp "s3://${S3_BUCKET}/${BASELINE_REV}/manifest.json" - 2>/dev/null || echo '{}')
+            BASELINE_EXAMPLE_HASH=$(echo "$BASELINE_MANIFEST" | jq -r ".${{ matrix.arch }}.screenshots[\"example.com\"] // \"n/a\"")
+            BASELINE_WEBGL_HASH=$(echo "$BASELINE_MANIFEST" | jq -r ".${{ matrix.arch }}.screenshots.webgl // \"n/a\"")
+
+            # Determine status
+            EXAMPLE_STATUS="Match"
+            if [ "$EXAMPLE_HASH" != "$BASELINE_EXAMPLE_HASH" ]; then EXAMPLE_STATUS="Changed"; fi
+            WEBGL_STATUS="Match"
+            if [ "$WEBGL_HASH" != "$BASELINE_WEBGL_HASH" ]; then WEBGL_STATUS="Changed"; fi
+
+            # Build image table rows
+            EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) | ![current](${URL_example_com_current})"
+            if [ -n "${URL_example_com_diff:-}" ]; then
+              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
+            else
+              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
+            fi
+            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
+
+            WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) | ![current](${URL_webgl_current})"
+            if [ -n "${URL_webgl_diff:-}" ]; then
+              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
+            else
+              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
+            fi
+            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
+
+            cat > /tmp/screenshots/comment.md <<EOF
+          ## Visual Regression (${{ matrix.arch }})
+
+          Baseline revision: \`${BASELINE_REV}\` | Current revision: \`${REVISION}\`
+
+          | Page | Baseline | Current | Diff |
+          |------|----------|---------|------|
+          ${EXAMPLE_IMG_ROW}
+          ${WEBGL_IMG_ROW}
+
+          | Page | Baseline Hash | Current Hash | Status |
+          |------|--------------|--------------|--------|
+          | example.com | \`${BASELINE_EXAMPLE_HASH:0:16}...\` | \`${EXAMPLE_HASH:0:16}...\` | ${EXAMPLE_STATUS} |
+          | WebGL | \`${BASELINE_WEBGL_HASH:0:16}...\` | \`${WEBGL_HASH:0:16}...\` | ${WEBGL_STATUS} |
+
+          <details><summary>Full hashes</summary>
+
+          | Page | Hash |
+          |------|------|
+          | example.com (baseline) | \`${BASELINE_EXAMPLE_HASH}\` |
+          | example.com (current) | \`${EXAMPLE_HASH}\` |
+          | WebGL (baseline) | \`${BASELINE_WEBGL_HASH}\` |
+          | WebGL (current) | \`${WEBGL_HASH}\` |
+
+          </details>
+          EOF
+          else
+            cat > /tmp/screenshots/comment.md <<EOF
+          ## Visual Regression (${{ matrix.arch }})
+
+          No baseline screenshots found — first capture for revision \`${REVISION}\`.
+
+          | Page | Screenshot |
+          |------|-----------|
+          | example.com | ![current](${URL_example_com_current}) |
+          | WebGL | ![current](${URL_webgl_current}) |
+
+          | Page | Hash |
+          |------|------|
+          | example.com | \`${EXAMPLE_HASH}\` |
+          | WebGL | \`${WEBGL_HASH}\` |
+          EOF
+          fi
+
+          # Find existing VR comment for this arch and update it, or create new
+          MARKER="## Visual Regression (${{ matrix.arch }})"
+          EXISTING_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${MARKER}\"))) | .id" \
+            | tail -1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_ID}" \
+              -X PATCH -F "body=@/tmp/screenshots/comment.md"
+          else
+            gh pr comment "$PR_NUMBER" --body-file /tmp/screenshots/comment.md
+          fi
+
+  cross-arch-comparison:
+    name: Cross-Architecture Comparison
+    needs: [check-trigger, visual-regression]
+    if: needs.check-trigger.outputs.is_pr == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install odiff
+        run: npm install --no-save odiff-bin
+
+      - name: Get chromium revision
+        id: revision
+        run: |
+          REVISION=$(cat _/ec2/revision.txt)
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+
+      - name: Download screenshots from S3
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          mkdir -p /tmp/screenshots/x64 /tmp/screenshots/arm64
+
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/x64/" /tmp/screenshots/x64/ \
+            --exclude "*" --include "*.png" --exclude "*-diff.png"
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/arm64/" /tmp/screenshots/arm64/ \
+            --exclude "*" --include "*.png" --exclude "*-diff.png"
+
+      - name: Read hashes from manifest
+        id: hashes
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          MANIFEST=$(aws s3 cp "s3://${S3_BUCKET}/${REVISION}/manifest.json" - 2>/dev/null || echo '{}')
+
+          X64_EXAMPLE=$(echo "$MANIFEST" | jq -r '.x64.screenshots["example.com"] // "n/a"')
+          X64_WEBGL=$(echo "$MANIFEST" | jq -r '.x64.screenshots.webgl // "n/a"')
+          ARM64_EXAMPLE=$(echo "$MANIFEST" | jq -r '.arm64.screenshots["example.com"] // "n/a"')
+          ARM64_WEBGL=$(echo "$MANIFEST" | jq -r '.arm64.screenshots.webgl // "n/a"')
+
+          echo "x64_example=${X64_EXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "x64_webgl=${X64_WEBGL}" >> "$GITHUB_OUTPUT"
+          echo "arm64_example=${ARM64_EXAMPLE}" >> "$GITHUB_OUTPUT"
+          echo "arm64_webgl=${ARM64_WEBGL}" >> "$GITHUB_OUTPUT"
+
+          # Determine hash match status
+          if [ "$X64_EXAMPLE" = "$ARM64_EXAMPLE" ]; then
+            echo "example_hash_match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "example_hash_match=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$X64_WEBGL" = "$ARM64_WEBGL" ]; then
+            echo "webgl_hash_match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "webgl_hash_match=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run odiff cross-arch comparison
+        id: diff
+        run: |
+          mkdir -p /tmp/screenshots/cross-diff
+          RESULTS=""
+
+          for PAGE in example.com webgl; do
+            X64="/tmp/screenshots/x64/${PAGE}.png"
+            ARM64="/tmp/screenshots/arm64/${PAGE}.png"
+            DIFF_OUT="/tmp/screenshots/cross-diff/${PAGE}-cross-diff.png"
+
+            if [ ! -f "$X64" ] || [ ! -f "$ARM64" ]; then
+              RESULTS="${RESULTS}${PAGE}|missing|0|0\n"
+              continue
+            fi
+
+            # Run odiff — exit code 0=match, 1=diff, 2=error
+            RESULT=$(npx odiff "$X64" "$ARM64" "$DIFF_OUT" 2>&1) || true
+            DIFF_COUNT=$(echo "$RESULT" | grep -oP 'diffCount:\s*\K\d+' || echo "0")
+            DIFF_PCT=$(echo "$RESULT" | grep -oP 'diffPercentage:\s*\K[\d.]+' || echo "0")
+
+            if [ -f "$DIFF_OUT" ]; then
+              RESULTS="${RESULTS}${PAGE}|changed|${DIFF_COUNT}|${DIFF_PCT}\n"
+            else
+              RESULTS="${RESULTS}${PAGE}|match|0|0.00\n"
+            fi
+          done
+
+          echo "results<<EOF" >> "$GITHUB_OUTPUT"
+          printf '%b' "$RESULTS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload cross-arch diff images to S3
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          if ls /tmp/screenshots/cross-diff/*-cross-diff.png 1>/dev/null 2>&1; then
+            aws s3 sync /tmp/screenshots/cross-diff/ "s3://${S3_BUCKET}/${REVISION}/cross-arch/" \
+              --exclude "*" --include "*-cross-diff.png"
+          fi
+
+      - name: Generate pre-signed URLs
+        id: urls
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          URLS=""
+          EXPIRES=604800  # 7 days
+
+          presign() {
+            local S3_KEY="$1" VAR_NAME="$2"
+            URL=$(aws s3 presign "s3://${S3_BUCKET}/${S3_KEY}" --expires-in "$EXPIRES" 2>/dev/null) || return 1
+            URLS="${URLS}${VAR_NAME}=${URL}\n"
+          }
+
+          for PAGE in example.com webgl; do
+            SAFE="${PAGE//./_}"
+            presign "${REVISION}/x64/${PAGE}.png" "${SAFE}_x64" || true
+            presign "${REVISION}/arm64/${PAGE}.png" "${SAFE}_arm64" || true
+            if [ -f "/tmp/screenshots/cross-diff/${PAGE}-cross-diff.png" ]; then
+              presign "${REVISION}/cross-arch/${PAGE}-cross-diff.png" "${SAFE}_diff" || true
+            fi
+          done
+
+          printf '%b' "$URLS" > /tmp/screenshots/urls.txt
+
+      - name: Post PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+
+          # Parse URLs into env vars
+          while IFS='=' read -r KEY VAL; do
+            [ -n "$KEY" ] && export "URL_${KEY}=${VAL}"
+          done < /tmp/screenshots/urls.txt
+
+          # Read hash comparison results
+          EXAMPLE_HASH_MATCH="${{ steps.hashes.outputs.example_hash_match }}"
+          WEBGL_HASH_MATCH="${{ steps.hashes.outputs.webgl_hash_match }}"
+          X64_EXAMPLE="${{ steps.hashes.outputs.x64_example }}"
+          X64_WEBGL="${{ steps.hashes.outputs.x64_webgl }}"
+          ARM64_EXAMPLE="${{ steps.hashes.outputs.arm64_example }}"
+          ARM64_WEBGL="${{ steps.hashes.outputs.arm64_webgl }}"
+
+          # Determine status emoji/text
+          if [ "$EXAMPLE_HASH_MATCH" = "true" ]; then
+            EXAMPLE_STATUS="Match"
+          else
+            EXAMPLE_STATUS="Differs"
+          fi
+          if [ "$WEBGL_HASH_MATCH" = "true" ]; then
+            WEBGL_STATUS="Match"
+          else
+            WEBGL_STATUS="Differs"
+          fi
+
+          # Build image table rows
+          EXAMPLE_IMG_ROW="| example.com | ![x64](${URL_example_com_x64}) | ![arm64](${URL_example_com_arm64})"
+          if [ -n "${URL_example_com_diff:-}" ]; then
+            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
+          else
+            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
+          fi
+          EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
+
+          WEBGL_IMG_ROW="| WebGL | ![x64](${URL_webgl_x64}) | ![arm64](${URL_webgl_arm64})"
+          if [ -n "${URL_webgl_diff:-}" ]; then
+            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
+          else
+            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
+          fi
+          WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
+
+          cat > /tmp/screenshots/cross-comment.md <<EOF
+          ## Cross-Architecture Comparison
+
+          Revision: \`${REVISION}\` | Comparing x64 vs arm64
+
+          | Page | x64 | arm64 | Diff |
+          |------|-----|-------|------|
+          ${EXAMPLE_IMG_ROW}
+          ${WEBGL_IMG_ROW}
+
+          | Page | x64 Hash | arm64 Hash | Status |
+          |------|----------|------------|--------|
+          | example.com | \`${X64_EXAMPLE:0:16}...\` | \`${ARM64_EXAMPLE:0:16}...\` | ${EXAMPLE_STATUS} |
+          | WebGL | \`${X64_WEBGL:0:16}...\` | \`${ARM64_WEBGL:0:16}...\` | ${WEBGL_STATUS} |
+
+          <details><summary>Full hashes</summary>
+
+          | Page | Arch | Hash |
+          |------|------|------|
+          | example.com | x64 | \`${X64_EXAMPLE}\` |
+          | example.com | arm64 | \`${ARM64_EXAMPLE}\` |
+          | WebGL | x64 | \`${X64_WEBGL}\` |
+          | WebGL | arm64 | \`${ARM64_WEBGL}\` |
+
+          </details>
+          EOF
+
+          # Find existing cross-arch comment and update it, or create new
+          MARKER="## Cross-Architecture Comparison"
+          EXISTING_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${MARKER}\"))) | .id" \
+            | tail -1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_ID}" \
+              -X PATCH -F "body=@/tmp/screenshots/cross-comment.md"
+          else
+            gh pr comment "$PR_NUMBER" --body-file /tmp/screenshots/cross-comment.md
+          fi
+
+  finalize:
+    name: Finalize
+    needs:
+      [check-trigger, build, execute, visual-regression, cross-arch-comparison]
+    if: always() && needs.check-trigger.outputs.is_pr == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Update labels and checklist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          REPO="${{ github.repository }}"
+
+          # Determine overall result — VR is informational, only build+execute matter
+          BUILD_RESULT="${{ needs.build.result }}"
+          EXECUTE_RESULT="${{ needs.execute.result }}"
+
+          if [ "$BUILD_RESULT" = "success" ] && [ "$EXECUTE_RESULT" = "success" ]; then
+            OVERALL="success"
+          else
+            OVERALL="failure"
+          fi
+
+          BODY=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq .body)
+          CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
+          PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
+
+          if [ "$OVERALL" = "success" ]; then
+            # Remove testing + available, add verified
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels/binaries:testing" -X DELETE 2>/dev/null || true
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels/binaries:available" -X DELETE 2>/dev/null || true
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" -f "labels[]=binaries:verified"
+          else
+            # Remove testing, add failed
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels/binaries:testing" -X DELETE 2>/dev/null || true
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" -f "labels[]=binaries:failed"
+          fi
+
+          if [ -z "$CURRENT_REV" ] || [ -z "$PREV_REV" ]; then
+            echo "::warning::Could not extract revision numbers from PR body — skipping checklist update"
+            exit 0
+          fi
+
+          SIZE_LINE=$(echo "$BODY" | grep -oP 'Binaries built and uploaded to S3.*' | head -1)
+          if [ -z "$SIZE_LINE" ]; then
+            SIZE_LINE="Binaries built and uploaded to S3"
+          fi
+
+          if [ "$OVERALL" = "success" ]; then
+            NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [x] ${SIZE_LINE}
+          - [x] Tests started
+          - [x] Tests and visual regression passed"
+          else
+            NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [x] ${SIZE_LINE}
+          - [x] Tests started
+          - [ ] ~~Tests passed~~ — **tests failed** (add \`binaries:test\` to retry) ← you are here"
+          fi
+
+          UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --body "$UPDATED"
