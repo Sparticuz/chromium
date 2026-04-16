@@ -1,8 +1,8 @@
 {
-  "extends": ["@tsconfig/node20/tsconfig", "@tsconfig/strictest"],
+  "extends": ["@tsconfig/node22/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
   "compilerOptions": {
     "declaration": true,
-    "lib": ["dom", "ES2023"],
+    "lib": ["dom", "ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "build",

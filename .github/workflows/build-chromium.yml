@@ -1,0 +1,486 @@
+name: Build Chromium
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    name: Launch Chromium EC2 Build
+    if: github.event.label.name == 'binaries:build'
+    runs-on: ubuntu-latest
+    environment: chromium-build
+    timeout-minutes: 15
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+      X64_INSTANCE_TYPE: c8id.4xlarge
+      X64_AMI_SSM: /aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64
+      ARM64_INSTANCE_TYPE: m8g.medium
+      ARM64_AMI_SSM: /aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get chromium revision
+        id: revision
+        run: |
+          REVISION=$(cat _/ec2/revision.txt)
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+          echo "Chromium revision: ${REVISION}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Build and upload fonts
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          mkdir -p bin
+          npm run build:fonts
+          aws s3 cp bin/fonts.tar.br "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br"
+          echo "Uploaded fonts.tar.br to S3"
+
+      - name: Detect build options from PR labels
+        id: options
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LABELS=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            --jq '.[].name' | tr '\n' ' ')
+          echo "PR labels: ${LABELS}"
+
+          # Spot is default; build:on-demand overrides
+          if echo "$LABELS" | grep -q 'build:on-demand'; then
+            echo "use_spot=false" >> "$GITHUB_OUTPUT"
+            echo "Market type: on-demand"
+          else
+            echo "use_spot=true" >> "$GITHUB_OUTPUT"
+            echo "Market type: spot"
+          fi
+
+          # SSH is off by default; build:ssh enables
+          if echo "$LABELS" | grep -q 'build:ssh'; then
+            echo "use_ssh=true" >> "$GITHUB_OUTPUT"
+            echo "SSH: enabled"
+          else
+            echo "use_ssh=false" >> "$GITHUB_OUTPUT"
+            echo "SSH: disabled"
+          fi
+
+      - name: Update labels and PR checklist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          REPO="${{ github.repository }}"
+
+          # Swap labels: remove trigger + stale states, add building
+          for LABEL in "binaries:build" "binaries:needed" "binaries:failed"; do
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/labels/${LABEL}" -X DELETE 2>/dev/null || true
+          done
+          gh api "repos/${REPO}/issues/${PR_NUMBER}/labels" -f "labels[]=binaries:building"
+
+          # Update PR checklist
+          BODY=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq .body)
+
+          CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
+          PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
+
+          if [ -z "$CURRENT_REV" ] || [ -z "$PREV_REV" ]; then
+            echo "::warning::Could not extract revision numbers from PR body — skipping checklist update"
+            exit 0
+          fi
+
+          NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [ ] Binaries built and uploaded to S3 ← building...
+          - [ ] **Add \`binaries:test\` to run tests**
+          - [ ] Tests and visual regression passed"
+
+          # Replace content between markers
+          UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
+
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --body "$UPDATED"
+
+      - name: Prepare user-data
+        id: userdata
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_PAT: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_REPO_NAME: ${{ github.repository }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          USE_SSH: ${{ steps.options.outputs.use_ssh }}
+        run: |
+          # Package the _/ec2/ directory as a compressed tarball
+          ARCHIVE_B64=$(tar czf - -C _/ ec2/ | base64 -w 0)
+
+          # Build the user-data bootstrap script:
+          #   1. Set env vars (including the base64 tarball of _/ec2/)
+          #   2. Extract the tarball to /opt/chromium-build/
+          #   3. Run the orchestrator
+          {
+            echo '#!/bin/bash'
+            echo 'set -euo pipefail'
+            echo "ARCHIVE_B64=\"${ARCHIVE_B64}\""
+            echo "CHROMIUM_REVISION=\"${REVISION}\""
+            echo "S3_BUCKET=\"${S3_BUCKET}\""
+            echo "GITHUB_PAT=\"${GITHUB_PAT}\""
+            echo "GITHUB_REPO=\"${GITHUB_REPO_NAME}\""
+            echo "PR_NUMBER=\"${PR_NUMBER}\""
+            echo "AWS_DEFAULT_REGION=\"${AWS_DEFAULT_REGION}\""
+            echo 'export CHROMIUM_REVISION S3_BUCKET GITHUB_PAT GITHUB_REPO PR_NUMBER AWS_DEFAULT_REGION'
+            echo ''
+            if [ "${USE_SSH}" = "true" ] && [ -n "${SSH_PUBLIC_KEY:-}" ]; then
+              echo '# SSH access: inject public key for root'
+              echo 'mkdir -p /root/.ssh && chmod 700 /root/.ssh'
+              echo "echo '${SSH_PUBLIC_KEY}' >> /root/.ssh/authorized_keys"
+              echo 'chmod 600 /root/.ssh/authorized_keys'
+            fi
+            echo ''
+            echo 'mkdir -p /opt/chromium-build'
+            echo 'echo "$ARCHIVE_B64" | base64 -d | tar xzf - -C /opt/chromium-build/'
+            echo 'chmod +x /opt/chromium-build/ec2/*.sh'
+            echo ''
+            if [ "${USE_SSH}" = "true" ]; then
+              echo '# Install screen and run build in a named session'
+              echo 'dnf install -y screen'
+              echo 'screen -dmS build /opt/chromium-build/ec2/build-chromium.sh'
+            else
+              echo 'exec /opt/chromium-build/ec2/build-chromium.sh'
+            fi
+          } > /tmp/userdata.sh
+
+          # Verify size (user-data limit is 16 KB)
+          SIZE=$(wc -c < /tmp/userdata.sh)
+          echo "User-data script size: ${SIZE} bytes"
+          if [ "$SIZE" -gt 16384 ]; then
+            echo "::error::User-data script exceeds 16 KB limit (${SIZE} bytes)"
+            exit 1
+          fi
+
+          echo "userdata_file=/tmp/userdata.sh" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare arm64 libs user-data
+        id: userdata_arm64
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          # The arm64 libs script is self-contained — embed it directly
+          {
+            echo '#!/bin/bash'
+            echo 'set -euo pipefail'
+            echo "CHROMIUM_REVISION=\"${REVISION}\""
+            echo "S3_BUCKET=\"${S3_BUCKET}\""
+            echo "AWS_DEFAULT_REGION=\"${AWS_DEFAULT_REGION}\""
+            echo 'export CHROMIUM_REVISION S3_BUCKET AWS_DEFAULT_REGION'
+            echo ''
+            # Embed the script (skip the shebang and set -euo lines already present)
+            grep -v '^#!/bin/bash' _/ec2/build-arm64-libs.sh | grep -v '^set -euo pipefail'
+          } > /tmp/userdata-arm64.sh
+
+          SIZE=$(wc -c < /tmp/userdata-arm64.sh)
+          echo "arm64 libs user-data size: ${SIZE} bytes"
+          echo "userdata_file=/tmp/userdata-arm64.sh" >> "$GITHUB_OUTPUT"
+
+      - name: Find default VPC and subnets
+        id: vpc
+        run: |
+          VPC_ID=$(aws ec2 describe-vpcs \
+            --filters "Name=isDefault,Values=true" \
+            --query 'Vpcs[0].VpcId' --output text)
+
+          # Find AZs that support the requested instance type
+          SUPPORTED_AZS=$(aws ec2 describe-instance-type-offerings \
+            --location-type availability-zone \
+            --filters "Name=instance-type,Values=${X64_INSTANCE_TYPE}" \
+            --query 'InstanceTypeOfferings[].Location' --output json)
+          echo "AZs supporting ${X64_INSTANCE_TYPE}: ${SUPPORTED_AZS}"
+
+          # Get all subnets in supported AZs (space-separated for iteration)
+          SUBNET_IDS=$(aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=${VPC_ID}" \
+            --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone}' --output json \
+            | jq -r --argjson azs "$SUPPORTED_AZS" \
+              '[.[] | select(.AZ as $az | $azs | index($az))] | .[].Id')
+
+          if [ -z "$SUBNET_IDS" ]; then
+            echo "::error::No subnet found in an AZ that supports ${X64_INSTANCE_TYPE}"
+            exit 1
+          fi
+
+          echo "vpc_id=${VPC_ID}" >> "$GITHUB_OUTPUT"
+          echo "subnet_ids<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SUBNET_IDS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "Subnets: ${SUBNET_IDS}"
+
+      - name: Find arm64 subnets
+        id: vpc_arm64
+        run: |
+          VPC_ID="${{ steps.vpc.outputs.vpc_id }}"
+
+          # m8g.medium is widely available but still check
+          SUPPORTED_AZS=$(aws ec2 describe-instance-type-offerings \
+            --location-type availability-zone \
+            --filters "Name=instance-type,Values=${ARM64_INSTANCE_TYPE}" \
+            --query 'InstanceTypeOfferings[].Location' --output json)
+
+          SUBNET_IDS=$(aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=${VPC_ID}" \
+            --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone}' --output json \
+            | jq -r --argjson azs "$SUPPORTED_AZS" \
+              '[.[] | select(.AZ as $az | $azs | index($az))] | .[].Id')
+
+          if [ -z "$SUBNET_IDS" ]; then
+            echo "::warning::No subnet found for arm64 libs instance — arm64 al2023.tar.br will be missing"
+            echo "has_subnets=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_subnets=true" >> "$GITHUB_OUTPUT"
+            echo "subnet_ids<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$SUBNET_IDS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create security group (if needed)
+        id: sg
+        env:
+          USE_SSH: ${{ steps.options.outputs.use_ssh }}
+        run: |
+          SG_NAME="chromium-build"
+          VPC_ID="${{ steps.vpc.outputs.vpc_id }}"
+
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${SG_NAME}" "Name=vpc-id,Values=${VPC_ID}" \
+            --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || true)
+
+          if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
+            echo "Creating security group..."
+            SG_ID=$(aws ec2 create-security-group \
+              --group-name "${SG_NAME}" \
+              --description "Chromium build - egress + optional SSH" \
+              --vpc-id "${VPC_ID}" \
+              --query 'GroupId' --output text)
+            echo "Security group created: ${SG_ID}"
+          else
+            echo "Security group exists: ${SG_ID}"
+          fi
+
+          # Add SSH ingress if requested (idempotent)
+          if [ "${USE_SSH}" = "true" ]; then
+            aws ec2 authorize-security-group-ingress \
+              --group-id "${SG_ID}" \
+              --protocol tcp --port 22 --cidr 0.0.0.0/0 2>/dev/null || true
+            echo "SSH ingress rule ensured"
+          fi
+
+          echo "sg_id=${SG_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Get AMI ID
+        id: ami
+        run: |
+          AMI_ID=$(aws ssm get-parameters \
+            --names "${X64_AMI_SSM}" \
+            --query 'Parameters[0].Value' --output text)
+          echo "ami_id=${AMI_ID}" >> "$GITHUB_OUTPUT"
+          echo "AMI: ${AMI_ID}"
+
+      - name: Get arm64 AMI ID
+        id: ami_arm64
+        run: |
+          AMI_ID=$(aws ssm get-parameters \
+            --names "${ARM64_AMI_SSM}" \
+            --query 'Parameters[0].Value' --output text)
+          echo "ami_id=${AMI_ID}" >> "$GITHUB_OUTPUT"
+          echo "arm64 AMI: ${AMI_ID}"
+
+      - name: Create S3 pending marker
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          DEADLINE=$(date -u -d "+6 hours" +"%Y-%m-%dT%H:%M:%SZ")
+          cat <<EOF > /tmp/pending.json
+          {
+            "revision": "${REVISION}",
+            "pr_number": ${PR_NUMBER},
+            "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "deadline": "${DEADLINE}",
+            "repository": "${{ github.repository }}"
+          }
+          EOF
+          aws s3 cp /tmp/pending.json "s3://${S3_BUCKET}/${REVISION}/pending.json"
+
+      - name: Launch EC2 instance
+        id: ec2
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+          USE_SPOT: ${{ steps.options.outputs.use_spot }}
+          SUBNET_IDS: ${{ steps.vpc.outputs.subnet_ids }}
+        run: |
+          MARKET_OPTS=()
+          if [ "${USE_SPOT}" = "true" ]; then
+            MARKET_OPTS=(--instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=one-time,InstanceInterruptionBehavior=terminate}')
+          fi
+
+          # Try each subnet (AZ) until one has capacity
+          INSTANCE_ID=""
+          LAST_ERROR=""
+          while IFS= read -r SUBNET_ID; do
+            [ -z "$SUBNET_ID" ] && continue
+            echo "Trying subnet ${SUBNET_ID}..."
+            if INSTANCE_ID=$(aws ec2 run-instances \
+              --image-id "${{ steps.ami.outputs.ami_id }}" \
+              --instance-type "${X64_INSTANCE_TYPE}" \
+              --security-group-ids "${{ steps.sg.outputs.sg_id }}" \
+              --subnet-id "${SUBNET_ID}" \
+              --associate-public-ip-address \
+              --instance-initiated-shutdown-behavior terminate \
+              --user-data "file://${{ steps.userdata.outputs.userdata_file }}" \
+              --iam-instance-profile Name=chromium-build \
+              --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=chromium-build},{Key=Revision,Value=${REVISION}},{Key=PR,Value=${{ github.event.pull_request.number }}}]" \
+              ${MARKET_OPTS[@]+"${MARKET_OPTS[@]}"} \
+              --query 'Instances[0].InstanceId' --output text 2>/tmp/ec2-error.txt); then
+              echo "Launched in ${SUBNET_ID}: ${INSTANCE_ID}"
+              break
+            else
+              LAST_ERROR=$(cat /tmp/ec2-error.txt)
+              echo "Failed in ${SUBNET_ID}: ${LAST_ERROR}"
+              INSTANCE_ID=""
+            fi
+          done <<< "$SUBNET_IDS"
+
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "::error::Failed to launch in all AZs. Last error: ${LAST_ERROR}"
+            exit 1
+          fi
+
+          echo "instance_id=${INSTANCE_ID}" >> "$GITHUB_OUTPUT"
+          echo "Launched: ${INSTANCE_ID}"
+
+          # Wait for instance to be running
+          aws ec2 wait instance-running --instance-ids "${INSTANCE_ID}"
+          echo "Instance is running"
+
+          # Update pending marker with instance ID and public IP
+          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids "${INSTANCE_ID}" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          PENDING=$(aws s3 cp "s3://${S3_BUCKET}/${REVISION}/pending.json" -)
+          echo "$PENDING" | jq \
+            --arg iid "$INSTANCE_ID" \
+            --arg ip "$PUBLIC_IP" \
+            '. + {instance_id: $iid, public_ip: $ip}' | \
+            aws s3 cp - "s3://${S3_BUCKET}/${REVISION}/pending.json"
+
+      - name: Launch arm64 libs instance
+        if: steps.vpc_arm64.outputs.has_subnets == 'true'
+        id: ec2_arm64
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+          USE_SPOT: ${{ steps.options.outputs.use_spot }}
+          SUBNET_IDS: ${{ steps.vpc_arm64.outputs.subnet_ids }}
+        run: |
+          MARKET_OPTS=()
+          if [ "${USE_SPOT}" = "true" ]; then
+            MARKET_OPTS=(--instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=one-time,InstanceInterruptionBehavior=terminate}')
+          fi
+
+          INSTANCE_ID=""
+          while IFS= read -r SUBNET_ID; do
+            [ -z "$SUBNET_ID" ] && continue
+            echo "Trying arm64 subnet ${SUBNET_ID}..."
+            if INSTANCE_ID=$(aws ec2 run-instances \
+              --image-id "${{ steps.ami_arm64.outputs.ami_id }}" \
+              --instance-type "${ARM64_INSTANCE_TYPE}" \
+              --security-group-ids "${{ steps.sg.outputs.sg_id }}" \
+              --subnet-id "${SUBNET_ID}" \
+              --associate-public-ip-address \
+              --instance-initiated-shutdown-behavior terminate \
+              --user-data "file://${{ steps.userdata_arm64.outputs.userdata_file }}" \
+              --iam-instance-profile Name=chromium-build \
+              --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=chromium-arm64-libs},{Key=Revision,Value=${REVISION}},{Key=PR,Value=${{ github.event.pull_request.number }}}]" \
+              ${MARKET_OPTS[@]+"${MARKET_OPTS[@]}"} \
+              --query 'Instances[0].InstanceId' --output text 2>/tmp/ec2-arm64-error.txt); then
+              echo "Launched arm64 libs instance: ${INSTANCE_ID}"
+              break
+            else
+              echo "Failed: $(cat /tmp/ec2-arm64-error.txt)"
+              INSTANCE_ID=""
+            fi
+          done <<< "$SUBNET_IDS"
+
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "::warning::Failed to launch arm64 libs instance — arm64 al2023.tar.br will be missing"
+          else
+            echo "instance_id=${INSTANCE_ID}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          USE_SPOT: ${{ steps.options.outputs.use_spot }}
+          USE_SSH: ${{ steps.options.outputs.use_ssh }}
+        run: |
+          MARKET_TYPE="on-demand"
+          if [ "${USE_SPOT}" = "true" ]; then MARKET_TYPE="spot"; fi
+          SSH_STATUS="disabled"
+          if [ "${USE_SSH}" = "true" ]; then SSH_STATUS="enabled"; fi
+
+          ARM64_INSTANCE="${{ steps.ec2_arm64.outputs.instance_id }}"
+          ARM64_ROW=""
+          if [ -n "$ARM64_INSTANCE" ]; then
+            ARM64_ROW="| **arm64 libs instance** | \`${ARM64_INSTANCE}\` (${ARM64_INSTANCE_TYPE}, ~5 min) |
+          "
+          fi
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "## Chromium Build Launched
+
+          | | Value |
+          |---|---|
+          | **Revision** | \`${{ steps.revision.outputs.revision }}\` |
+          | **Build instance** | \`${{ steps.ec2.outputs.instance_id }}\` (${X64_INSTANCE_TYPE}) |
+          ${ARM64_ROW}| **Market** | ${MARKET_TYPE} |
+          | **SSH** | ${SSH_STATUS} |
+          | **Deadline** | 6 hours from now |
+
+          The EC2 instances are running autonomously.
+          Artifacts will be uploaded to S3, then this PR will be notified and instances will self-terminate."
+
+      - name: Emergency teardown (on failure)
+        if: failure()
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          # Terminate x86_64 build instance
+          INSTANCE_ID="${{ steps.ec2.outputs.instance_id }}"
+          if [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_ID" != "" ]; then
+            aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" || true
+          fi
+          # Terminate arm64 libs instance
+          ARM64_ID="${{ steps.ec2_arm64.outputs.instance_id }}"
+          if [ -n "$ARM64_ID" ] && [ "$ARM64_ID" != "" ]; then
+            aws ec2 terminate-instances --instance-ids "$ARM64_ID" || true
+          fi
+          # Also terminate by tag as fallback
+          STALE_IDS=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=chromium-build,chromium-arm64-libs" "Name=instance-state-name,Values=running,pending" \
+            --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || true)
+          if [ -n "$STALE_IDS" ]; then
+            aws ec2 terminate-instances --instance-ids $STALE_IDS || true
+          fi
+          # Clean up orphaned pending.json
+          aws s3 rm "s3://${S3_BUCKET}/${REVISION}/pending.json" || true
