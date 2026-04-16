@@ -1,88 +1,43 @@
-import fr from "follow-redirects";
-import { access, createWriteStream, rm, symlink } from "node:fs";
+import { createWriteStream, rm } from "node:fs";
+import { access, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { extract } from "tar-fs";
-
-interface FollowRedirOptions extends URL {
-  maxBodyLength: number;
-}
 
 /**
  * Creates a symlink to a file
  */
-export const createSymlink = (
+export const createSymlink = async (
   source: string,
   target: string,
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    access(source, (error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      symlink(source, target, (error) => {
-        /* c8 ignore next */
-        if (error) {
-          /* c8 ignore next 3 */
-          reject(error);
-          return;
-        }
-        resolve();
-      });
-    });
-  });
+  await access(source);
+  await symlink(source, target);
 };
 
 /**
  * Downloads a file from a URL
  */
-export const downloadFile = (
+export const downloadFile = async (
   url: string,
   outputPath: string,
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const stream = createWriteStream(outputPath);
-    stream.once("error", reject);
+  const response = await fetch(url, { redirect: "follow" });
 
-    fr.https
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          stream.close();
-          reject(
-            new Error(
-              /* c8 ignore next 2 */
-              `Unexpected status code: ${
-                response.statusCode?.toFixed(0) ?? "UNK"
-              }.`,
-            ),
-          );
-          return;
-        }
+  if (!response.ok) {
+    throw new Error(`Unexpected status code: ${String(response.status)}.`);
+  }
 
-        // Pipe directly to file rather than manually writing chunks
-        // This is more efficient and uses less memory
-        response.pipe(stream);
+  if (!response.body) {
+    throw new Error("Response body is empty.");
+  }
 
-        // Listen for completion
-        stream.once("finish", () => {
-          stream.close();
-          resolve();
-        });
-
-        // Handle response errors
-        response.once("error", (error) => {
-          /* c8 ignore next 2 */
-          stream.close();
-          reject(error);
-        });
-      })
-      /* c8 ignore next 3 */
-      .on("error", (error) => {
-        stream.close();
-        reject(error);
-      });
-  });
+  await pipeline(
+    Readable.fromWeb(response.body as import("node:stream/web").ReadableStream),
+    createWriteStream(outputPath),
+  );
 };
 
 /**
@@ -113,7 +68,18 @@ export const setupLambdaEnvironment = (baseLibPath: string) => {
  */
 export const isValidUrl = (input: string) => {
   try {
-    return Boolean(new URL(input));
+    const url = new URL(input);
+    if (url.protocol === "https:") return true;
+    // Allow http:// only for localhost/127.0.0.1 (development/testing)
+    if (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "[::1]")
+    ) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -155,60 +121,38 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
   return false;
 };
 
-export const downloadAndExtract = async (url: string) => {
-  const getOptions = new URL(url) as FollowRedirOptions;
-  // Increase the max body length to 60MB for larger files
-  getOptions.maxBodyLength = 60 * 1024 * 1024;
+export const downloadAndExtract = async (url: string): Promise<string> => {
   const destDir = join(tmpdir(), "chromium-pack");
 
-  return new Promise<string>((resolve, reject) => {
-    const extractObj = extract(destDir);
-
-    // Setup error handlers for better cleanup
-    /* c8 ignore next 5 */
-    const cleanupOnError = (err: Error) => {
-      rm(destDir, { force: true, recursive: true }, () => {
-        reject(err);
-      });
-    };
-
-    // Attach error handler to extract stream
-    extractObj.once("error", cleanupOnError);
-
-    // Handle extraction completion
-    extractObj.once("finish", () => {
-      resolve(destDir);
-    });
-
-    const req = fr.https.get(url, (response) => {
-      /* c8 ignore next */
-      if (response.statusCode !== 200) {
-        /* c8 ignore next 9 */
-        reject(
-          new Error(
-            `Unexpected status code: ${
-              response.statusCode?.toFixed(0) ?? "UNK"
-            }.`,
-          ),
-        );
-        return;
-      }
-
-      // Pipe the response directly to the extraction stream
-      response.pipe(extractObj);
-
-      // Handle response errors
-      response.once("error", cleanupOnError);
-    });
-
-    // Handle request errors
-    req.once("error", cleanupOnError);
-
-    // Set a timeout to avoid hanging requests
-    req.setTimeout(60 * 1000, () => {
-      /* c8 ignore next 2 */
-      req.destroy();
-      cleanupOnError(new Error("Request timeout"));
-    });
+  const response = await fetch(url, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(60_000),
   });
+
+  if (!response.ok) {
+    throw new Error(`Unexpected status code: ${String(response.status)}.`);
+  }
+
+  if (!response.body) {
+    throw new Error("Response body is empty.");
+  }
+
+  try {
+    await pipeline(
+      Readable.fromWeb(
+        response.body as import("node:stream/web").ReadableStream,
+      ),
+      extract(destDir),
+    );
+  } catch (error) {
+    // Clean up partial extraction on failure
+    await new Promise<void>((resolve) => {
+      rm(destDir, { force: true, recursive: true }, () => {
+        resolve();
+      });
+    });
+    throw error;
+  }
+
+  return destDir;
 };

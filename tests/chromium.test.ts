@@ -9,9 +9,12 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { brotliCompressSync } from "node:zlib";
 import puppeteer from "puppeteer-core";
+import { pack } from "tar-fs";
 import {
   afterAll,
   afterEach,
@@ -32,7 +35,7 @@ import {
 } from "../source/helper.js";
 import chromium from "../source/index.js";
 import { inflate } from "../source/lambdafs.js";
-import { getBinPath } from "../source/paths.esm.js";
+import { getBinPath } from "../source/paths.js";
 
 describe("Helper", () => {
   // Save original environment and restore after each test
@@ -102,8 +105,42 @@ describe("Helper", () => {
   });
 
   describe("downloadFile", () => {
+    let server: Server;
+    let baseUrl: string;
+
+    beforeAll(
+      () =>
+        new Promise<void>((resolve) => {
+          server = createServer((req, res) => {
+            if (req.url === "/index.html") {
+              res.writeHead(200, { "Content-Type": "text/html" });
+              res.end("<html><body>Hello</body></html>");
+            } else {
+              res.writeHead(404);
+              res.end();
+            }
+          });
+          server.listen(0, "127.0.0.1", () => {
+            const addr = server.address();
+            if (addr && typeof addr !== "string") {
+              baseUrl = `http://127.0.0.1:${String(addr.port)}`;
+            }
+            resolve();
+          });
+        }),
+    );
+
+    afterAll(
+      () =>
+        new Promise<void>((resolve) => {
+          server.close(() => {
+            resolve();
+          });
+        }),
+    );
+
     it("should download a file successfully", async () => {
-      const url = "https://www.example.com/index.html";
+      const url = `${baseUrl}/index.html`;
       const tempDir = tmpdir();
       const destPath = join(
         tempDir,
@@ -129,7 +166,7 @@ describe("Helper", () => {
       // Execute & Verify
       await expect(
         // eslint-disable-next-line sonarjs/publicly-writable-directories
-        downloadFile("https://example.com/file.zip", "/tmp/file.zip"),
+        downloadFile(`${baseUrl}/file.zip`, "/tmp/file.zip"),
       ).rejects.toStrictEqual(new Error("Unexpected status code: 404."));
     });
   });
@@ -182,10 +219,22 @@ describe("Helper", () => {
   });
 
   describe("isValidUrl", () => {
-    it("should return true for valid URLs", () => {
+    it("should return true for valid HTTPS URLs", () => {
       expect(isValidUrl("https://example.com")).toBe(true);
+      expect(isValidUrl("https://example.com/path/to/pack.tar")).toBe(true);
+    });
+
+    it("should return true for localhost HTTP URLs (development)", () => {
       expect(isValidUrl("http://localhost:3000")).toBe(true);
-      expect(isValidUrl("ftp://ftp.example.com")).toBe(true);
+      expect(isValidUrl("http://127.0.0.1:8080/pack.tar")).toBe(true);
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols
+      expect(isValidUrl("http://[::1]:3000")).toBe(true);
+    });
+
+    it("should return false for non-HTTPS URLs", () => {
+      expect(isValidUrl("http://example.com")).toBe(false);
+      expect(isValidUrl("ftp://ftp.example.com")).toBe(false);
+      expect(isValidUrl("file:///etc/passwd")).toBe(false);
     });
 
     it("should return false for invalid URLs", () => {
@@ -248,50 +297,101 @@ describe("Helper", () => {
   });
 
   describe("downloadAndExtract and lambdafs", () => {
-    const extractDir = join(tmpdir(), "chromium-pack"); // downloadAndExtract extracts to /tmp
+    const extractDir = join(tmpdir(), "chromium-pack");
+    let tarServer: Server;
+    let tarServerUrl: string;
 
-    // Clean up known files before test (optional, for idempotency)
     const expectedFiles = ["aws.tar.br", "chromium.br", "swiftshader.tar.br"];
 
-    const extractedFiles = [
-      "aws",
-      "chromium-pack",
-      "chromium",
-      "lebEGL.so",
-      "libGLESv2.so",
-      "libvk_swiftshader.so",
-      "libvulkan.so.1",
-      "vk_swiftshader_icd.json",
-    ];
+    // Create a local HTTP server that serves a tar archive of test fixtures
+    beforeAll(async () => {
+      // Create test fixture files that are real brotli-compressed content
+      // so the inflate tests can decompress them
+      const { mkdirSync } = await import("node:fs");
+      const fixtureDir = join(tmpdir(), "tar-test-fixtures");
+      mkdirSync(fixtureDir, { recursive: true });
 
-    for (const file of extractedFiles) {
-      const filePath = join(extractDir, file);
-      if (existsSync(filePath)) {
-        try {
-          rmSync(filePath, { force: true, recursive: true });
-        } catch (error) {
-          // Ignore errors during cleanup
-          console.error("Cleanup error:", error);
-        }
+      // chromium.br — brotli-compressed fake binary
+      const chromiumContent = Buffer.alloc(1024, 0x42); // 1KB of 'B'
+      writeFileSync(
+        join(fixtureDir, "chromium.br"),
+        brotliCompressSync(chromiumContent),
+      );
+
+      // aws.tar.br — brotli-compressed tar containing fonts.conf
+      const awsDir = join(tmpdir(), "tar-test-aws");
+      mkdirSync(awsDir, { recursive: true });
+      writeFileSync(join(awsDir, "fonts.conf"), "<fontconfig></fontconfig>");
+      // eslint-disable-next-line sonarjs/os-command
+      const awsTar = execSync(`tar cf - -C "${awsDir}" fonts.conf`);
+      writeFileSync(join(fixtureDir, "aws.tar.br"), brotliCompressSync(awsTar));
+
+      // swiftshader.tar.br — brotli-compressed tar containing shader libs
+      const swDir = join(tmpdir(), "tar-test-swiftshader");
+      mkdirSync(swDir, { recursive: true });
+      const swLibs = [
+        "libEGL.so",
+        "libGLESv2.so",
+        "libvk_swiftshader.so",
+        "libvulkan.so.1",
+        "vk_swiftshader_icd.json",
+      ];
+      for (const lib of swLibs) {
+        writeFileSync(join(swDir, lib), `fake ${lib}`);
       }
-    }
+      // eslint-disable-next-line sonarjs/os-command
+      const swTar = execSync(`tar cf - -C "${swDir}" ${swLibs.join(" ")}`);
+      writeFileSync(
+        join(fixtureDir, "swiftshader.tar.br"),
+        brotliCompressSync(swTar),
+      );
 
-    it(
-      "should download and extract files successfully",
-      { timeout: 60 * 1000 },
-      async () => {
-        const url =
-          "https://github.com/Sparticuz/chromium/releases/download/v109.0.6/chromium-v109.0.6-pack.tar";
+      // Start server
+      await new Promise<void>((resolve) => {
+        tarServer = createServer((req, res) => {
+          if (req.url === "/pack.tar") {
+            res.writeHead(200, { "Content-Type": "application/x-tar" });
+            pack(fixtureDir).pipe(res);
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
+        tarServer.listen(0, "127.0.0.1", () => {
+          const addr = tarServer.address();
+          if (addr && typeof addr !== "string") {
+            tarServerUrl = `http://127.0.0.1:${String(addr.port)}`;
+          }
+          resolve();
+        });
+      });
+    });
 
-        await downloadAndExtract(url);
-
-        // Check that expected files exist
-        for (const file of expectedFiles) {
-          const filePath = join(extractDir, file);
-          expect(existsSync(filePath)).toBe(true);
-        }
-      },
+    afterAll(
+      () =>
+        new Promise<void>((resolve) => {
+          tarServer.close(() => {
+            resolve();
+          });
+          for (const dir of [
+            "tar-test-fixtures",
+            "tar-test-aws",
+            "tar-test-swiftshader",
+          ]) {
+            rmSync(join(tmpdir(), dir), { force: true, recursive: true });
+          }
+        }),
     );
+
+    it("should download and extract files successfully", async () => {
+      await downloadAndExtract(`${tarServerUrl}/pack.tar`);
+
+      // Check that expected files exist
+      for (const file of expectedFiles) {
+        const filePath = join(extractDir, file);
+        expect(existsSync(filePath)).toBe(true);
+      }
+    });
 
     it("should extract a .tar file using lambdafs inflate and verify contents", async () => {
       for (const file of expectedFiles) {
