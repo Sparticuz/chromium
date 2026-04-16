@@ -1,0 +1,181 @@
+name: Build Complete
+
+on:
+  repository_dispatch:
+    types: [build-complete]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  handle:
+    name: Handle build completion
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+
+    steps:
+      - name: Parse payload
+        id: payload
+        env:
+          PAYLOAD_REVISION: ${{ github.event.client_payload.revision }}
+          PAYLOAD_PR_NUMBER: ${{ github.event.client_payload.pr_number }}
+          PAYLOAD_STATUS: ${{ github.event.client_payload.status }}
+          PAYLOAD_ERROR: ${{ github.event.client_payload.error }}
+        run: |
+          echo "revision=${PAYLOAD_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${PAYLOAD_PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "status=${PAYLOAD_STATUS}" >> "$GITHUB_OUTPUT"
+          echo "error=${PAYLOAD_ERROR}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
+          REVISION: ${{ steps.payload.outputs.revision }}
+        id: validate
+        run: |
+          # Verify PR exists and has binaries:building label
+          LABELS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels" --jq '.[].name' 2>/dev/null || echo "")
+
+          if ! echo "$LABELS" | grep -q '^binaries:building$'; then
+            echo "::warning::Dispatch rejected — PR #${PR_NUMBER} does not have binaries:building label"
+            gh pr comment "${PR_NUMBER}" --repo "${{ github.repository }}" --body "⚠️ **Dispatch rejected:** Received \`build-complete\` for revision \`${REVISION}\`, but \`binaries:building\` label is not present. Ignoring." || true
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "valid=true" >> "$GITHUB_OUTPUT"
+
+      - name: Handle success
+        if: steps.payload.outputs.status == 'success' && steps.validate.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
+          REVISION: ${{ steps.payload.outputs.revision }}
+        run: |
+          # Remove binaries:building, add binaries:available
+          gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/binaries:building \
+            -X DELETE || true
+          gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
+            -f "labels[]=binaries:available"
+
+          # Download manifest for artifact details
+          MANIFEST=$(aws s3 cp "s3://${S3_BUCKET}/${REVISION}/manifest.json" - 2>/dev/null || echo '{}')
+          CHROME_VERSION=$(echo "$MANIFEST" | jq -r '.chrome_version // "unknown"')
+
+          fmt() {
+            local BYTES
+            BYTES=$(echo "$MANIFEST" | jq -r ".$1.binaries[\"$2\"].size // 0")
+            if [ "$BYTES" -gt 0 ] 2>/dev/null; then
+              numfmt --to=iec-i --suffix=B "$BYTES"
+            else
+              echo "—"
+            fi
+          }
+          # fonts key is flat: .fonts["fonts.tar.br"].size
+          FONTS_BYTES=$(echo "$MANIFEST" | jq -r '.fonts["fonts.tar.br"].size // 0')
+          if [ "$FONTS_BYTES" -gt 0 ] 2>/dev/null; then
+            FONTS_SIZE=$(numfmt --to=iec-i --suffix=B "$FONTS_BYTES")
+          else
+            FONTS_SIZE="—"
+          fi
+
+          # Comment on PR
+          gh pr comment "${PR_NUMBER}" --repo "${{ github.repository }}" --body "## Build Complete
+
+          Chromium revision \`${REVISION}\` (Chrome ${CHROME_VERSION}) built successfully.
+          Binaries are available in S3. When ready to run tests, add the \`binaries:test\` label.
+
+          | Architecture | Artifact | Size |
+          |---|---|---|
+          | x64 | chromium.br | $(fmt x64 chromium.br) |
+          | x64 | swiftshader.tar.br | $(fmt x64 swiftshader.tar.br) |
+          | x64 | al2023.tar.br | $(fmt x64 al2023.tar.br) |
+          | arm64 | chromium.br | $(fmt arm64 chromium.br) |
+          | arm64 | swiftshader.tar.br | $(fmt arm64 swiftshader.tar.br) |
+          | arm64 | al2023.tar.br | $(fmt arm64 al2023.tar.br) |
+          | shared | fonts.tar.br | ${FONTS_SIZE} |"
+
+          # Update PR checklist
+          BODY=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json body --jq .body)
+
+          CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
+          PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
+
+          if [ -z "$CURRENT_REV" ] || [ -z "$PREV_REV" ]; then
+            echo "::warning::Could not extract revision numbers from PR body — skipping checklist update"
+            exit 0
+          fi
+
+          X64_SIZE=$(fmt x64 chromium.br)
+          ARM64_SIZE=$(fmt arm64 chromium.br)
+
+          NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [x] Binaries built and uploaded to S3 (x64: ${X64_SIZE}, arm64: ${ARM64_SIZE})
+          - [ ] **Add \`binaries:test\` to run tests** ← you are here
+          - [ ] Tests and visual regression passed"
+
+          UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
+
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --body "$UPDATED"
+
+      - name: Handle failure
+        if: steps.payload.outputs.status != 'success' && steps.validate.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
+          REVISION: ${{ steps.payload.outputs.revision }}
+          BUILD_STATUS: ${{ steps.payload.outputs.status }}
+          BUILD_ERROR: ${{ steps.payload.outputs.error }}
+        run: |
+          # Remove binaries:building, add binaries:failed
+          gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/binaries:building \
+            -X DELETE || true
+          gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
+            -f "labels[]=binaries:failed"
+
+          gh pr comment "${PR_NUMBER}" --repo "${{ github.repository }}" --body "## Build Failed
+
+          Chromium revision \`${REVISION}\` build failed.
+          Status: \`${BUILD_STATUS}\`
+          Error: \`${BUILD_ERROR}\`
+
+          Check the build log in S3 for details.
+
+          To retry, add the \`binaries:build\` label."
+
+          # Update PR checklist
+          BODY=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json body --jq .body)
+
+          CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
+          PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
+
+          if [ -z "$CURRENT_REV" ] || [ -z "$PREV_REV" ]; then
+            echo "::warning::Could not extract revision numbers from PR body — skipping checklist update"
+            exit 0
+          fi
+
+          NEW_CHECKLIST="### Maintainer Checklist
+          - [x] Revision bump detected — \`${PREV_REV}\` → \`${CURRENT_REV}\`
+          - [x] Build started
+          - [ ] ~~Binaries built~~ — **build failed** (add \`binaries:build\` to retry) ← you are here
+          - [ ] **Add \`binaries:test\` to run tests**
+          - [ ] Tests and visual regression passed"
+
+          UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
+
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --body "$UPDATED"
+
+      - name: Clean up S3 pending marker
+        if: steps.validate.outputs.valid == 'true'
+        run: |
+          REVISION="${{ steps.payload.outputs.revision }}"
+          aws s3 rm "s3://${S3_BUCKET}/${REVISION}/pending.json" || true

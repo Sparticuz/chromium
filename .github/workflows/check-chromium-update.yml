@@ -1,0 +1,113 @@
+name: Check Chromium Update
+
+on:
+  schedule:
+    # Run daily at 08:00 UTC
+    - cron: "0 8 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-update:
+    name: Check for new Chromium stable release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Get current revision
+        id: current
+        run: |
+          CURRENT_REVISION=$(cat _/ec2/revision.txt)
+          echo "revision=${CURRENT_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "Current revision: ${CURRENT_REVISION}"
+
+      - name: Fetch latest stable revision
+        id: latest
+        run: |
+          RESPONSE=$(curl -sf "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json")
+          LATEST_REVISION=$(echo "$RESPONSE" | jq -er '.channels.Stable.revision')
+          LATEST_VERSION=$(echo "$RESPONSE" | jq -er '.channels.Stable.version')
+
+          if [ -z "$LATEST_REVISION" ] || [ "$LATEST_REVISION" = "null" ] || [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
+            echo "Failed to fetch valid stable Chromium revision/version" >&2
+            exit 1
+          fi
+          echo "revision=${LATEST_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Latest stable: Chromium ${LATEST_VERSION} (revision ${LATEST_REVISION})"
+
+      - name: Check if update is needed
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.current.outputs.revision }}" = "${{ steps.latest.outputs.revision }}" ]; then
+            echo "update_needed=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date."
+          else
+            # Check if a PR already exists for this revision
+            BRANCH="chore/chromium-update-${{ steps.latest.outputs.revision }}"
+            EXISTING=$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+            if [ -n "$EXISTING" ]; then
+              echo "update_needed=false" >> "$GITHUB_OUTPUT"
+              echo "PR #${EXISTING} already exists for revision ${{ steps.latest.outputs.revision }} — skipping"
+            else
+              echo "update_needed=true" >> "$GITHUB_OUTPUT"
+              echo "New revision available: ${{ steps.latest.outputs.revision }} (current: ${{ steps.current.outputs.revision }})"
+            fi
+          fi
+
+      - name: Update revision
+        if: steps.check.outputs.update_needed == 'true'
+        run: node tools/update-browser-revision.mjs
+
+      - name: Create Pull Request
+        if: steps.check.outputs.update_needed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "chore: bump Chromium revision to ${{ steps.latest.outputs.revision }}"
+          title: "chore: bump Chromium to ${{ steps.latest.outputs.version }} (revision ${{ steps.latest.outputs.revision }})"
+          body: |
+            ## Chromium Update
+
+            A new stable Chromium version has been detected.
+
+            | | Value |
+            |---|---|
+            | **Previous revision** | ${{ steps.current.outputs.revision }} |
+            | **New revision** | ${{ steps.latest.outputs.revision }} |
+            | **Chrome version** | ${{ steps.latest.outputs.version }} |
+
+            ### Build Options
+
+            Add these labels **before** adding `binaries:build`:
+
+            | Label | Effect |
+            |---|---|
+            | `build:ssh` | Enable SSH access + screen session for live monitoring |
+            | `build:on-demand` | Use on-demand pricing instead of spot (~3x more expensive) |
+
+            Spot pricing is the default (~70% cheaper). If a spot instance is interrupted, retry by adding `binaries:build` again.
+
+            <!-- checklist-start -->
+            ### Maintainer Checklist
+            - [x] Revision bump detected — `${{ steps.current.outputs.revision }}` → `${{ steps.latest.outputs.revision }}`
+            - [ ] **Add `binaries:build` to start EC2 build** ← you are here
+            - [ ] Binaries built and uploaded to S3
+            - [ ] **Add `binaries:test` to run tests**
+            - [ ] Tests and visual regression passed
+            <!-- checklist-end -->
+
+            ---
+            *This PR was created automatically by the [Check Chromium Update](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.*
+          branch: chore/chromium-update-${{ steps.latest.outputs.revision }}
+          labels: binaries:needed
