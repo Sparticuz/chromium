@@ -126,7 +126,7 @@ export const downloadAndExtract = async (url: string): Promise<string> => {
 
   const response = await fetch(url, {
     redirect: "follow",
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(300_000),
   });
 
   if (!response.ok) {
