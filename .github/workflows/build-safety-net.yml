@@ -1,0 +1,124 @@
+name: Build Safety Net
+
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  check:
+    name: Check for stale builds
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+
+    steps:
+      - name: Scan for stale pending markers
+        id: scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find all pending.json files in S3
+          PENDING_FILES=$(aws s3 ls "s3://${S3_BUCKET}/" --recursive | grep "pending.json" || true)
+
+          if [ -z "$PENDING_FILES" ]; then
+            echo "No pending builds found."
+            echo "has_stale=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          NOW_EPOCH=$(date +%s)
+          STALE_REVISIONS=""
+
+          while IFS= read -r line; do
+            KEY=$(echo "$line" | awk '{print $4}')
+            REVISION=$(echo "$KEY" | sed 's|\([0-9]*\)/pending.json|\1|')
+
+            # Download and check deadline
+            PENDING=$(aws s3 cp "s3://${S3_BUCKET}/${KEY}" - 2>/dev/null || true)
+            if [ -z "$PENDING" ]; then continue; fi
+
+            DEADLINE=$(echo "$PENDING" | jq -r '.deadline // empty')
+            if [ -z "$DEADLINE" ]; then continue; fi
+
+            DEADLINE_EPOCH=$(date -d "$DEADLINE" +%s 2>/dev/null || echo 0)
+            if [ "$NOW_EPOCH" -gt "$DEADLINE_EPOCH" ]; then
+              echo "STALE: revision=${REVISION}, deadline=${DEADLINE}"
+              STALE_REVISIONS="${STALE_REVISIONS} ${REVISION}"
+
+              PR_NUMBER=$(echo "$PENDING" | jq -r '.pr_number // empty')
+              INSTANCE_ID=$(echo "$PENDING" | jq -r '.instance_id // empty')
+
+              # Terminate EC2 instance if known
+              if [ -n "$INSTANCE_ID" ]; then
+                aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" || true
+              fi
+
+              # Terminate by tag as fallback (both build and arm64 libs instances)
+              for TAG_NAME in chromium-build chromium-arm64-libs; do
+                TAGGED_IDS=$(aws ec2 describe-instances \
+                  --filters "Name=tag:Name,Values=${TAG_NAME}" "Name=instance-state-name,Values=running,pending" \
+                  --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || true)
+                if [ -n "$TAGGED_IDS" ]; then
+                  echo "Terminating ${TAG_NAME} instances: ${TAGGED_IDS}"
+                  aws ec2 terminate-instances --instance-ids $TAGGED_IDS || true
+                fi
+              done
+
+              # Clean up S3
+              aws s3 rm "s3://${S3_BUCKET}/${KEY}"
+
+              # Swap label to binaries:failed on PR
+              if [ -n "$PR_NUMBER" ]; then
+                gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/binaries:building \
+                  -X DELETE || true
+                gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
+                  -f "labels[]=binaries:failed"
+
+                gh pr comment "${PR_NUMBER}" --repo "${{ github.repository }}" --body "## Build Timed Out
+
+          Chromium build for revision \`${REVISION}\` exceeded its deadline.
+          EC2 instances have been terminated. The \`binaries:failed\` label has been applied.
+
+          To retry, add the \`binaries:build\` label."
+              fi
+            fi
+          done <<< "$PENDING_FILES"
+
+          if [ -n "$STALE_REVISIONS" ]; then
+            echo "has_stale=true" >> "$GITHUB_OUTPUT"
+            echo "revisions=${STALE_REVISIONS}" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create alert issue for stale builds
+        if: steps.scan.outputs.has_stale == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Build safety net: stale builds detected" \
+            --body "## Build Timeout Alert
+
+          The following revision(s) had pending builds that exceeded their deadline:
+          \`${{ steps.scan.outputs.revisions }}\`
+
+          ### Actions Taken
+          - EC2 instances terminated (by ID and by tag)
+          - S3 pending markers removed
+          - PR labels updated to \`binaries:failed\`
+
+          ### Manual Verification
+          - Check [AWS EC2 Console](https://console.aws.amazon.com/ec2/) for lingering instances
+          - Verify the S3 bucket for partial artifacts" \
+            --label "bug"
