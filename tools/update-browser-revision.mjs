@@ -1,17 +1,16 @@
 /**
- * This file will update the chromium revision in inventory.ini
+ * This file will update the chromium revision in _/ec2/revision.txt
  * based on the current stable version of chromium
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function updateDevToolsProtocolVersion() {
-  // eslint-disable-next-line n/no-unsupported-features/node-builtins
+async function fetchStableChannelInfo() {
   const result = await fetch(
     "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json",
   );
@@ -21,35 +20,31 @@ async function updateDevToolsProtocolVersion() {
 }
 
 /**
- * Updates the chromium_revision in the specified inventory file.
- * @param {string} filePath - The path to the inventory.ini file.
+ * Writes the revision number to the specified file.
+ * @param {string} filePath - The path to the revision file.
  * @param {string} newRevision - The new revision number.
  */
-async function updateInventoryFile(filePath, newRevision) {
+async function updateRevisionFile(filePath, newRevision) {
   try {
-    const data = await readFile(filePath, "utf8");
-    const updatedData = data.replace(
-      /^(chromium_revision=).*$/m,
-      `$1${newRevision}`,
-    );
-    await writeFile(filePath, updatedData, "utf8");
+    await writeFile(filePath, `${newRevision}\n`, "utf8");
     console.log(
       `Successfully updated ${filePath} with revision ${newRevision}`,
     );
   } catch (error) {
-    console.error(`Error updating inventory file: ${error}`);
+    console.error(`Error updating revision file: ${error}`);
+    throw error;
   }
 }
 
 /**
  * The Command block
  */
-const stableChannelInfo = await updateDevToolsProtocolVersion();
+const stableChannelInfo = await fetchStableChannelInfo();
 const { revision, version } = stableChannelInfo;
 
 console.log(
   `Fetched stable Chromium revision for Chromium ${version}: ${revision}`,
 );
 
-const inventoryPath = resolve(__dirname, "../_/ansible/inventory.ini");
-await updateInventoryFile(inventoryPath, revision);
+const revisionPath = resolve(__dirname, "../_/ec2/revision.txt");
+await updateRevisionFile(revisionPath, revision);
