@@ -115,8 +115,6 @@ jobs:
 
       - name: Release chromium on npmjs
         run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
       - name: Cleanup bin after npm publish
         run: rm -f bin/chromium.br bin/swiftshader.tar.br
@@ -141,8 +139,6 @@ jobs:
 
       - name: Release chromium-min on npmjs
         run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
       - name: Create Chromium (x64) Pack
         run: |
