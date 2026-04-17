@@ -277,11 +277,11 @@ Go to **Settings → Secrets and variables → Actions** and add:
 | `AWS_ACCESS_KEY_ID`        | From `create-access-key` output                  |
 | `AWS_SECRET_ACCESS_KEY`    | From `create-access-key` output                  |
 | `CHROMIUM_BUILD_S3_BUCKET` | S3 bucket name (plain text, not ARN)             |
-| `RELEASE_TOKEN`            | GitHub PAT (see below)                           |
+| `AUTOMATION_TOKEN`         | GitHub PAT (see below)                           |
 | `SSH_PUBLIC_KEY`           | Contents of `~/.ssh/chromium-build.pub`          |
 | `NPM_PUBLISH_TOKEN`        | npm granular access token for `@sparticuz` scope |
 
-**`RELEASE_TOKEN`** — a GitHub Personal Access Token used for two things:
+**`AUTOMATION_TOKEN`** — a GitHub Personal Access Token used for two things:
 
 1. `repository_dispatch` from EC2 to trigger `build-complete.yml`
 2. Tag push in `prepare-release.yml` to trigger `release.yml`

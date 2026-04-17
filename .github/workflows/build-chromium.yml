@@ -121,7 +121,7 @@ jobs:
         env:
           REVISION: ${{ steps.revision.outputs.revision }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_PAT: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_PAT: ${{ secrets.AUTOMATION_TOKEN }}
           GITHUB_REPO_NAME: ${{ github.repository }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
           USE_SSH: ${{ steps.options.outputs.use_ssh }}

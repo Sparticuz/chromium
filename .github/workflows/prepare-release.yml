@@ -24,8 +24,8 @@ jobs:
           # A PAT is required here because pushes from GITHUB_TOKEN do not
           # trigger other workflows. The tag push needs to trigger release.yml.
           # Create a fine-grained PAT with contents:write scope and add it as
-          # a repository secret named RELEASE_TOKEN.
-          token: ${{ secrets.RELEASE_TOKEN }}
+          # a repository secret named AUTOMATION_TOKEN.
+          token: ${{ secrets.AUTOMATION_TOKEN }}
 
       - name: Validate version format
         run: |

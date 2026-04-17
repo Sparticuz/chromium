@@ -197,11 +197,11 @@ aws iam add-role-to-instance-profile \
 | `AWS_ACCESS_KEY_ID`        | IAM user credential | See IAM user policy above                  | `build-chromium`, `build-complete`, `build-safety-net`, `test`, `release` |
 | `AWS_SECRET_ACCESS_KEY`    | IAM user credential | Corresponding secret key                   | (same as above)                                                           |
 | `CHROMIUM_BUILD_S3_BUCKET` | Plain text          | S3 bucket name (not an ARN)                | (same as above)                                                           |
-| `RELEASE_TOKEN`            | GitHub PAT          | See below                                  | `build-chromium`, `prepare-release`                                       |
+| `AUTOMATION_TOKEN`         | GitHub PAT          | See below                                  | `build-chromium`, `prepare-release`                                       |
 | `SSH_PUBLIC_KEY`           | Plain text          | SSH public key (e.g. `ssh-ed25519 AAAA…`)  | `build-chromium` (injected into EC2 user-data)                            |
 | `NPM_PUBLISH_TOKEN`        | npm access token    | `publish` permission on `@sparticuz` scope | `release`                                                                 |
 
-#### `RELEASE_TOKEN` — GitHub Personal Access Token
+#### `AUTOMATION_TOKEN` — GitHub Personal Access Token
 
 This PAT serves two purposes and needs scopes for both:
 
