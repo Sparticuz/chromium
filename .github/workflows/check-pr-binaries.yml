@@ -66,7 +66,7 @@ jobs:
               -f "labels[]=binaries:needed"
           fi
 
-      - name: Update labels (revision unchanged -> binaries:verified)
+      - name: Update labels (revision unchanged -> binaries:available)
         if: steps.check.outputs.revision_changed == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,16 +74,17 @@ jobs:
         run: |
           CURRENT="${{ steps.labels.outputs.current }}"
 
-          # Remove all binaries:* labels except binaries:verified
-          for LABEL in binaries:needed binaries:available binaries:building binaries:failed binaries:testing binaries:build binaries:test; do
+          # Remove all binaries:* labels except binaries:available
+          for LABEL in binaries:needed binaries:verified binaries:building binaries:failed binaries:testing binaries:build binaries:test; do
             if echo "$CURRENT" | grep -qx "$LABEL"; then
               gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL} \
                 -X DELETE || true
             fi
           done
 
-          # Add binaries:verified if not already present
-          if ! echo "$CURRENT" | grep -qx 'binaries:verified'; then
+          # Add binaries:available if not already present
+          # (revision unchanged means master's binaries work — tests should still run)
+          if ! echo "$CURRENT" | grep -qx 'binaries:available'; then
             gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
-              -f "labels[]=binaries:verified"
+              -f "labels[]=binaries:available"
           fi
