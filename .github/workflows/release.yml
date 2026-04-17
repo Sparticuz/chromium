@@ -44,8 +44,8 @@ jobs:
           mkdir -p bin/x64 bin/arm64
 
           # Download all binaries
-          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/x64/" bin/x64/ --exclude "*.json"
-          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/arm64/" bin/arm64/ --exclude "*.json"
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/x64/" bin/x64/ --exclude "*.json" --exclude "*.png"
+          aws s3 sync "s3://${S3_BUCKET}/${REVISION}/arm64/" bin/arm64/ --exclude "*.json"  --exclude "*.png"
           aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
 
           # Verify critical files exist

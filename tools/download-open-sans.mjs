@@ -16,7 +16,6 @@ async function downloadFonts() {
   await mkdir(FONTS_DIR, { recursive: true });
 
   for (const font of FONT_URL) {
-    // eslint-disable-next-line n/no-unsupported-features/node-builtins
     const res = await fetch(font);
     if (!res.ok) {
       throw new Error(`Failed to download font: ${res.status}`);
