@@ -18,6 +18,6 @@
     "eslint.config.js",
     "tools",
     "_/amazon/handlers",
-    "tsup.config.js"
+    "tsdown.config.js"
   ]
 }
