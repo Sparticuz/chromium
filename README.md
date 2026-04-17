@@ -1,7 +1,7 @@
 # @sparticuz/chromium
 
 [![@sparticuz/chromium](https://img.shields.io/npm/v/@sparticuz/chromium.svg?style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium)
-[![Chromium](https://img.shields.io/github/size/sparticuz/chromium/bin/x64/chromium.br?label=Chromium&style=for-the-badge)](bin/)
+![Package size](https://img.shields.io/npm/unpacked-size/%40sparticuz%2Fchromium?style=for-the-badge&label=Chromium)
 [![npm](https://img.shields.io/npm/dw/@sparticuz/chromium?label=%40sparticuz%2Fchromium&style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium)
 [![npm](https://img.shields.io/npm/dw/@sparticuz/chromium-min?label=%40sparticuz%2Fchromium-min&style=for-the-badge)](https://www.npmjs.com/package/@sparticuz/chromium-min)
 [![GitHub Downloads](https://img.shields.io/github/downloads/Sparticuz/chromium/total?style=for-the-badge)](https://github.com/Sparticuz/chromium/releases)
