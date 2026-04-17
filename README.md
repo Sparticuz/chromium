@@ -299,7 +299,12 @@ If you see the error `The input directory "/var/task/bin" does not exist`, this 
 
 ### Can I use ARM or Graviton instances?
 
-YES! Starting at Chromium v135, @sparticuz/chromium includes an arm64 pack.
+YES! Starting at Chromium v135, arm64 binaries are available as a Lambda layer zip and a pack tar in each [GitHub release](https://github.com/Sparticuz/chromium/releases).
+
+> **Note:** The npm package (`@sparticuz/chromium`) includes only x64 binaries. For arm64, use the `@sparticuz/chromium-min` package and then use one of these options:
+>
+> - **Lambda layer** — download `chromium-VERSION-layer.arm64.zip` from the release and upload it as a Lambda layer
+> - **Remote pack** — host `chromium-VERSION-pack.arm64.tar` at an HTTPS URL and pass it to `chromium.executablePath("https://example.com/chromium-pack.arm64.tar")`
 
 ### Can I use Google Chrome or Chrome for Testing? What is chrome-headless-shell?
 
