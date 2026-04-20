@@ -17,7 +17,7 @@ import puppeteer from "puppeteer-core";
 import chromium, {
   inflate,
   setupLambdaEnvironment,
-} from "../build/esm/index.js";
+} from "../build/esm/index.mjs";
 
 const OUTPUT_DIR = process.argv[2];
 if (!OUTPUT_DIR) {
