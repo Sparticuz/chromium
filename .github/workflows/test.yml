@@ -13,12 +13,15 @@ jobs:
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
       is_pr: ${{ steps.gate.outputs.is_pr }}
+      revision_changed: ${{ steps.revision_check.outputs.revision_changed }}
     permissions:
       contents: read
       pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Determine if tests should run
         id: gate
@@ -78,6 +81,17 @@ jobs:
 
             UPDATED=$(echo "$BODY" | NEW_CHECKLIST="$NEW_CHECKLIST" perl -0777 -pe 's|<!-- checklist-start -->.*?<!-- checklist-end -->|<!-- checklist-start -->\n$ENV{NEW_CHECKLIST}\n<!-- checklist-end -->|s')
             gh pr edit "$PR_NUMBER" --repo "$REPO" --body "$UPDATED"
+          fi
+
+      - name: Check if revision changed
+        id: revision_check
+        run: |
+          CURRENT_REV=$(cat _/ec2/revision.txt)
+          MASTER_REV=$(git show origin/master:_/ec2/revision.txt 2>/dev/null || echo "")
+          if [ -n "$MASTER_REV" ] && [ "$CURRENT_REV" != "$MASTER_REV" ]; then
+            echo "revision_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "revision_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -270,13 +284,47 @@ jobs:
       - name: Take screenshots
         run: node tools/visual-regression.mjs /tmp/screenshots/current
 
+      - name: Resolve baseline revision
+        id: baseline
+        run: |
+          # Read master's revision as the baseline
+          BASELINE_REV=$(git show origin/master:_/ec2/revision.txt 2>/dev/null || echo "")
+          if [ -z "$BASELINE_REV" ]; then
+            echo "Could not read revision.txt from master"
+            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+            echo "revision_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_REV="${{ steps.revision.outputs.revision }}"
+          if [ "$BASELINE_REV" = "$CURRENT_REV" ]; then
+            echo "Same revision as master — comparing code-only changes"
+            echo "revision_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Revision changed: ${BASELINE_REV} → ${CURRENT_REV}"
+            echo "revision_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Check if baseline screenshots exist in S3 (same or different revision)
+          if aws s3 ls "s3://${S3_BUCKET}/${BASELINE_REV}/${{ matrix.arch }}/example.com.png" >/dev/null 2>&1; then
+            echo "Baseline found: master (revision ${BASELINE_REV})"
+            echo "has_baseline=true" >> "$GITHUB_OUTPUT"
+            echo "revision=${BASELINE_REV}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No baseline screenshots in S3 for ${BASELINE_REV}"
+            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+            echo "revision=${BASELINE_REV}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload current screenshots to S3
+        if: steps.baseline.outputs.revision_changed == 'true'
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
           aws s3 sync /tmp/screenshots/current/ "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" \
             --exclude "manifest.json"
 
       - name: Update revision manifest with screenshot hashes
+        if: steps.baseline.outputs.revision_changed == 'true'
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
           ARCH="${{ matrix.arch }}"
@@ -292,34 +340,6 @@ jobs:
           ' "$MANIFEST_TMP" > "${MANIFEST_TMP}.new" && mv "${MANIFEST_TMP}.new" "$MANIFEST_TMP"
 
           aws s3 cp "$MANIFEST_TMP" "$MANIFEST_S3"
-
-      - name: Resolve baseline revision
-        id: baseline
-        run: |
-          # Read master's revision as the baseline
-          BASELINE_REV=$(git show origin/master:_/ec2/revision.txt 2>/dev/null || echo "")
-          if [ -z "$BASELINE_REV" ]; then
-            echo "Could not read revision.txt from master"
-            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          CURRENT_REV="${{ steps.revision.outputs.revision }}"
-          if [ "$BASELINE_REV" = "$CURRENT_REV" ]; then
-            echo "Current revision matches master — no baseline comparison needed"
-            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Check if baseline screenshots exist in S3
-          if aws s3 ls "s3://${S3_BUCKET}/${BASELINE_REV}/${{ matrix.arch }}/example.com.png" >/dev/null 2>&1; then
-            echo "Baseline found: master (revision ${BASELINE_REV})"
-            echo "has_baseline=true" >> "$GITHUB_OUTPUT"
-            echo "revision=${BASELINE_REV}" >> "$GITHUB_OUTPUT"
-          else
-            echo "No baseline screenshots in S3 for ${BASELINE_REV}"
-            echo "has_baseline=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Download baseline screenshots
         if: steps.baseline.outputs.has_baseline == 'true'
@@ -363,7 +383,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Upload diff images to S3
-        if: steps.baseline.outputs.has_baseline == 'true'
+        if: steps.baseline.outputs.has_baseline == 'true' && steps.baseline.outputs.revision_changed == 'true'
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
           if ls /tmp/screenshots/diff/*-diff.png 1>/dev/null 2>&1; then
@@ -377,6 +397,7 @@ jobs:
           REVISION="${{ steps.revision.outputs.revision }}"
           BASELINE_REV="${{ steps.baseline.outputs.revision }}"
           HAS_BASELINE="${{ steps.baseline.outputs.has_baseline }}"
+          REVISION_CHANGED="${{ steps.baseline.outputs.revision_changed }}"
           ARCH="${{ matrix.arch }}"
           URLS=""
           EXPIRES=604800  # 7 days
@@ -389,7 +410,11 @@ jobs:
 
           for PAGE in example.com webgl; do
             SAFE="${PAGE//./_}"
-            presign "${REVISION}/${ARCH}/${PAGE}.png" "${SAFE}_current" || true
+
+            # Current screenshots are only in S3 when revision changed
+            if [ "$REVISION_CHANGED" = "true" ]; then
+              presign "${REVISION}/${ARCH}/${PAGE}.png" "${SAFE}_current" || true
+            fi
 
             if [ "$HAS_BASELINE" = "true" ] && [ -n "$BASELINE_REV" ]; then
               presign "${BASELINE_REV}/${ARCH}/${PAGE}.png" "${SAFE}_baseline" || true
@@ -407,6 +432,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
+          REVISION_CHANGED: ${{ steps.baseline.outputs.revision_changed }}
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
           BASELINE_REV="${{ steps.baseline.outputs.revision }}"
@@ -432,30 +458,49 @@ jobs:
             WEBGL_STATUS="Match"
             if [ "$WEBGL_HASH" != "$BASELINE_WEBGL_HASH" ]; then WEBGL_STATUS="Changed"; fi
 
-            # Build image table rows
-            EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) | ![current](${URL_example_com_current})"
-            if [ -n "${URL_example_com_diff:-}" ]; then
-              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
+            # Header varies by whether revision changed
+            if [ "$REVISION_CHANGED" = "true" ]; then
+              HEADER="Baseline revision: \`${BASELINE_REV}\` → Current revision: \`${REVISION}\`"
             else
-              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
+              HEADER="Revision: \`${REVISION}\` (unchanged — comparing code-only changes against S3 baseline)"
             fi
-            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
 
-            WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) | ![current](${URL_webgl_current})"
-            if [ -n "${URL_webgl_diff:-}" ]; then
-              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
+            if [ "$REVISION_CHANGED" = "true" ]; then
+              # Full image comparison: baseline vs current vs diff
+              EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) | ![current](${URL_example_com_current})"
+              if [ -n "${URL_example_com_diff:-}" ]; then
+                EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
+              else
+                EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
+              fi
+              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
+
+              WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) | ![current](${URL_webgl_current})"
+              if [ -n "${URL_webgl_diff:-}" ]; then
+                WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
+              else
+                WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
+              fi
+              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
+
+              IMG_HEADER="| Page | Baseline | Current | Diff |"
+              IMG_SEP="|------|----------|---------|------|"
             else
-              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
+              # Same revision: current screenshots not uploaded, show baseline only
+              EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) |"
+              WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) |"
+
+              IMG_HEADER="| Page | S3 Baseline |"
+              IMG_SEP="|------|-------------|"
             fi
-            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
 
             cat > /tmp/screenshots/comment.md <<EOF
           ## Visual Regression (${{ matrix.arch }})
 
-          Baseline revision: \`${BASELINE_REV}\` | Current revision: \`${REVISION}\`
+          ${HEADER}
 
-          | Page | Baseline | Current | Diff |
-          |------|----------|---------|------|
+          ${IMG_HEADER}
+          ${IMG_SEP}
           ${EXAMPLE_IMG_ROW}
           ${WEBGL_IMG_ROW}
 
@@ -476,21 +521,41 @@ jobs:
           </details>
           EOF
           else
-            cat > /tmp/screenshots/comment.md <<EOF
+            if [ "$REVISION_CHANGED" = "true" ]; then
+              # Revision changed but no baseline screenshots in S3 for master's revision
+              # Current screenshots were uploaded for this new revision
+              cat > /tmp/screenshots/comment.md <<EOF
           ## Visual Regression (${{ matrix.arch }})
 
-          No baseline screenshots found — first capture for revision \`${REVISION}\`.
+          No baseline screenshots found in S3 for master revision \`${BASELINE_REV}\` — showing current only.
 
-          | Page | Screenshot |
-          |------|-----------|
-          | example.com | ![current](${URL_example_com_current}) |
-          | WebGL | ![current](${URL_webgl_current}) |
+          | Page | Current | Hash |
+          |------|---------|------|
+          | example.com | ![current](${URL_example_com_current}) | \`${EXAMPLE_HASH:0:16}...\` |
+          | WebGL | ![current](${URL_webgl_current}) | \`${WEBGL_HASH:0:16}...\` |
+
+          <details><summary>Full hashes</summary>
+
+          | Page | Hash |
+          |------|------|
+          | example.com | \`${EXAMPLE_HASH}\` |
+          | WebGL | \`${WEBGL_HASH}\` |
+
+          </details>
+          EOF
+            else
+              # Same revision and no screenshots in S3 — nothing to compare
+              cat > /tmp/screenshots/comment.md <<EOF
+          ## Visual Regression (${{ matrix.arch }})
+
+          No baseline screenshots found in S3 for revision \`${REVISION}\` — skipping comparison.
 
           | Page | Hash |
           |------|------|
           | example.com | \`${EXAMPLE_HASH}\` |
           | WebGL | \`${WEBGL_HASH}\` |
           EOF
+            fi
           fi
 
           # Find existing VR comment for this arch and update it, or create new
@@ -509,7 +574,7 @@ jobs:
   cross-arch-comparison:
     name: Cross-Architecture Comparison
     needs: [check-trigger, visual-regression]
-    if: needs.check-trigger.outputs.is_pr == 'true'
+    if: needs.check-trigger.outputs.is_pr == 'true' && needs.check-trigger.outputs.revision_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
