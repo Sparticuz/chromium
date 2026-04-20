@@ -313,6 +313,7 @@ jobs:
           else
             echo "No baseline screenshots in S3 for ${BASELINE_REV}"
             echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+            echo "revision=${BASELINE_REV}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload current screenshots to S3
