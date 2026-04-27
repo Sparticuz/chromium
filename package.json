@@ -68,15 +68,15 @@
     "@tsconfig/strictest": "^2.0.8",
     "@types/node": "^22.19.17",
     "@types/tar-fs": "^2.0.4",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.5",
     "clean-modules": "^3.1.1",
     "eslint": "^9.39.4",
     "prettier": "^3.8.3",
-    "puppeteer-core": "^24.41.0",
-    "tsdown": "^0.21.9",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.2",
-    "vitest": "^4.1.4"
+    "puppeteer-core": "^24.42.0",
+    "tsdown": "^0.21.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1",
+    "vitest": "^4.1.5"
   },
   "engines": {
     "node": ">=22.17.0"

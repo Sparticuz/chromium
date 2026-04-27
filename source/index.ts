@@ -171,6 +171,6 @@ class Chromium {
   }
 }
 
-export { inflate };
-export { setupLambdaEnvironment };
+export { setupLambdaEnvironment } from "./helper.js";
+export { inflate } from "./lambdafs.js";
 export default Chromium;

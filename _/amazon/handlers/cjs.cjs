@@ -76,8 +76,6 @@ exports.handler = async (
         }
       }
     }
-  } catch (error) {
-    throw error;
   } finally {
     if (browser !== null) {
       for (const page of await browser.pages()) {
