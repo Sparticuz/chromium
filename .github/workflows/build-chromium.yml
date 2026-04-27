@@ -21,7 +21,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: us-east-1
       S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
-      X64_INSTANCE_TYPE: c8id.4xlarge
+      X64_INSTANCE_TYPE: c8id.8xlarge
       X64_AMI_SSM: /aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64
       ARM64_INSTANCE_TYPE: m8g.medium
       ARM64_AMI_SSM: /aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-arm64
