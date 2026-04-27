@@ -171,6 +171,4 @@ class Chromium {
   }
 }
 
-export { inflate };
-export { setupLambdaEnvironment };
 export default Chromium;

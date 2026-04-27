@@ -1,4 +1,3 @@
-/* eslint-disable n/no-missing-import */
 // tools/visual-regression.mjs
 // Takes screenshots of test pages using the packaged Chromium binary.
 // Usage: node tools/visual-regression.mjs <output-dir>

@@ -1,5 +1,4 @@
 import { resolve } from "node:path";
-
 import { defineConfig } from "tsdown";
 
 /**

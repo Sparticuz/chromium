@@ -4,6 +4,7 @@
     "@tsconfig/strictest/tsconfig.json"
   ],
   "compilerOptions": {
+    "allowJs": true,
     "declaration": true,
     "lib": ["dom", "ES2024"],
     "module": "NodeNext",
@@ -18,6 +19,7 @@
     "eslint.config.js",
     "tools",
     "_/amazon/handlers",
-    "tsdown.config.js"
+    "tsdown.config.js",
+    "prettier.config.ts"
   ]
 }
