@@ -352,6 +352,7 @@ jobs:
               --instance-initiated-shutdown-behavior terminate \
               --user-data "file://${{ steps.userdata.outputs.userdata_file }}" \
               --iam-instance-profile Name=chromium-build \
+              --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":32,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
               --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=chromium-build},{Key=Revision,Value=${REVISION}},{Key=PR,Value=${{ github.event.pull_request.number }}}]" \
               ${MARKET_OPTS[@]+"${MARKET_OPTS[@]}"} \
               --query 'Instances[0].InstanceId' --output text 2>/tmp/ec2-error.txt); then
