@@ -457,7 +457,6 @@ describe("Integration", () => {
       args: chromium.args,
       headless: "shell",
     });
-    console.log("Args", args);
     // Force the setup of Lambda environment
     setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
     await inflate(join("bin", "al2023.tar.br"));
