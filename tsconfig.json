@@ -19,7 +19,6 @@
     "eslint.config.js",
     "tools",
     "_/amazon/handlers",
-    "tsdown.config.js",
     "prettier.config.ts"
   ]
 }
