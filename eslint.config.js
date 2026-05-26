@@ -1,28 +1,22 @@
 import myConfig from "@sparticuz/eslint-config";
-import tseslint from "typescript-eslint";
+import packageJsonConfig from "@sparticuz/eslint-config/package-json";
+import prettierConfig from "@sparticuz/eslint-config/prettier";
+import { defineConfig, globalIgnores } from "eslint/config";
 
-export default tseslint.config(
-  {
-    name: "Ignores",
-
-    ignores: [
-      "node_modules",
-      "examples",
-      "build",
-      "coverage",
-      "vitest.config.ts",
-    ],
-  },
-  ...myConfig,
-  {
-    languageOptions: {
-      parserOptions: {
-        project: true,
-      },
-    },
+export default defineConfig(
+  ...myConfig.with({
     rules: {
       "security/detect-non-literal-fs-filename": "off",
       "unicorn/prevent-abbreviations": "off",
     },
-  },
+  }),
+  ...packageJsonConfig,
+  ...prettierConfig,
+  globalIgnores([
+    "node_modules",
+    "examples",
+    "build",
+    "coverage",
+    "vitest.config.ts",
+  ]),
 );
