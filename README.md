@@ -136,9 +136,9 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-    args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
-    defaultViewport: viewport,
-    executablePath: await chromium.executablePath("/opt/chromium"),
+  args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  defaultViewport: viewport,
+  executablePath: await chromium.executablePath("/opt/chromium"),
   headless: "shell",
 });
 ```
