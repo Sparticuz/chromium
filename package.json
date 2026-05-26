@@ -28,11 +28,11 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./build/esm/index.d.ts",
-      "default": "./build/esm/index.js"
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
     }
   },
-  "types": "./build/esm/index.d.ts",
+  "types": "./build/index.d.ts",
   "files": [
     "bin",
     "!bin/arm64",
