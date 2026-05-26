@@ -12,9 +12,6 @@ pretest:
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node24
 
-test-cjs:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node24cjs
-
 test22:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
 

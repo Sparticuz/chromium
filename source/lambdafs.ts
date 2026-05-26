@@ -5,6 +5,7 @@ import { createBrotliDecompress, createUnzip } from "node:zlib";
 import { extract } from "tar-fs";
 
 const ARCHIVE_EXTENSION_REGEX = /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i;
+const TAR_EXTENSION_REGEX = /\.t(?:ar(?:\.(?:br|gz))?|br|gz)$/i;
 const BROTLI_EXTENSION_REGEX = /br$/i;
 const GZIP_EXTENSION_REGEX = /gz$/i;
 
@@ -36,7 +37,7 @@ export const inflate = (filePath: string): Promise<string> => {
     // Brotli files tend to decompress to much larger sizes
     const isBrotli = BROTLI_EXTENSION_REGEX.test(filePath);
     const isGzip = GZIP_EXTENSION_REGEX.test(filePath);
-    const isTar = ARCHIVE_EXTENSION_REGEX.test(filePath);
+    const isTar = TAR_EXTENSION_REGEX.test(filePath);
 
     // Use a smaller highWaterMark for better memory efficiency
     // For most serverless environments, 4MB (2**22) is more memory-efficient than 8MB
