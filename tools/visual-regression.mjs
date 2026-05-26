@@ -42,7 +42,7 @@ setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
 await inflate(join("bin", "al2023.tar.br"));
 
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({
+  args: await puppeteer.defaultArgs({
     args: chromium.args,
     headless: "shell",
   }),
