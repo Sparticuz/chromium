@@ -48,9 +48,9 @@ Because this package follows Chromium's release cycle, it does NOT follow semant
 This package works with all currently supported AWS Lambda Node.js runtimes out of the box.
 
 ```javascript
-const test = require("node:test");
-const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium");
+import test from "node:test";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 // Optional: If you'd like to disable webgl, true is the default.
 chromium.setGraphicsMode = false;
@@ -65,7 +65,7 @@ test("Check the page title of example.com", async (t) => {
     width: 1920,
   };
   const browser = await puppeteer.launch({
-    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+    args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: "shell",
@@ -83,10 +83,10 @@ test("Check the page title of example.com", async (t) => {
 ### Usage with Playwright
 
 ```javascript
-const test = require("node:test");
+import test from "node:test";
 // Need to rename playwright's chromium object to something else
-const { chromium: playwright } = require("playwright-core");
-const chromium = require("@sparticuz/chromium");
+import { chromium as playwright } from "playwright-core";
+import chromium from "@sparticuz/chromium";
 
 test("Check the page title of example.com", async (t) => {
   const browser = await playwright.launch({
@@ -136,7 +136,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath("/opt/chromium"),
   headless: "shell",
@@ -159,7 +159,7 @@ const viewport = {
   width: 1920,
 };
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
   defaultViewport: viewport,
   executablePath: await chromium.executablePath(
     "https://www.example.com/chromiumPack.tar",
@@ -205,8 +205,8 @@ const headlessType = process.env.IS_LOCAL ? false : "shell";
 const browser = await puppeteer.launch({
   args:
     process.env.IS_LOCAL ?
-      puppeteer.defaultArgs()
-    : puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
+      await puppeteer.defaultArgs()
+    : await puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
   defaultViewport: viewport,
   executablePath:
     process.env.IS_LOCAL ?

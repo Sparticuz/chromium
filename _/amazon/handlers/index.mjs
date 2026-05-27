@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/no-commented-code */
+/* eslint-disable sonarjs/no-commented-code -- For Debugging purposes */
 import chromium from "@sparticuz/chromium";
 import { ok } from "node:assert";
 import { createHash } from "node:crypto";
@@ -6,13 +6,13 @@ import puppeteer from "puppeteer-core";
 
 export const handler = async (
   /** @type {{url: string; expected: {title: string; remove: string; screenshot: string}}[]} */ event,
-  // eslint-disable-next-line sonarjs/cognitive-complexity
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- I know this is a bit complex but it's a test handler and I don't want to split it up
 ) => {
   let browser = null;
 
   try {
     browser = await puppeteer.launch({
-      args: puppeteer.defaultArgs({
+      args: await puppeteer.defaultArgs({
         // Add in more args for serverless environments
         args: chromium.args,
         headless: "shell",
@@ -31,33 +31,24 @@ export const handler = async (
 
     console.log("Chromium version", await browser.version());
 
-    for (let job of event) {
+    for (const job of event) {
       const page = await browser.newPage();
 
-      if (Object.prototype.hasOwnProperty.call(job, "url") === true) {
+      if (Object.hasOwn(job, "url") === true) {
         await page.goto(job.url, { waitUntil: ["domcontentloaded", "load"] });
 
-        if (Object.prototype.hasOwnProperty.call(job, "expected") === true) {
-          if (
-            Object.prototype.hasOwnProperty.call(job.expected, "title") === true
-          ) {
+        if (Object.hasOwn(job, "expected") === true) {
+          if (Object.hasOwn(job.expected, "title") === true) {
             ok(
               (await page.title()) === job.expected.title,
               `Title assertion failed.`,
             );
           }
 
-          if (
-            Object.prototype.hasOwnProperty.call(job.expected, "screenshot") ===
-            true
-          ) {
-            if (
-              Object.prototype.hasOwnProperty.call(job.expected, "remove") ===
-              true
-            ) {
+          if (Object.hasOwn(job.expected, "screenshot") === true) {
+            if (Object.hasOwn(job.expected, "remove") === true) {
               await page.evaluate((selector) => {
-                // eslint-disable-next-line unicorn/prefer-query-selector, no-undef
-                document.getElementById(selector)?.remove();
+                document.querySelector(`#${selector}`)?.remove();
               }, job.expected.remove);
             }
             const screenshot = Buffer.from(await page.screenshot());

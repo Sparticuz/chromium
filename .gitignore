@@ -2,7 +2,7 @@
 *.pem
 *.pem.pub
 *.zip
-bin/chromium-*.br
+bin
 build
 coverage
 node_modules

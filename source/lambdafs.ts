@@ -4,6 +4,11 @@ import { basename, join } from "node:path";
 import { createBrotliDecompress, createUnzip } from "node:zlib";
 import { extract } from "tar-fs";
 
+const ARCHIVE_EXTENSION_REGEX = /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i;
+const TAR_EXTENSION_REGEX = /\.t(?:ar(?:\.(?:br|gz))?|br|gz)$/i;
+const BROTLI_EXTENSION_REGEX = /br$/i;
+const GZIP_EXTENSION_REGEX = /gz$/i;
+
 /**
  * Decompresses a (tarballed) Brotli or Gzip compressed file and returns the path to the decompressed file/folder.
  *
@@ -13,13 +18,7 @@ export const inflate = (filePath: string): Promise<string> => {
   // Determine the output path based on the file type
   const output =
     filePath.includes("swiftshader") ? tmpdir() : (
-      join(
-        tmpdir(),
-        basename(filePath).replace(
-          /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i,
-          "",
-        ),
-      )
+      join(tmpdir(), basename(filePath).replace(ARCHIVE_EXTENSION_REGEX, ""))
     );
 
   return new Promise((resolve, reject) => {
@@ -36,9 +35,9 @@ export const inflate = (filePath: string): Promise<string> => {
 
     // Optimize chunk size based on file type - use smaller chunks for better memory usage
     // Brotli files tend to decompress to much larger sizes
-    const isBrotli = /br$/i.test(filePath);
-    const isGzip = /gz$/i.test(filePath);
-    const isTar = /\.t(?:ar(?:\.(?:br|gz))?|br|gz)$/i.test(filePath);
+    const isBrotli = BROTLI_EXTENSION_REGEX.test(filePath);
+    const isGzip = GZIP_EXTENSION_REGEX.test(filePath);
+    const isTar = TAR_EXTENSION_REGEX.test(filePath);
 
     // Use a smaller highWaterMark for better memory efficiency
     // For most serverless environments, 4MB (2**22) is more memory-efficient than 8MB

@@ -186,14 +186,6 @@ jobs:
             label: Node 22.x ESM
           - function: node24
             label: Node 24.x ESM
-          - arch: x64
-            function: node24cjs
-            label: Node 24.x CJS
-            runner: ubuntu-latest
-          - arch: arm64
-            function: node24cjs
-            label: Node 24.x CJS
-            runner: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -20,7 +20,7 @@ if (isRunningInAmazonLinux2023(nodeMajorVersion)) {
   setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- This class is used to group related static methods together, and it is not meant to be instantiated
 class Chromium {
   /**
    * Returns a list of additional Chromium flags recommended for serverless environments.
@@ -166,7 +166,7 @@ class Chromium {
     // Await all extractions
     const result = await Promise.all(promises);
     // Returns the first result of the promise, which is the location of the `chromium` binary
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- We know that result will have at least one item because we are always inflating the `chromium.br` file, which is the first item in the promises array
     return result.shift()!;
   }
 }

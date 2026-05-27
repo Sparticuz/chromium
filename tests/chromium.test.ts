@@ -13,7 +13,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brotliCompressSync } from "node:zlib";
-import puppeteer from "puppeteer-core";
+import puppeteer, { Browser } from "puppeteer-core";
 import { pack } from "tar-fs";
 import {
   afterAll,
@@ -165,7 +165,7 @@ describe("Helper", () => {
     it("should reject when status code is not 200", async () => {
       // Execute & Verify
       await expect(
-        // eslint-disable-next-line sonarjs/publicly-writable-directories
+        // eslint-disable-next-line sonarjs/publicly-writable-directories -- This file is created in the system temp directory, which is writable
         downloadFile(`${baseUrl}/file.zip`, "/tmp/file.zip"),
       ).rejects.toStrictEqual(new Error("Unexpected status code: 404."));
     });
@@ -175,7 +175,7 @@ describe("Helper", () => {
     it("should set FONTCONFIG_PATH if not defined", () => {
       delete process.env["FONTCONFIG_PATH"];
       setupLambdaEnvironment("/lib/path");
-      // eslint-disable-next-line sonarjs/publicly-writable-directories
+      // eslint-disable-next-line sonarjs/publicly-writable-directories -- This test is modifying the process environment, which is acceptable in this context
       expect(process.env["FONTCONFIG_PATH"]).toBe("/tmp/fonts");
     });
 
@@ -227,7 +227,7 @@ describe("Helper", () => {
     it("should return true for localhost HTTP URLs (development)", () => {
       expect(isValidUrl("http://localhost:3000")).toBe(true);
       expect(isValidUrl("http://127.0.0.1:8080/pack.tar")).toBe(true);
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- Allow http:// for localhost/
       expect(isValidUrl("http://[::1]:3000")).toBe(true);
     });
 
@@ -322,7 +322,7 @@ describe("Helper", () => {
       const awsDir = join(tmpdir(), "tar-test-aws");
       mkdirSync(awsDir, { recursive: true });
       writeFileSync(join(awsDir, "fonts.conf"), "<fontconfig></fontconfig>");
-      // eslint-disable-next-line sonarjs/os-command
+      // eslint-disable-next-line sonarjs/os-command -- Using tar command for simplicity in test setup
       const awsTar = execSync(`tar cf - -C "${awsDir}" fonts.conf`);
       writeFileSync(join(fixtureDir, "aws.tar.br"), brotliCompressSync(awsTar));
 
@@ -339,7 +339,7 @@ describe("Helper", () => {
       for (const lib of swLibs) {
         writeFileSync(join(swDir, lib), `fake ${lib}`);
       }
-      // eslint-disable-next-line sonarjs/os-command
+      // eslint-disable-next-line sonarjs/os-command -- Using tar command for simplicity in test setup
       const swTar = execSync(`tar cf - -C "${swDir}" ${swLibs.join(" ")}`);
       writeFileSync(
         join(fixtureDir, "swiftshader.tar.br"),
@@ -401,13 +401,13 @@ describe("Helper", () => {
 
         // Check that the file was extracted successfully
         if (filePath.includes("swiftshader")) {
-          // eslint-disable-next-line vitest/no-conditional-expect
+          // eslint-disable-next-line vitest/no-conditional-expect -- We need to check for multiple files in the swiftshader tar, so we have to conditionally check for each file based on the filePath
           expect(existsSync(join(tmpdir(), "libGLESv2.so"))).toBe(true);
         } else if (filePath.includes("aws")) {
-          // eslint-disable-next-line vitest/no-conditional-expect
+          // eslint-disable-next-line vitest/no-conditional-expect -- We need to check for multiple files in the aws tar, so we have to conditionally check for each file based on the filePath
           expect(existsSync(join(tmpdir(), "aws", "fonts.conf"))).toBe(true);
         } else if (filePath.includes("chromium")) {
-          // eslint-disable-next-line vitest/no-conditional-expect
+          // eslint-disable-next-line vitest/no-conditional-expect -- We need to check for the chromium binary, so we have to conditionally check for it based on the filePath
           expect(existsSync(join(tmpdir(), "chromium"))).toBe(true);
         }
       }
@@ -442,7 +442,7 @@ describe("Paths", () => {
 });
 
 describe("Integration", () => {
-  let browser: puppeteer.Browser;
+  let browser: Browser;
 
   /**
    * Setup FONTCONFIG_PATH for non-lambda environments
@@ -453,11 +453,10 @@ describe("Integration", () => {
   });
 
   it("should open a Chromium window", async () => {
-    const args = puppeteer.defaultArgs({
+    const args = await puppeteer.defaultArgs({
       args: chromium.args,
       headless: "shell",
     });
-    console.log("Args", args);
     // Force the setup of Lambda environment
     setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
     await inflate(join("bin", "al2023.tar.br"));
@@ -527,7 +526,7 @@ describe("Integration", () => {
   });
 
   afterAll(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- We need to check if browser is defined before trying to close it, because if the test fails before the browser is assigned, we don't want to throw an error in the afterAll hook
     if (browser) {
       console.log("Closing browser");
       await browser.close();

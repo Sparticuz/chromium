@@ -13,15 +13,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import puppeteer from "puppeteer-core";
 
-import chromium, {
-  inflate,
-  setupLambdaEnvironment,
-} from "../build/esm/index.mjs";
+import chromium, { inflate, setupLambdaEnvironment } from "../build/index.js";
 
 const OUTPUT_DIR = process.argv[2];
 if (!OUTPUT_DIR) {
   console.error("Usage: node tools/visual-regression.mjs <output-dir>");
-  // eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit
+  // eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit -- This is a CLI tool
   process.exit(1);
 }
 
@@ -45,7 +42,7 @@ setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
 await inflate(join("bin", "al2023.tar.br"));
 
 const browser = await puppeteer.launch({
-  args: puppeteer.defaultArgs({
+  args: await puppeteer.defaultArgs({
     args: chromium.args,
     headless: "shell",
   }),
@@ -71,7 +68,6 @@ for (const job of pages) {
 
   if (job.remove) {
     await page.evaluate((selector) => {
-      // eslint-disable-next-line no-undef
       document.querySelector(`#${selector}`)?.remove();
     }, job.remove);
   }
