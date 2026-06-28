@@ -1,8 +1,8 @@
+import { unpackTar } from "modern-tar/fs";
 import { createReadStream, createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { createBrotliDecompress, createUnzip } from "node:zlib";
-import { extract } from "tar-fs";
 
 const ARCHIVE_EXTENSION_REGEX = /\.(?:t(?:ar(?:\.(?:br|gz))?|br|gz)|br|gz)$/i;
 const TAR_EXTENSION_REGEX = /\.t(?:ar(?:\.(?:br|gz))?|br|gz)$/i;
@@ -55,7 +55,7 @@ export const inflate = (filePath: string): Promise<string> => {
 
     // Setup the appropriate target stream based on file type
     if (isTar) {
-      target = extract(output);
+      target = unpackTar(output);
       target.once("finish", () => {
         resolve(output);
       });

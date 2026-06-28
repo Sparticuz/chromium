@@ -1,10 +1,10 @@
+import { unpackTar } from "modern-tar/fs";
 import { createWriteStream, rm } from "node:fs";
 import { access, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { extract } from "tar-fs";
 
 /**
  * Creates a symlink to a file
@@ -142,7 +142,7 @@ export const downloadAndExtract = async (url: string): Promise<string> => {
       Readable.fromWeb(
         response.body as import("node:stream/web").ReadableStream,
       ),
-      extract(destDir),
+      unpackTar(destDir),
     );
   } catch (error) {
     // Clean up partial extraction on failure
