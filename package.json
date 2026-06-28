@@ -52,14 +52,13 @@
     "update": "node ./tools/update-browser-revision.mjs"
   },
   "dependencies": {
-    "tar-fs": "^3.1.2"
+    "modern-tar": "^0.7.6"
   },
   "devDependencies": {
     "@sparticuz/eslint-config": "^11.5.0",
     "@tsconfig/node22": "^22.0.5",
     "@tsconfig/strictest": "^2.0.8",
     "@types/node": "^22.19.19",
-    "@types/tar-fs": "^2.0.4",
     "@vitest/coverage-v8": "^4.1.7",
     "clean-modules": "^4.0.0",
     "eslint": "^10.4.0",
