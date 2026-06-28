@@ -1,3 +1,4 @@
+import { packTar } from "modern-tar/fs";
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -14,7 +15,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brotliCompressSync } from "node:zlib";
 import puppeteer, { Browser } from "puppeteer-core";
-import { pack } from "tar-fs";
 import {
   afterAll,
   afterEach,
@@ -351,7 +351,7 @@ describe("Helper", () => {
         tarServer = createServer((req, res) => {
           if (req.url === "/pack.tar") {
             res.writeHead(200, { "Content-Type": "application/x-tar" });
-            pack(fixtureDir).pipe(res);
+            packTar(fixtureDir).pipe(res);
           } else {
             res.writeHead(404);
             res.end();
