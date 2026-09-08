@@ -47,7 +47,7 @@ echo "=== Setup: Create directories ==="
 mkdir -p /srv/{build/chromium,source/chromium,lib}
 
 echo "=== Setup: Sync Chromium source ==="
-report_progress "setup:sync" "Syncing Chromium source (gclient sync)"
+report_progress "setup:clone" "Syncing Chromium source (git clone)"
 
 # Prepend depot_tools to PATH so it takes priority
 export PATH="/srv/source/depot_tools:$PATH"
@@ -65,8 +65,11 @@ GIT_SHA=$(echo "$REVISION_JSON" | jq -r '.git_sha')
 echo "Git SHA: ${GIT_SHA}"
 
 cd /srv/source/chromium || exit 1
-gclient sync --force --reset --delete_unversioned_trees \
-  --revision "${GIT_SHA}" --with_branch_heads
+
+report_progress "setup:gclient" "Syncing with gclient sync"
+gclient sync --no-history --nohooks --revision "${GIT_SHA}"
+
+report_progress "setup:gclient" "Running gclient runhooks"
 gclient runhooks
 
 echo "=== Setup: Apply patches ==="
