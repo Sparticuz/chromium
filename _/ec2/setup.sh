@@ -67,8 +67,7 @@ echo "Git SHA: ${GIT_SHA}"
 cd /srv/source/chromium || exit 1
 
 report_progress "setup:gclient" "Syncing with gclient sync"
-gclient sync --force --reset --delete_unversioned_trees \
-  --revision "${GIT_SHA}" --with_branch_heads
+gclient sync --no-history --nohooks --revision "${GIT_SHA}"
 
 report_progress "setup:gclient" "Running gclient runhooks"
 gclient runhooks
