@@ -142,7 +142,7 @@ export const downloadAndExtract = async (url: string): Promise<string> => {
       Readable.fromWeb(
         response.body as import("node:stream/web").ReadableStream,
       ),
-      unpackTar(destDir),
+      unpackTar(destDir, { strict: true }),
     );
   } catch (error) {
     // Clean up partial extraction on failure

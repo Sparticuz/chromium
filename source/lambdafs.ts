@@ -55,7 +55,7 @@ export const inflate = (filePath: string): Promise<string> => {
 
     // Setup the appropriate target stream based on file type
     if (isTar) {
-      target = unpackTar(output);
+      target = unpackTar(output, { strict: true });
       target.once("finish", () => {
         resolve(output);
       });

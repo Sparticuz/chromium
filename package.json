@@ -52,7 +52,7 @@
     "update": "node ./tools/update-browser-revision.mjs"
   },
   "dependencies": {
-    "modern-tar": "^0.7.6"
+    "modern-tar": "^0.8.5"
   },
   "devDependencies": {
     "@sparticuz/eslint-config": "^11.5.0",
