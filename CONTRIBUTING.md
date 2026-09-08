@@ -400,7 +400,7 @@ explicit human approval.
 
 ### Build Options
 
-Add these labels to the PR **before** adding `binaries:building`:
+Add these labels to the PR **before** adding `binaries:build`:
 
 | Label             | Default    | Effect                                                      |
 | ----------------- | ---------- | ----------------------------------------------------------- |
@@ -409,7 +409,7 @@ Add these labels to the PR **before** adding `binaries:building`:
 
 **Spot pricing** is the default (~70% cheaper). If the spot instance is
 interrupted, the safety net detects it and marks the build as failed. Retry by
-re-adding `binaries:building`.
+re-adding `binaries:build`.
 
 ### Monitoring a Build
 
@@ -423,18 +423,52 @@ The build file accumulates events at each phase (setup, build-x64, build-arm64,
 teardown) with timestamps and elapsed time. The top-level `status` field shows
 the current state (`in_progress`, `success`, or `failed`).
 
-**With SSH** (requires `build:ssh` label):
+**With SSH** (requires `build:ssh` when the instance is launched):
+
+Find the **Build instance** ID in the latest PR launch comment (not the small
+arm64 libraries instance). Query its current address in `us-east-1`:
 
 ```bash
-# Get the instance IP
-aws s3 cp s3://BUCKET/REVISION/pending.json - | jq -r .public_ip
+INSTANCE_ID=i-REPLACE_WITH_BUILD_INSTANCE
+IP=$(aws ec2 describe-instances --region us-east-1 \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 
-# SSH in and attach to the build screen session
-ssh -i ~/.ssh/chromium-build root@<IP>
-screen -r build
+# Use the private key matching the repository's SSH_PUBLIC_KEY secret.
+ssh -o IdentitiesOnly=yes -i ~/.ssh/chromium-build "root@$IP"
 ```
 
-Detach from screen with `Ctrl-A D` without interrupting the build.
+The key filename is local: an existing setup may use `~/.ssh/id_chromium`
+instead of `~/.ssh/chromium-build`. Do not generate a replacement key just
+because the documented filename differs. No EC2 key-pair name is required;
+the workflow installs the public key directly for root.
+
+Alternatively, get the IP from the build marker:
+
+```bash
+aws s3 cp s3://BUCKET/REVISION/pending.json - | jq -r .public_ip
+```
+
+On the instance:
+
+```bash
+screen -ls
+screen -r build
+# Or inspect the log without attaching:
+tail -n 100 /var/log/chromium-build.log
+tail -f /var/log/chromium-build.log
+```
+
+Detach from screen with **Ctrl-A, then D** without interrupting the build.
+Use Ctrl-C to stop `tail -f`, not inside the build's screen session.
+An absent screen session does not explain the failure; inspect the log.
+Avoid dumping EC2 user-data or process environments: they contain credentials.
+
+A green **Launch Chromium EC2 Build** check only confirms launch, not compilation.
+After termination, look for `build.json` and `build.log` under the revision's S3
+prefix. The six-hour shutdown can interrupt compilation without uploading a final
+log. `build.json` appends events across retries, so check event timestamps rather
+than assuming `started_at` describes the latest attempt.
 
 ### Safety Net
 

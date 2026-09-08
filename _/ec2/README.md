@@ -33,16 +33,9 @@ Add these labels to the PR **before** adding `binaries:build`:
 interrupted with 2 minutes notice. If interrupted, the safety net will detect
 the stale build and mark it as failed. Just retry.
 
-**SSH monitoring** (when `build:ssh` is set):
-
-```bash
-# Get the instance IP from pending.json
-aws s3 cp s3://BUCKET/REVISION/pending.json - | jq -r .public_ip
-
-# SSH in and attach to the build screen session
-ssh root@<IP>
-screen -r build
-```
+**SSH monitoring** (when `build:ssh` is set): see
+[Monitoring a Build](../../CONTRIBUTING.md#monitoring-a-build) for instance lookup,
+private-key selection, screen attachment, and log inspection.
 
 **Progress without SSH:**
 

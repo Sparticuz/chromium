@@ -312,26 +312,8 @@ jobs:
         if: steps.baseline.outputs.revision_changed == 'true'
         run: |
           REVISION="${{ steps.revision.outputs.revision }}"
-          aws s3 sync /tmp/screenshots/current/ "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/" \
-            --exclude "manifest.json"
-
-      - name: Update revision manifest with screenshot hashes
-        if: steps.baseline.outputs.revision_changed == 'true'
-        run: |
-          REVISION="${{ steps.revision.outputs.revision }}"
-          ARCH="${{ matrix.arch }}"
-          MANIFEST_S3="s3://${S3_BUCKET}/${REVISION}/manifest.json"
-          MANIFEST_TMP="/tmp/manifest-update.json"
-
-          aws s3 cp "$MANIFEST_S3" "$MANIFEST_TMP" 2>/dev/null || echo '{}' > "$MANIFEST_TMP"
-
-          # Merge screenshot hashes into arch.screenshots
-          jq --arg arch "$ARCH" --slurpfile vr /tmp/screenshots/current/manifest.json '
-            .[$arch] //= {} |
-            .[$arch].screenshots = ($vr[0] | to_entries | map({(.key): .value.hash}) | add)
-          ' "$MANIFEST_TMP" > "${MANIFEST_TMP}.new" && mv "${MANIFEST_TMP}.new" "$MANIFEST_TMP"
-
-          aws s3 cp "$MANIFEST_TMP" "$MANIFEST_S3"
+          # Each matrix job owns its architecture's files, including its manifest.
+          aws s3 sync /tmp/screenshots/current/ "s3://${S3_BUCKET}/${REVISION}/${{ matrix.arch }}/"
 
       - name: Download baseline screenshots
         if: steps.baseline.outputs.has_baseline == 'true'
@@ -604,12 +586,28 @@ jobs:
             --exclude "*" --include "*.png" --exclude "*-diff.png"
           aws s3 sync "s3://${S3_BUCKET}/${REVISION}/arm64/" /tmp/screenshots/arm64/ \
             --exclude "*" --include "*.png" --exclude "*-diff.png"
+          for ARCH in x64 arm64; do
+            aws s3 cp "s3://${S3_BUCKET}/${REVISION}/${ARCH}/manifest.json" "/tmp/screenshots/${ARCH}/manifest.json"
+          done
+
+      - name: Merge screenshot hashes into revision manifest
+        run: |
+          REVISION="${{ steps.revision.outputs.revision }}"
+          MANIFEST_S3="s3://${S3_BUCKET}/${REVISION}/manifest.json"
+          aws s3 cp "$MANIFEST_S3" /tmp/manifest.json
+
+          # One writer merges both architectures after the matrix completes.
+          jq --slurpfile x64 /tmp/screenshots/x64/manifest.json \
+             --slurpfile arm64 /tmp/screenshots/arm64/manifest.json '
+            .x64.screenshots = ($x64[0] | map_values(.hash)) |
+            .arm64.screenshots = ($arm64[0] | map_values(.hash))
+          ' /tmp/manifest.json > /tmp/manifest-merged.json
+          aws s3 cp /tmp/manifest-merged.json "$MANIFEST_S3"
 
       - name: Read hashes from manifest
         id: hashes
         run: |
-          REVISION="${{ steps.revision.outputs.revision }}"
-          MANIFEST=$(aws s3 cp "s3://${S3_BUCKET}/${REVISION}/manifest.json" - 2>/dev/null || echo '{}')
+          MANIFEST=$(cat /tmp/manifest-merged.json)
 
           X64_EXAMPLE=$(echo "$MANIFEST" | jq -r '.x64.screenshots["example.com"] // "n/a"')
           X64_WEBGL=$(echo "$MANIFEST" | jq -r '.x64.screenshots.webgl // "n/a"')
@@ -637,34 +635,28 @@ jobs:
       - name: Run odiff cross-arch comparison
         id: diff
         run: |
-          mkdir -p /tmp/screenshots/cross-diff
-          RESULTS=""
+          node --input-type=module <<'JS'
+          import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
+          import { compare } from 'odiff-bin';
 
-          for PAGE in example.com webgl; do
-            X64="/tmp/screenshots/x64/${PAGE}.png"
-            ARM64="/tmp/screenshots/arm64/${PAGE}.png"
-            DIFF_OUT="/tmp/screenshots/cross-diff/${PAGE}-cross-diff.png"
-
-            if [ ! -f "$X64" ] || [ ! -f "$ARM64" ]; then
-              RESULTS="${RESULTS}${PAGE}|missing|0|0\n"
-              continue
-            fi
-
-            # Run odiff — exit code 0=match, 1=diff, 2=error
-            RESULT=$(npx odiff "$X64" "$ARM64" "$DIFF_OUT" 2>&1) || true
-            DIFF_COUNT=$(echo "$RESULT" | grep -oP 'diffCount:\s*\K\d+' || echo "0")
-            DIFF_PCT=$(echo "$RESULT" | grep -oP 'diffPercentage:\s*\K[\d.]+' || echo "0")
-
-            if [ -f "$DIFF_OUT" ]; then
-              RESULTS="${RESULTS}${PAGE}|changed|${DIFF_COUNT}|${DIFF_PCT}\n"
-            else
-              RESULTS="${RESULTS}${PAGE}|match|0|0.00\n"
-            fi
-          done
-
-          echo "results<<EOF" >> "$GITHUB_OUTPUT"
-          printf '%b' "$RESULTS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          mkdirSync('/tmp/screenshots/cross-diff', { recursive: true });
+          for (const page of ['example.com', 'webgl']) {
+            const x64 = `/tmp/screenshots/x64/${page}.png`;
+            const arm64 = `/tmp/screenshots/arm64/${page}.png`;
+            const diff = `/tmp/screenshots/cross-diff/${page}-cross-diff.png`;
+            let status = 'Unavailable';
+            if (existsSync(x64) && existsSync(arm64)) {
+              try {
+                const result = await compare(x64, arm64, diff);
+                status = result.match ? 'Identical' : 'Changed';
+              } catch (error) {
+                console.error(error);
+                status = 'Error';
+              }
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT, `${page.replaceAll('.', '_')}_status=${status}\n`);
+          }
+          JS
 
       - name: Upload cross-arch diff images to S3
         run: |
@@ -719,12 +711,16 @@ jobs:
           ARM64_WEBGL="${{ steps.hashes.outputs.arm64_webgl }}"
 
           # Determine status emoji/text
-          if [ "$EXAMPLE_HASH_MATCH" = "true" ]; then
+          if [ "$X64_EXAMPLE" = "n/a" ] || [ "$ARM64_EXAMPLE" = "n/a" ]; then
+            EXAMPLE_STATUS="Unavailable"
+          elif [ "$EXAMPLE_HASH_MATCH" = "true" ]; then
             EXAMPLE_STATUS="Match"
           else
             EXAMPLE_STATUS="Differs"
           fi
-          if [ "$WEBGL_HASH_MATCH" = "true" ]; then
+          if [ "$X64_WEBGL" = "n/a" ] || [ "$ARM64_WEBGL" = "n/a" ]; then
+            WEBGL_STATUS="Unavailable"
+          elif [ "$WEBGL_HASH_MATCH" = "true" ]; then
             WEBGL_STATUS="Match"
           else
             WEBGL_STATUS="Differs"
@@ -732,18 +728,18 @@ jobs:
 
           # Build image table rows
           EXAMPLE_IMG_ROW="| example.com | ![x64](${URL_example_com_x64}) | ![arm64](${URL_example_com_arm64})"
-          if [ -n "${URL_example_com_diff:-}" ]; then
+          if [ "${{ steps.diff.outputs.example_com_status }}" = "Changed" ] && [ -n "${URL_example_com_diff:-}" ]; then
             EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
           else
-            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
+            EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ${{ steps.diff.outputs.example_com_status }}"
           fi
           EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
 
           WEBGL_IMG_ROW="| WebGL | ![x64](${URL_webgl_x64}) | ![arm64](${URL_webgl_arm64})"
-          if [ -n "${URL_webgl_diff:-}" ]; then
+          if [ "${{ steps.diff.outputs.webgl_status }}" = "Changed" ] && [ -n "${URL_webgl_diff:-}" ]; then
             WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
           else
-            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
+            WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ${{ steps.diff.outputs.webgl_status }}"
           fi
           WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
 
@@ -786,6 +782,14 @@ jobs:
           else
             gh pr comment "$PR_NUMBER" --body-file /tmp/screenshots/cross-comment.md
           fi
+
+      - name: Fail incomplete comparisons
+        if: >-
+          contains(fromJSON('["Error", "Unavailable"]'), steps.diff.outputs.example_com_status) ||
+          contains(fromJSON('["Error", "Unavailable"]'), steps.diff.outputs.webgl_status)
+        run: |
+          echo "::error::Cross-architecture comparison failed or screenshots were missing."
+          exit 1
 
   finalize:
     name: Finalize
