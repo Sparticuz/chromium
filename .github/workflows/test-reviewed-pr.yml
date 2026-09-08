@@ -1,0 +1,247 @@
+name: Test Reviewed PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Open PR number in Sparticuz/chromium
+        required: true
+        type: string
+      reviewed_sha:
+        description: Full 40-character head SHA reviewed and authorized by the maintainer
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  prepare:
+    name: Prepare trusted binaries
+    if: >-
+      github.repository == 'Sparticuz/chromium' &&
+      github.ref == 'refs/heads/master' &&
+      github.workflow_ref == 'Sparticuz/chromium/.github/workflows/test-reviewed-pr.yml@refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    outputs:
+      reviewed_sha: ${{ steps.validate.outputs.reviewed_sha }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      # Never check out or execute PR code in this job.
+      - name: Validate reviewed PR
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          number = os.environ['PR_NUMBER']
+          sha = os.environ['REVIEWED_SHA']
+          if not re.fullmatch(r'[0-9]+', number) or int(number) < 1:
+              raise ValueError('PR number must be a positive decimal integer')
+          if not re.fullmatch(r'[0-9a-fA-F]{40}', sha):
+              raise ValueError('Reviewed SHA must be a full 40-character hex SHA')
+          sha = sha.lower()
+          repo = 'Sparticuz/chromium'
+          pr = json.loads(subprocess.check_output([
+              'gh', 'api', f'repos/{repo}/pulls/{number}',
+          ]))
+          if (pr['state'] != 'open' or pr['number'] != int(number)
+                  or pr['base']['repo']['full_name'] != repo
+                  or pr['head']['sha'] != sha):
+              raise ValueError('Expected an open PR in the base repository at the reviewed head SHA')
+          head_repo = pr['head']['repo']['full_name']
+          if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', head_repo):
+              raise ValueError('Invalid head repository')
+          # Separate from revision/download steps so their failures can be reported.
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'reviewed_sha={sha}\nhead_repo={head_repo}\n')
+          PY
+
+      - name: Mark reviewed SHA pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ steps.validate.outputs.reviewed_sha }}
+        run: |
+          gh api "repos/Sparticuz/chromium/statuses/${REVIEWED_SHA}" \
+            -f state=pending -f context=reviewed-pr/host-tests \
+            -f description='Preparing binaries and testing the authorized SHA' \
+            -f "target_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Read reviewed revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ steps.validate.outputs.reviewed_sha }}
+          HEAD_REPO: ${{ steps.validate.outputs.head_repo }}
+        run: |
+          python3 <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          import subprocess
+
+          repo = os.environ['HEAD_REPO']
+          sha = os.environ['REVIEWED_SHA']
+          data = json.loads(subprocess.check_output([
+              'gh', 'api', f'repos/{repo}/contents/_/ec2/revision.txt?ref={sha}',
+          ]))
+          if data['type'] != 'file' or data['encoding'] != 'base64':
+              raise ValueError('Expected a base64-encoded revision file')
+          revision = base64.b64decode(data['content']).decode('ascii').rstrip('\r\n')
+          if not re.fullmatch(r'[0-9]+', revision):
+              raise ValueError('Revision must contain only decimal digits')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'revision={revision}\n')
+          PY
+
+      - name: Download fixed binaries
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+          S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          mkdir -p prepared/x64 prepared/arm64
+          for ARCH in x64 arm64; do
+            for FILE in chromium.br al2023.tar.br swiftshader.tar.br; do
+              aws s3 cp "s3://${S3_BUCKET}/${REVISION}/${ARCH}/${FILE}" "prepared/${ARCH}/${FILE}" --only-show-errors
+            done
+          done
+          for FILE in fonts.tar.br manifest.json; do
+            aws s3 cp "s3://${S3_BUCKET}/${REVISION}/${FILE}" "prepared/${FILE}" --only-show-errors
+          done
+
+      - name: Verify binary integrity
+        env:
+          REVISION: ${{ steps.revision.outputs.revision }}
+        run: |
+          python3 <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          root = Path('prepared')
+          manifest = json.loads((root / 'manifest.json').read_text())
+          revision = os.environ['REVISION']
+          if not re.fullmatch(r'[0-9]+', revision) or manifest['revision'] != revision:
+              raise ValueError('Manifest revision does not match reviewed revision')
+          files = [('fonts.tar.br', manifest['fonts']['fonts.tar.br'])]
+          for arch in ('x64', 'arm64'):
+              for name in ('chromium.br', 'al2023.tar.br', 'swiftshader.tar.br'):
+                  files.append((f'{arch}/{name}', manifest[arch]['binaries'][name]))
+          for name, metadata in files:
+              path = root / name
+              size = metadata['size']
+              sha = metadata['sha256']
+              if type(size) is not int or size <= 0 or path.stat().st_size != size:
+                  raise ValueError(f'Invalid size: {name}')
+              if not isinstance(sha, str) or not re.fullmatch(r'[0-9a-fA-F]{64}', sha):
+                  raise ValueError(f'Missing or invalid SHA256: {name}')
+              with path.open('rb') as binary:
+                  actual = hashlib.file_digest(binary, 'sha256').hexdigest()
+              if actual != sha.lower():
+                  raise ValueError(f'SHA256 mismatch: {name}')
+          print('Verified revision and all seven fixed binary artifacts')
+          PY
+
+      - name: Upload prepared binaries
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: reviewed-pr-binaries-${{ github.run_id }}-${{ github.run_attempt }}
+          path: prepared/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  test:
+    name: Host tests (${{ matrix.arch }}, Node ${{ matrix.node }})
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+        node: [22, 24]
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Download prepared binaries by immutable ID
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+          path: ${{ runner.temp }}/reviewed-pr-binaries
+          merge-multiple: true
+
+      - name: Checkout reviewed SHA
+        uses: actions/checkout@v6
+        with:
+          repository: Sparticuz/chromium
+          ref: ${{ needs.prepare.outputs.reviewed_sha }}
+          persist-credentials: false
+
+      - name: Install prepared binaries
+        run: |
+          rm -rf bin
+          mkdir bin
+          cp -R "${RUNNER_TEMP}/reviewed-pr-binaries/." bin/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}.x
+          package-manager-cache: false
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      # Keep the default /tmp: the packaged fonts.conf references /tmp/fonts.
+      - name: Run source and host browser tests
+        run: npm run test:source
+
+  report:
+    name: Report reviewed SHA status
+    needs: [prepare, test]
+    if: always() && needs.prepare.outputs.reviewed_sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      # No checkout, test outputs, or test-produced artifacts in this job.
+      - name: Report trusted job conclusions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ needs.prepare.outputs.reviewed_sha }}
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          STATE=failure
+          if [ "$PREPARE_RESULT" = success ] && [ "$TEST_RESULT" = success ]; then
+            STATE=success
+          fi
+          gh api "repos/Sparticuz/chromium/statuses/${REVIEWED_SHA}" \
+            -f "state=${STATE}" -f context=reviewed-pr/host-tests \
+            -f "description=Preparation: ${PREPARE_RESULT}; host test matrix: ${TEST_RESULT}" \
+            -f "target_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

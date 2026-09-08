@@ -330,6 +330,11 @@ This is required for the `check-chromium-update` workflow, which uses
 
 ### TypeScript Changes
 
+For fork PRs, maintainers authorize an exact reviewed head SHA using the
+[trusted reviewed-PR testing workflow](docs/trusted-reviewed-pr-testing.md) from
+**master**. A new push needs a new review and dispatch. The legacy `binaries:test`
+label path is for same-repository PRs only.
+
 1. Edit source files in [`source/`](source/).
 2. Create or update tests in [`tests/`](tests/).
 3. Lint: `npm run lint`
@@ -352,8 +357,10 @@ a new stable Chromium version is available. To update manually:
 5. When ready to build, manually add the `binaries:build` label. This triggers
    the EC2 build (~5 hours). The workflow swaps it to `binaries:building`.
 6. Wait for `binaries:available` label (build complete).
-7. Add the `binaries:test` label to run tests. The workflow swaps it to
-   `binaries:testing`, and on success sets `binaries:verified`.
+7. For same-repository PRs, add the `binaries:test` label to run tests. The
+   workflow swaps it to `binaries:testing`, and on success sets `binaries:verified`.
+   For forks, use [reviewed-SHA manual testing](docs/trusted-reviewed-pr-testing.md)
+   instead; it reports a commit status, not a verification label.
 8. Run `npm run test:source` and `npm run test:integration` to verify locally.
 
 > **Security note:** PRs that include binary files are not accepted. Binaries are
