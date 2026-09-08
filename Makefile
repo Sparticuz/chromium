@@ -25,7 +25,7 @@ postsource:
 	rm -f bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
 
 define build-zip
-	npm install --fund=false --package-lock=false
+	npm ci --fund=false
 	npm run build
 	mkdir -p nodejs
 	npm install --prefix nodejs/ tar-fs@3.1.2 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
