@@ -83,12 +83,12 @@ sed -i -f "$SCRIPT_DIR/patches/render-process-host-check.sed" \
   content/browser/renderer_host/render_process_host_impl.cc
 
 # Verify patches took effect
-grep -q 'failed_polls = 0' content/browser/sandbox_ipc_linux.cc \
-  || notify_failure "Patch verification failed: sandbox_ipc_linux.cc — expected 'failed_polls = 0'"
+grep -q 'failed_polls = 0' content/browser/sandbox_ipc_linux.cc ||
+  notify_failure "Patch verification failed: sandbox_ipc_linux.cc — expected 'failed_polls = 0'"
 
 grep -q '// .*CHECK(render_process_host->InSameStoragePartition(' \
-  content/browser/renderer_host/render_process_host_impl.cc \
-  || notify_failure "Patch verification failed: render_process_host_impl.cc — CHECK line not commented out"
+  content/browser/renderer_host/render_process_host_impl.cc ||
+  notify_failure "Patch verification failed: render_process_host_impl.cc — CHECK line not commented out"
 
 echo "Patches applied and verified"
 
