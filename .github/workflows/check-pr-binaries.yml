@@ -1,7 +1,8 @@
 name: Check PR Binaries
 
 on:
-  pull_request:
+  # Metadata only: never check out or execute PR code with this write token.
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -18,7 +19,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Get the list of changed files in this PR
-          CHANGED=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files \
+          CHANGED=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --paginate --jq '.[].filename' | grep -c '^_/ec2/revision.txt$' || true)
 
           if [ "$CHANGED" -gt 0 ]; then
@@ -32,19 +33,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          LABELS=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
-            --jq '.[].name' | grep '^binaries:' || true)
-          echo "current<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$LABELS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          LABELS=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            --jq '[.[].name | select(startswith("binaries:"))]')
+          echo "current=${LABELS}" >> "$GITHUB_OUTPUT"
 
       - name: Update labels (revision changed -> binaries:needed)
         if: steps.check.outputs.revision_changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_LABELS: ${{ steps.labels.outputs.current }}
         run: |
-          CURRENT="${{ steps.labels.outputs.current }}"
+          CURRENT=$(jq -r '.[]' <<< "$CURRENT_LABELS")
 
           # If binaries are already in progress or complete, don't regress on follow-up pushes
           if echo "$CURRENT" | grep -qxE 'binaries:(available|verified|building|testing)'; then
@@ -55,14 +55,14 @@ jobs:
           # Remove all binaries:* labels except binaries:needed
           for LABEL in binaries:available binaries:building binaries:failed binaries:testing binaries:verified binaries:build binaries:test; do
             if echo "$CURRENT" | grep -qx "$LABEL"; then
-              gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL} \
+              gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL}" \
                 -X DELETE || true
             fi
           done
 
           # Add binaries:needed if not already present
           if ! echo "$CURRENT" | grep -qx 'binaries:needed'; then
-            gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
+            gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels" \
               -f "labels[]=binaries:needed"
           fi
 
@@ -71,13 +71,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_LABELS: ${{ steps.labels.outputs.current }}
         run: |
-          CURRENT="${{ steps.labels.outputs.current }}"
+          CURRENT=$(jq -r '.[]' <<< "$CURRENT_LABELS")
 
           # Remove all binaries:* labels except binaries:available
           for LABEL in binaries:needed binaries:verified binaries:building binaries:failed binaries:testing binaries:build binaries:test; do
             if echo "$CURRENT" | grep -qx "$LABEL"; then
-              gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL} \
+              gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL}" \
                 -X DELETE || true
             fi
           done
@@ -85,6 +86,6 @@ jobs:
           # Add binaries:available if not already present
           # (revision unchanged means master's binaries work — tests should still run)
           if ! echo "$CURRENT" | grep -qx 'binaries:available'; then
-            gh api repos/${{ github.repository }}/issues/${PR_NUMBER}/labels \
+            gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels" \
               -f "labels[]=binaries:available"
           fi

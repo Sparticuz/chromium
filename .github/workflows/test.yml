@@ -9,6 +9,8 @@ on:
 jobs:
   check-trigger:
     name: Check Trigger
+    # Forks use the manually authorized SHA workflow, not this privileged legacy path.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
