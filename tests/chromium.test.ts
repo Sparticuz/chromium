@@ -1,5 +1,6 @@
+import { packTar } from "modern-tar/fs";
 import { execSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -14,7 +15,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brotliCompressSync } from "node:zlib";
 import puppeteer, { Browser } from "puppeteer-core";
-import { pack } from "tar-fs";
 import {
   afterAll,
   afterEach,
@@ -300,6 +300,7 @@ describe("Helper", () => {
     const extractDir = join(tmpdir(), "chromium-pack");
     let tarServer: Server;
     let tarServerUrl: string;
+    const malformedTars = new Map<string, Buffer>();
 
     const expectedFiles = ["aws.tar.br", "chromium.br", "swiftshader.tar.br"];
 
@@ -326,6 +327,13 @@ describe("Helper", () => {
       const awsTar = execSync(`tar cf - -C "${awsDir}" fonts.conf`);
       writeFileSync(join(fixtureDir, "aws.tar.br"), brotliCompressSync(awsTar));
 
+      malformedTars.set("/junk.tar", Buffer.from("not a tar"));
+      // Keep the header but truncate the file body.
+      malformedTars.set("/truncated.tar", awsTar.subarray(0, 514));
+      const corruptTar = Buffer.from(awsTar);
+      corruptTar[0] = 0x58; // Change the filename without updating its checksum.
+      malformedTars.set("/checksum.tar", corruptTar);
+
       // swiftshader.tar.br — brotli-compressed tar containing shader libs
       const swDir = join(tmpdir(), "tar-test-swiftshader");
       mkdirSync(swDir, { recursive: true });
@@ -349,9 +357,13 @@ describe("Helper", () => {
       // Start server
       await new Promise<void>((resolve) => {
         tarServer = createServer((req, res) => {
-          if (req.url === "/pack.tar") {
+          const malformed = malformedTars.get(req.url ?? "");
+          if (malformed) {
             res.writeHead(200, { "Content-Type": "application/x-tar" });
-            pack(fixtureDir).pipe(res);
+            res.end(malformed);
+          } else if (req.url === "/pack.tar") {
+            res.writeHead(200, { "Content-Type": "application/x-tar" });
+            packTar(fixtureDir).pipe(res);
           } else {
             res.writeHead(404);
             res.end();
@@ -381,6 +393,29 @@ describe("Helper", () => {
             rmSync(join(tmpdir(), dir), { force: true, recursive: true });
           }
         }),
+    );
+
+    it.each(["junk", "truncated", "checksum"])(
+      "should reject %s tar archives from HTTP and Brotli files",
+      async (kind) => {
+        await expect(
+          downloadAndExtract(`${tarServerUrl}/${kind}.tar`),
+        ).rejects.toThrow();
+        expect(existsSync(extractDir)).toBe(false);
+
+        const archive = malformedTars.get(`/${kind}.tar`);
+        if (!archive) throw new Error(`Missing ${kind} fixture`);
+        const name = `invalid-${randomUUID()}`;
+        const input = join(tmpdir(), `${name}.tar.br`);
+        const output = join(tmpdir(), name);
+        writeFileSync(input, brotliCompressSync(archive));
+        try {
+          await expect(inflate(input)).rejects.toThrow();
+        } finally {
+          rmSync(input, { force: true });
+          rmSync(output, { force: true, recursive: true });
+        }
+      },
     );
 
     it("should download and extract files successfully", async () => {
