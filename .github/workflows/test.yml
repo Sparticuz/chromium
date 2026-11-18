@@ -348,6 +348,8 @@ jobs:
 
             # Check if diff image was created (only created if pixels differ)
             if [ -f "$DIFF_OUT" ]; then
+              mkdir -p /tmp/screenshots/review
+              cp "$CURRENT" "$DIFF_OUT" /tmp/screenshots/review/
               DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|changed|${DIFF_COUNT}|${DIFF_PCT}\n"
             else
               DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|match|0|0.00\n"
@@ -357,6 +359,16 @@ jobs:
           echo "results<<EOF" >> "$GITHUB_OUTPUT"
           printf '%b' "$DIFF_RESULTS" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload changed screenshot pairs
+        id: screenshots
+        if: contains(steps.diff.outputs.results, '|changed|')
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diff-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: /tmp/screenshots/review/*.png
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload diff images to S3
         if: steps.baseline.outputs.has_baseline == 'true' && steps.baseline.outputs.revision_changed == 'true'
@@ -405,6 +417,7 @@ jobs:
 
       - name: Post PR comment
         env:
+          SCREENSHOTS_URL: ${{ steps.screenshots.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
@@ -532,6 +545,10 @@ jobs:
           | WebGL | \`${WEBGL_HASH}\` |
           EOF
             fi
+          fi
+
+          if [ -n "$SCREENSHOTS_URL" ]; then
+            printf '\n[Download current and diff PNGs for changed pages](%s)\n' "$SCREENSHOTS_URL" >> /tmp/screenshots/comment.md
           fi
 
           # Find existing VR comment for this arch and update it, or create new
