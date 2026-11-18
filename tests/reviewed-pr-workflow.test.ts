@@ -107,6 +107,26 @@ printf '%s' "$HTTP_CODE"
   assert.equal(labels.split("if: steps.push.outputs.same != 'true' &&").length - 1, 2);
 });
 
+test("reusable binaries do not carry verification to the next head", () => {
+  const labels = readFileSync(
+    new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),
+    "utf8",
+  );
+  for (const label of ["available", "building", "verified", "testing"]) {
+    writeFileSync(join(dir, "calls"), "");
+    run("Invalidate tests for the previous head", {
+      CURRENT_LABELS: JSON.stringify([`binaries:${label}`]),
+    }, labels);
+    const calls = readFileSync(join(dir, "calls"), "utf8");
+    if (label === "verified" || label === "testing") {
+      assert.ok(calls.includes(`/labels/binaries:${label}`));
+      assert.ok(calls.includes("labels[]=binaries:available"));
+    } else {
+      assert.equal(calls, "");
+    }
+  }
+});
+
 test("changed-file API errors stop labeling before a decision is emitted", () => {
   const labels = readFileSync(
     new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),

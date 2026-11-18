@@ -55,6 +55,20 @@ jobs:
           new=$(revision_blob "$AFTER")
           if [ -n "$old" ] && [ "$old" = "$new" ]; then echo 'same=true' >> "$GITHUB_OUTPUT"; fi
 
+      - name: Invalidate tests for the previous head
+        if: steps.push.outputs.same == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_LABELS: ${{ steps.labels.outputs.current }}
+        run: |
+          for label in binaries:verified binaries:testing; do
+            if jq -e --arg label "$label" 'index($label) != null' <<< "$CURRENT_LABELS" >/dev/null; then
+              gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/$label" -X DELETE
+              gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f 'labels[]=binaries:available'
+            fi
+          done
+
       - name: Update labels (revision changed -> binaries:needed)
         if: steps.push.outputs.same != 'true' && steps.check.outputs.revision_changed == 'true'
         env:

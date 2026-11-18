@@ -808,6 +808,7 @@ jobs:
 
       - name: Update labels and checklist
         env:
+          TESTED_HEAD: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -823,6 +824,11 @@ jobs:
             OVERALL="failure"
           fi
 
+          CURRENT_HEAD=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq .headRefOid)
+          if [ "$CURRENT_HEAD" != "$TESTED_HEAD" ]; then
+            echo "Skipping results for a superseded PR head"
+            exit 0
+          fi
           BODY=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq .body)
           CURRENT_REV=$(echo "$BODY" | grep -oP '(?<=` → `)\d+(?=`)' | head -1)
           PREV_REV=$(echo "$BODY" | grep -oP '(?<=— `)\d+(?=` →)' | head -1)
