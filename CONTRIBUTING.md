@@ -44,7 +44,7 @@ don't touch the build system, skip to [Development Workflow](#development-workfl
 
 - AWS account with permissions to create IAM users, roles, and S3 buckets
 - GitHub repository admin access (for secrets, labels, workflow settings)
-- Node.js >= 22.17.0
+- Node.js 22.17+ within 22.x, 24.x, or 26 and later
 - npm
 - AWS CLI v2 (for local testing and IAM setup)
 
