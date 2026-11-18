@@ -86,6 +86,27 @@ function run(name: string, env: Record<string, string> = {}, source = workflow):
   });
 }
 
+test("only identical revision blobs preserve labels on follow-up pushes", () => {
+  const labels = readFileSync(
+    new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),
+    "utf8",
+  );
+  writeFileSync(join(dir, "curl"), `#!/bin/sh
+case "$*" in *ref=old) blob=$OLD_BLOB ;; *) blob=$NEW_BLOB ;; esac
+printf '{"type":"file","sha":"%s"}' "$blob" > "$RUNNER_TEMP/revision-meta"
+printf '%s' "$HTTP_CODE"
+`, { mode: 0o755 });
+  const env = { BEFORE: "old", AFTER: "new", OLD_BLOB: sha, NEW_BLOB: sha, RUNNER_TEMP: dir, HTTP_CODE: "200" };
+  for (const changed of [{ NEW_BLOB: "b".repeat(40) }, { HTTP_CODE: "404" }]) {
+    run("Compare the pushed revisions", { ...env, ...changed }, labels);
+    assert.equal(output(), "");
+  }
+  assert.throws(() => run("Compare the pushed revisions", { ...env, HTTP_CODE: "503" }, labels));
+  run("Compare the pushed revisions", env, labels);
+  assert.equal(output(), "same=true\n");
+  assert.equal(labels.split("if: steps.push.outputs.same != 'true' &&").length - 1, 2);
+});
+
 test("changed-file API errors stop labeling before a decision is emitted", () => {
   const labels = readFileSync(
     new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),

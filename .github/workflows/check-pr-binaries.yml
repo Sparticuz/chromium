@@ -37,17 +37,36 @@ jobs:
             --jq '[.[].name | select(startswith("binaries:"))]')
           echo "current=${LABELS}" >> "$GITHUB_OUTPUT"
 
+      - name: Compare the pushed revisions
+        id: push
+        if: github.event.action == 'synchronize' && steps.labels.outputs.current != '[]'
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          # Compare public file metadata at immutable commits; never check out fork code.
+          revision_blob() {
+            code=$(curl -sS -o "$RUNNER_TEMP/revision-meta" -w '%{http_code}' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/_/ec2/revision.txt?ref=$1") || return 1
+            case "$code" in 404) return 0 ;; 200) ;; *) echo "Revision lookup failed: HTTP $code" >&2; return 1 ;; esac
+            jq -er 'select(.type == "file") | .sha | select(test("^[0-9a-f]{40}$"))' "$RUNNER_TEMP/revision-meta"
+          }
+          old=$(revision_blob "$BEFORE")
+          new=$(revision_blob "$AFTER")
+          if [ -n "$old" ] && [ "$old" = "$new" ]; then echo 'same=true' >> "$GITHUB_OUTPUT"; fi
+
       - name: Update labels (revision changed -> binaries:needed)
-        if: steps.check.outputs.revision_changed == 'true'
+        if: steps.push.outputs.same != 'true' && steps.check.outputs.revision_changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
           CURRENT_LABELS: ${{ steps.labels.outputs.current }}
         run: |
           CURRENT=$(jq -r '.[]' <<< "$CURRENT_LABELS")
 
-          # If binaries are already in progress or complete, don't regress on follow-up pushes
-          if echo "$CURRENT" | grep -qxE 'binaries:(available|verified|building|testing)'; then
+          # Reopening is not a push; keep existing progress for the same PR.
+          if [ "$EVENT_ACTION" = reopened ] && echo "$CURRENT" | grep -qxE 'binaries:(available|verified|building|testing)'; then
             echo "binaries already in progress or complete — skipping label update"
             exit 0
           fi
@@ -56,7 +75,7 @@ jobs:
           for LABEL in binaries:available binaries:building binaries:failed binaries:testing binaries:verified binaries:build binaries:test; do
             if echo "$CURRENT" | grep -qx "$LABEL"; then
               gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL}" \
-                -X DELETE || true
+                -X DELETE
             fi
           done
 
@@ -67,7 +86,7 @@ jobs:
           fi
 
       - name: Update labels (revision unchanged -> binaries:available)
-        if: steps.check.outputs.revision_changed == 'false'
+        if: steps.push.outputs.same != 'true' && steps.check.outputs.revision_changed == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -79,7 +98,7 @@ jobs:
           for LABEL in binaries:needed binaries:verified binaries:building binaries:failed binaries:testing binaries:build binaries:test; do
             if echo "$CURRENT" | grep -qx "$LABEL"; then
               gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/${LABEL}" \
-                -X DELETE || true
+                -X DELETE
             fi
           done
 
