@@ -92,11 +92,12 @@ test("only identical revision blobs preserve labels on follow-up pushes", () => 
     "utf8",
   );
   writeFileSync(join(dir, "curl"), `#!/bin/sh
+[ "$1" = "-sS" ] && [ "$2" = "-H" ] && [ "$3" = "Authorization: Bearer fixture-token" ] || exit 2
 case "$*" in *ref=old) blob=$OLD_BLOB ;; *) blob=$NEW_BLOB ;; esac
 printf '{"type":"file","sha":"%s"}' "$blob" > "$RUNNER_TEMP/revision-meta"
 printf '%s' "$HTTP_CODE"
 `, { mode: 0o755 });
-  const env = { BEFORE: "old", AFTER: "new", OLD_BLOB: sha, NEW_BLOB: sha, RUNNER_TEMP: dir, HTTP_CODE: "200" };
+  const env = { BEFORE: "old", AFTER: "new", OLD_BLOB: sha, NEW_BLOB: sha, RUNNER_TEMP: dir, HTTP_CODE: "200", GH_TOKEN: "fixture-token" };
   for (const changed of [{ NEW_BLOB: "b".repeat(40) }, { HTTP_CODE: "404" }]) {
     run("Compare the pushed revisions", { ...env, ...changed }, labels);
     assert.equal(output(), "");

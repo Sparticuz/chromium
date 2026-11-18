@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  contents: read
   pull-requests: write
 
 jobs:
@@ -43,10 +44,11 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Compare public file metadata at immutable commits; never check out fork code.
           revision_blob() {
-            code=$(curl -sS -o "$RUNNER_TEMP/revision-meta" -w '%{http_code}' \
+            code=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -o "$RUNNER_TEMP/revision-meta" -w '%{http_code}' \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/_/ec2/revision.txt?ref=$1") || return 1
             case "$code" in 404) return 0 ;; 200) ;; *) echo "Revision lookup failed: HTTP $code" >&2; return 1 ;; esac
             jq -er 'select(.type == "file") | .sha | select(test("^[0-9a-f]{40}$"))' "$RUNNER_TEMP/revision-meta"
