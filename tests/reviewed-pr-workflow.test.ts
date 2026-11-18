@@ -24,8 +24,8 @@ const repo = "Sparticuz/chromium";
 const stepBoundary = /\n(?: {6}- name:| {2}[a-z]+:)/;
 let dir: string;
 
-function script(name: string): string {
-  const body = workflow
+function script(name: string, source = workflow): string {
+  const body = source
     .split(`      - name: ${name}\n`)[1]
     ?.split(stepBoundary)[0]
     ?.split("        run: |\n")[1];
@@ -67,8 +67,8 @@ function pullRequest() {
   };
 }
 
-function run(name: string, env: Record<string, string> = {}): string {
-  return execFileSync("bash", ["-euo", "pipefail", "-c", script(name)], {
+function run(name: string, env: Record<string, string> = {}, source = workflow): string {
+  return execFileSync("bash", ["-euo", "pipefail", "-c", script(name, source)], {
     cwd: dir,
     encoding: "utf8",
     env: {
@@ -85,6 +85,19 @@ function run(name: string, env: Record<string, string> = {}): string {
     stdio: "pipe",
   });
 }
+
+test("changed-file API errors stop labeling before a decision is emitted", () => {
+  const labels = readFileSync(
+    new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),
+    "utf8",
+  );
+  assert.throws(() => run("Check if revision.txt changed", { GH_API_ERROR: "1" }, labels));
+  assert.equal(output(), "");
+  run("Check if revision.txt changed", { GH_RESPONSE: "" }, labels);
+  assert.equal(output(), "revision_changed=false\n");
+  run("Check if revision.txt changed", { GH_RESPONSE: "true" }, labels);
+  assert.equal(output(), "revision_changed=false\nrevision_changed=true\n");
+});
 
 test("authorization rejects malformed inputs, API failures, and non-current or foreign PRs", () => {
   const original = pullRequest();
@@ -323,6 +336,7 @@ test("report only succeeds for successful preparation and the entire test matrix
   assert.ok(
     workflow.includes("ref: ${{ needs.prepare.outputs.reviewed_sha }}"),
   );
+  assert.deepEqual(workflow.match(/^ *cache-mode:.*$/gm), ["cache-mode: none"]);
   assert.ok(workflow.includes("persist-credentials: false"));
   assert.ok(workflow.includes("fail-fast: false"));
   assert.ok(workflow.includes("node: [22, 24]"));

@@ -17,12 +17,12 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Get the list of changed files in this PR
-          CHANGED=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate --jq '.[].filename' | grep -c '^_/ec2/revision.txt$' || true)
+          CHANGED=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --paginate --jq '.[] | select(.filename == "_/ec2/revision.txt" or .previous_filename == "_/ec2/revision.txt") | true')
 
-          if [ "$CHANGED" -gt 0 ]; then
+          if [ -n "$CHANGED" ]; then
             echo "revision_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "revision_changed=false" >> "$GITHUB_OUTPUT"

@@ -71,7 +71,7 @@ the privileged job.
 
 All prepared files become one immutable Actions artifact. Tests download by the
 artifact **ID emitted by preparation**, not a PR-selected name, before checking
-out PR code. No cache is shared. Reporting never downloads or interprets files
+out PR code. Workflow-level `cache-mode: none` denies Actions cache reads and writes. Reporting never downloads or interprets files
 from the test runners; those runners cannot select the SHA or status payload.
 
 ## Coverage and limitations
