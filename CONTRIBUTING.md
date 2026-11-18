@@ -495,7 +495,7 @@ new Chromium binary, compares them against the previous release's screenshots
 using [odiff](https://github.com/dmtrKovalenko/odiff), and posts a PR comment
 with:
 
-- Side-by-side images (baseline, current, diff) via S3 presigned URLs
+- Inline baseline, current, and available diff images via S3 presigned URLs (valid for 7 days). Same-revision review images are stored separately so they never replace the baseline.
 - SHA-256 hashes for each screenshot
 - Match/changed status
 
