@@ -103,6 +103,7 @@ test("only identical revision blobs preserve labels on follow-up pushes", () => 
   writeFileSync(
     join(directory, "curl"),
     `#!/bin/sh
+[ "$1" = "-sS" ] && [ "$2" = "-H" ] && [ "$3" = "Authorization: Bearer fixture-token" ] || exit 2
 case "$*" in *ref=old) blob=$OLD_BLOB ;; *) blob=$NEW_BLOB ;; esac
 printf '{"type":"file","sha":"%s"}' "$blob" > "$RUNNER_TEMP/revision-meta"
 printf '%s' "$HTTP_CODE"
@@ -112,6 +113,7 @@ printf '%s' "$HTTP_CODE"
   const env = {
     AFTER: "new",
     BEFORE: "old",
+    GH_TOKEN: "fixture-token",
     HTTP_CODE: "200",
     NEW_BLOB: sha,
     OLD_BLOB: sha,
