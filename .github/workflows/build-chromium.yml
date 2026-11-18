@@ -487,3 +487,19 @@ jobs:
           fi
           # Clean up orphaned pending.json
           aws s3 rm "s3://${S3_BUCKET}/${REVISION}/pending.json" || true
+
+      - name: Mark launch failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          BUILDING_HEAD=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --json headRefOid,labels --jq 'select(any(.labels[]; .name == "binaries:building")) | .headRefOid')
+          if [ "$BUILDING_HEAD" != "$EXPECTED_HEAD" ]; then
+            exit 0
+          fi
+
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" -f 'labels[]=binaries:failed'
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels/binaries:building" -X DELETE

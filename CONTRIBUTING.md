@@ -387,7 +387,7 @@ The build runs entirely on EC2, with no SSH or long-lived GitHub runner connecti
 | Human approves build  | `binaries:build`     | Maintainer (manual) — trigger label    |
 | Build running         | `binaries:building`  | `build-chromium` (swaps from `build`)  |
 | Build succeeds        | `binaries:available` | `build-complete` (automated)           |
-| Build fails           | `binaries:failed`    | `build-complete` or `build-safety-net` |
+| Build fails           | `binaries:failed`    | `build-chromium`, `build-complete`, or `build-safety-net` |
 | Human approves tests  | `binaries:test`      | Maintainer (manual) — trigger label    |
 | Tests running         | `binaries:testing`   | `test` (swaps from `test`)             |
 | Tests pass            | `binaries:verified`  | `test` (automated, final state)        |
