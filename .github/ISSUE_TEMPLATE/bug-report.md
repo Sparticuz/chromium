@@ -15,8 +15,8 @@ For Playwright-specific bugs, please refer to: https://github.com/microsoft/play
 
 - `chromium` Version:
 - `puppeteer` / `puppeteer-core` Version:
-- Node.js Version: <!-- 20.x | 22.x -->
-- Lambda / GCF Runtime: <!-- `nodejs20` | `nodejs22.x` -->
+- Node.js Version: <!-- e.g. 26.x -->
+- Lambda / GCF Runtime: <!-- e.g. nodejs26.x -->
 - Runtime Architecture: <!-- `x64` | `arm64` -->
 
 ## Expected Behavior

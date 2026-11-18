@@ -178,7 +178,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x64, arm64]
-        function: [node22, node24]
+        function: [node22, node24, node26]
         include:
           - arch: x64
             runner: ubuntu-latest
@@ -188,6 +188,8 @@ jobs:
             label: Node 22.x ESM
           - function: node24
             label: Node 24.x ESM
+          - function: node26
+            label: Node 26.x ESM
     steps:
       - name: Checkout
         uses: actions/checkout@v6

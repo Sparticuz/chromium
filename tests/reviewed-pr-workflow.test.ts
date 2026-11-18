@@ -380,6 +380,6 @@ test("report only succeeds for successful preparation and the entire test matrix
   assert.deepEqual(workflow.match(/^ *cache-mode:.*$/gm), ["cache-mode: none"]);
   assert.ok(workflow.includes("persist-credentials: false"));
   assert.ok(workflow.includes("fail-fast: false"));
-  assert.ok(workflow.includes("node: [22, 24]"));
+  assert.ok(workflow.includes("node: [22, 24, 26]"));
   assert.ok(workflow.includes("arch: [x64, arm64]"));
 });

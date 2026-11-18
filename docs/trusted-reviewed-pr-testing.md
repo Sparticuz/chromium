@@ -76,7 +76,7 @@ from the test runners; those runners cannot select the SHA or status payload.
 
 ## Coverage and limitations
 
-Each architecture runs Node **22 and 24**: `npm ci`, `npm run build`, then
+Each architecture runs Node **22, 24, and 26**: `npm ci`, `npm run build`, then
 `npm run test:source`. This covers TypeScript compilation, source tests, and the
 existing host Chromium browser/screenshot assertions, using prepared binaries.
 Tests retain the normal `/tmp` location required by the packaged `fonts.conf`.

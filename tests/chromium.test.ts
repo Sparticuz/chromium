@@ -244,7 +244,7 @@ describe("Helper", () => {
     });
   });
 
-  describe("isRunningInAwsLambdaNode20", () => {
+  describe("isRunningInAmazonLinux2023", () => {
     it("should return true for AWS Lambda Node.js 20 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs20.x";
       expect(isRunningInAmazonLinux2023(20)).toBe(true);
@@ -258,6 +258,18 @@ describe("Helper", () => {
     it("should return true for AWS Lambda Node.js 24 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs24.x";
       expect(isRunningInAmazonLinux2023(24)).toBe(true);
+    });
+
+    it.each([
+      ["AWS_EXECUTION_ENV", "AWS_Lambda_nodejs26.x"],
+      ["AWS_LAMBDA_JS_RUNTIME", "nodejs26.x"],
+      [
+        "CODEBUILD_BUILD_IMAGE",
+        "aws/codebuild/amazonlinux2023-x86_64-standard:nodejs26",
+      ],
+    ])("recognizes Node.js 26 from %s", (variable, value) => {
+      process.env = { [variable]: value };
+      expect(isRunningInAmazonLinux2023(26)).toBe(true);
     });
 
     it("should return true for AWS Lambda JS Runtime Node.js 20 environment", () => {

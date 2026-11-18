@@ -91,7 +91,7 @@ export const isValidUrl = (input: string) => {
  * AWS_LAMBDA_JS_RUNTIME is for netlify instances
  * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
  * VERCEL is for Vercel Functions (Node 20 or later enables an AL2023-compatible environment).
- * @returns boolean indicating if the running instance is inside a Lambda container with nodejs20
+ * @returns whether the runtime needs the bundled Amazon Linux 2023 libraries
  */
 export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
   const awsExecEnv = process.env["AWS_EXECUTION_ENV"] ?? "";
@@ -103,12 +103,15 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
     awsExecEnv.includes("20.x") ||
     awsExecEnv.includes("22.x") ||
     awsExecEnv.includes("24.x") ||
+    awsExecEnv.includes("26.x") ||
     awsLambdaJsRuntime.includes("20.x") ||
     awsLambdaJsRuntime.includes("22.x") ||
     awsLambdaJsRuntime.includes("24.x") ||
+    awsLambdaJsRuntime.includes("26.x") ||
     codebuildImage.includes("nodejs20") ||
     codebuildImage.includes("nodejs22") ||
-    codebuildImage.includes("nodejs24")
+    codebuildImage.includes("nodejs24") ||
+    codebuildImage.includes("nodejs26")
   ) {
     return true;
   }
