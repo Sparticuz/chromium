@@ -361,7 +361,8 @@ a new stable Chromium version is available. To update manually:
    workflow swaps it to `binaries:testing`, and on success sets `binaries:verified`.
    For forks, use [reviewed-SHA manual testing](docs/trusted-reviewed-pr-testing.md)
    instead; it reports a commit status, not a verification label.
-8. Run `npm run test:source` and `npm run test:integration` to verify locally.
+8. For trusted local changes only, run `npm run test:source` and `npm run test:integration`.
+   For fork PRs, use the hosted workflow in step 7 instead.
 
 > **Security note:** PRs that include binary files are not accepted. Binaries are
 > built by EC2 and stored in S3.
