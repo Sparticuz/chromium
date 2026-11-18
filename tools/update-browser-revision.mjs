@@ -39,8 +39,7 @@ async function updateRevisionFile(filePath, newRevision) {
 /**
  * The Command block
  */
-const stableChannelInfo = await fetchStableChannelInfo();
-const { revision, version } = stableChannelInfo;
+const { revision, version } = await fetchStableChannelInfo();
 
 console.log(
   `Fetched stable Chromium revision for Chromium ${version}: ${revision}`,

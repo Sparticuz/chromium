@@ -51,12 +51,35 @@ describe("Helper", () => {
     process.env = originalEnv;
   });
 
+  afterAll(() => {
+    // Clean up the tmpdir
+    for (const file of [
+      "aws",
+      "chromium-pack",
+      "chromium",
+      "file.zip",
+      "libEGL.so",
+      "libGLESv2.so",
+      "libvk_swiftshader.so",
+      "libvulkan.so.1",
+      "vk_swiftshader_icd.json",
+    ]) {
+      rmSync(join(tmpdir(), file), { force: true, recursive: true });
+    }
+  });
+
   describe("createSymlink", () => {
     it("should create a symlink when the source file exists", async () => {
       // Setup: create a temp file
-      const tempDir = tmpdir();
-      const sourceFile = join(tempDir, `source_${Date.now().toFixed(0)}.txt`);
-      const targetLink = join(tempDir, `target_${Date.now().toFixed(0)}.txt`);
+      const temporaryDirectory = tmpdir();
+      const sourceFile = join(
+        temporaryDirectory,
+        `source_${Date.now().toFixed(0)}.txt`,
+      );
+      const targetLink = join(
+        temporaryDirectory,
+        `target_${Date.now().toFixed(0)}.txt`,
+      );
       writeFileSync(sourceFile, "test content");
 
       try {
@@ -87,12 +110,15 @@ describe("Helper", () => {
     });
 
     it("should reject if the source file does not exist", async () => {
-      const tempDir = tmpdir();
+      const temporaryDirectory = tmpdir();
       const sourceFile = join(
-        tempDir,
+        temporaryDirectory,
         `nonexistent_${Date.now().toFixed(0)}.txt`,
       );
-      const targetLink = join(tempDir, `target_${Date.now().toFixed(0)}.txt`);
+      const targetLink = join(
+        temporaryDirectory,
+        `target_${Date.now().toFixed(0)}.txt`,
+      );
 
       // Execute & Verify
       await expect(
@@ -111,13 +137,13 @@ describe("Helper", () => {
     beforeAll(
       () =>
         new Promise<void>((resolve) => {
-          server = createServer((req, res) => {
-            if (req.url === "/index.html") {
-              res.writeHead(200, { "Content-Type": "text/html" });
-              res.end("<html><body>Hello</body></html>");
+          server = createServer((request, response) => {
+            if (request.url === "/index.html") {
+              response.writeHead(200, { "Content-Type": "text/html" });
+              response.end("<html><body>Hello</body></html>");
             } else {
-              res.writeHead(404);
-              res.end();
+              response.writeHead(404);
+              response.end();
             }
           });
           server.listen(0, "127.0.0.1", () => {
@@ -141,20 +167,20 @@ describe("Helper", () => {
 
     it("should download a file successfully", async () => {
       const url = `${baseUrl}/index.html`;
-      const tempDir = tmpdir();
-      const destPath = join(
-        tempDir,
+      const temporaryDirectory = tmpdir();
+      const destinationPath = join(
+        temporaryDirectory,
         `download_test_${Date.now().toFixed(0)}.txt`,
       );
 
       try {
-        await downloadFile(url, destPath);
-        expect(existsSync(destPath)).toBe(true);
-        const content = readFileSync(destPath, "utf8");
+        await downloadFile(url, destinationPath);
+        expect(existsSync(destinationPath)).toBe(true);
+        const content = readFileSync(destinationPath, "utf8");
         expect(content).toBeTruthy();
       } finally {
         try {
-          unlinkSync(destPath);
+          unlinkSync(destinationPath);
         } catch (error) {
           // Ignore errors during cleanup
           console.error("Cleanup error:", error);
@@ -227,11 +253,11 @@ describe("Helper", () => {
     it("should return true for localhost HTTP URLs (development)", () => {
       expect(isValidUrl("http://localhost:3000")).toBe(true);
       expect(isValidUrl("http://127.0.0.1:8080/pack.tar")).toBe(true);
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- Allow http:// for localhost/
       expect(isValidUrl("http://[::1]:3000")).toBe(true);
     });
 
     it("should return false for non-HTTPS URLs", () => {
+      // eslint-disable-next-line unicorn/prefer-https -- testing http
       expect(isValidUrl("http://example.com")).toBe(false);
       expect(isValidUrl("ftp://ftp.example.com")).toBe(false);
       expect(isValidUrl("file:///etc/passwd")).toBe(false);
@@ -244,7 +270,7 @@ describe("Helper", () => {
     });
   });
 
-  describe("isRunningInAwsLambdaNode20", () => {
+  describe("isRunningInAmazonLinux2023", () => {
     it("should return true for AWS Lambda Node.js 20 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs20.x";
       expect(isRunningInAmazonLinux2023(20)).toBe(true);
@@ -258,6 +284,18 @@ describe("Helper", () => {
     it("should return true for AWS Lambda Node.js 24 environment", () => {
       process.env["AWS_EXECUTION_ENV"] = "AWS_Lambda_nodejs24.x";
       expect(isRunningInAmazonLinux2023(24)).toBe(true);
+    });
+
+    it.each([
+      ["AWS_EXECUTION_ENV", "AWS_Lambda_nodejs26.x"],
+      ["AWS_LAMBDA_JS_RUNTIME", "nodejs26.x"],
+      [
+        "CODEBUILD_BUILD_IMAGE",
+        "aws/codebuild/amazonlinux2023-x86_64-standard:nodejs26",
+      ],
+    ])("recognizes Node.js 26 from %s", (variable, value) => {
+      process.env = { [variable]: value };
+      expect(isRunningInAmazonLinux2023(26)).toBe(true);
     });
 
     it("should return true for AWS Lambda JS Runtime Node.js 20 environment", () => {
@@ -297,7 +335,7 @@ describe("Helper", () => {
   });
 
   describe("downloadAndExtract and lambdafs", () => {
-    const extractDir = join(tmpdir(), "chromium-pack");
+    const extractDirectory = join(tmpdir(), "chromium-pack");
     let tarServer: Server;
     let tarServerUrl: string;
     const malformedTars = new Map<string, Buffer>();
@@ -309,23 +347,28 @@ describe("Helper", () => {
       // Create test fixture files that are real brotli-compressed content
       // so the inflate tests can decompress them
       const { mkdirSync } = await import("node:fs");
-      const fixtureDir = join(tmpdir(), "tar-test-fixtures");
-      mkdirSync(fixtureDir, { recursive: true });
+      const fixtureDirectory = join(tmpdir(), "tar-test-fixtures");
+      mkdirSync(fixtureDirectory, { recursive: true });
 
       // chromium.br — brotli-compressed fake binary
       const chromiumContent = Buffer.alloc(1024, 0x42); // 1KB of 'B'
       writeFileSync(
-        join(fixtureDir, "chromium.br"),
+        join(fixtureDirectory, "chromium.br"),
         brotliCompressSync(chromiumContent),
       );
 
       // aws.tar.br — brotli-compressed tar containing fonts.conf
-      const awsDir = join(tmpdir(), "tar-test-aws");
-      mkdirSync(awsDir, { recursive: true });
-      writeFileSync(join(awsDir, "fonts.conf"), "<fontconfig></fontconfig>");
-      // eslint-disable-next-line sonarjs/os-command -- Using tar command for simplicity in test setup
-      const awsTar = execSync(`tar cf - -C "${awsDir}" fonts.conf`);
-      writeFileSync(join(fixtureDir, "aws.tar.br"), brotliCompressSync(awsTar));
+      const awsDirectory = join(tmpdir(), "tar-test-aws");
+      mkdirSync(awsDirectory, { recursive: true });
+      writeFileSync(
+        join(awsDirectory, "fonts.conf"),
+        "<fontconfig></fontconfig>",
+      );
+      const awsTar = execSync(`tar cf - -C "${awsDirectory}" fonts.conf`);
+      writeFileSync(
+        join(fixtureDirectory, "aws.tar.br"),
+        brotliCompressSync(awsTar),
+      );
 
       malformedTars.set("/junk.tar", Buffer.from("not a tar"));
       // Keep the header but truncate the file body.
@@ -335,8 +378,8 @@ describe("Helper", () => {
       malformedTars.set("/checksum.tar", corruptTar);
 
       // swiftshader.tar.br — brotli-compressed tar containing shader libs
-      const swDir = join(tmpdir(), "tar-test-swiftshader");
-      mkdirSync(swDir, { recursive: true });
+      const swiftshaderDirectory = join(tmpdir(), "tar-test-swiftshader");
+      mkdirSync(swiftshaderDirectory, { recursive: true });
       const swLibs = [
         "libEGL.so",
         "libGLESv2.so",
@@ -345,28 +388,29 @@ describe("Helper", () => {
         "vk_swiftshader_icd.json",
       ];
       for (const lib of swLibs) {
-        writeFileSync(join(swDir, lib), `fake ${lib}`);
+        writeFileSync(join(swiftshaderDirectory, lib), `fake ${lib}`);
       }
-      // eslint-disable-next-line sonarjs/os-command -- Using tar command for simplicity in test setup
-      const swTar = execSync(`tar cf - -C "${swDir}" ${swLibs.join(" ")}`);
+      const swTar = execSync(
+        `tar cf - -C "${swiftshaderDirectory}" ${swLibs.join(" ")}`,
+      );
       writeFileSync(
-        join(fixtureDir, "swiftshader.tar.br"),
+        join(fixtureDirectory, "swiftshader.tar.br"),
         brotliCompressSync(swTar),
       );
 
       // Start server
       await new Promise<void>((resolve) => {
-        tarServer = createServer((req, res) => {
-          const malformed = malformedTars.get(req.url ?? "");
+        tarServer = createServer((request, response) => {
+          const malformed = malformedTars.get(request.url ?? "");
           if (malformed) {
-            res.writeHead(200, { "Content-Type": "application/x-tar" });
-            res.end(malformed);
-          } else if (req.url === "/pack.tar") {
-            res.writeHead(200, { "Content-Type": "application/x-tar" });
-            packTar(fixtureDir).pipe(res);
+            response.writeHead(200, { "Content-Type": "application/x-tar" });
+            response.end(malformed);
+          } else if (request.url === "/pack.tar") {
+            response.writeHead(200, { "Content-Type": "application/x-tar" });
+            packTar(fixtureDirectory).pipe(response);
           } else {
-            res.writeHead(404);
-            res.end();
+            response.writeHead(404);
+            response.end();
           }
         });
         tarServer.listen(0, "127.0.0.1", () => {
@@ -385,12 +429,12 @@ describe("Helper", () => {
           tarServer.close(() => {
             resolve();
           });
-          for (const dir of [
+          for (const directory of [
             "tar-test-fixtures",
             "tar-test-aws",
             "tar-test-swiftshader",
           ]) {
-            rmSync(join(tmpdir(), dir), { force: true, recursive: true });
+            rmSync(join(tmpdir(), directory), { force: true, recursive: true });
           }
         }),
     );
@@ -401,7 +445,7 @@ describe("Helper", () => {
         await expect(
           downloadAndExtract(`${tarServerUrl}/${kind}.tar`),
         ).rejects.toThrow();
-        expect(existsSync(extractDir)).toBe(false);
+        expect(existsSync(extractDirectory)).toBe(false);
 
         const archive = malformedTars.get(`/${kind}.tar`);
         if (!archive) throw new Error(`Missing ${kind} fixture`);
@@ -423,14 +467,14 @@ describe("Helper", () => {
 
       // Check that expected files exist
       for (const file of expectedFiles) {
-        const filePath = join(extractDir, file);
+        const filePath = join(extractDirectory, file);
         expect(existsSync(filePath)).toBe(true);
       }
     });
 
     it("should extract a .tar file using lambdafs inflate and verify contents", async () => {
       for (const file of expectedFiles) {
-        const filePath = join(extractDir, file);
+        const filePath = join(extractDirectory, file);
 
         await inflate(filePath);
 
@@ -447,23 +491,6 @@ describe("Helper", () => {
         }
       }
     });
-  });
-
-  afterAll(() => {
-    // Clean up the tmpdir
-    for (const file of [
-      "aws",
-      "chromium-pack",
-      "chromium",
-      "file.zip",
-      "libEGL.so",
-      "libGLESv2.so",
-      "libvk_swiftshader.so",
-      "libvulkan.so.1",
-      "vk_swiftshader_icd.json",
-    ]) {
-      rmSync(join(tmpdir(), file), { force: true, recursive: true });
-    }
   });
 });
 
@@ -511,9 +538,9 @@ describe("Integration", () => {
       headless: "shell",
     });
     try {
-      const tmpContents = execSync("/usr/bin/ls -la /tmp").toString();
+      const temporaryContents = execSync("/usr/bin/ls -la /tmp").toString();
       console.log("Contents of /tmp directory:");
-      console.log(tmpContents);
+      console.log(temporaryContents);
     } catch (error) {
       console.error("Error listing /tmp directory:", error);
     }
@@ -547,8 +574,8 @@ describe("Integration", () => {
     const page = await browser.newPage();
     await page.goto("https://get.webgl.org", { waitUntil: "networkidle0" });
     await page.evaluate(() => {
-      const el = document.querySelector("#logo-container");
-      if (el) el.remove();
+      const element = globalThis.document.querySelector("#logo-container");
+      if (element) element.remove();
     });
     const screenshot = Buffer.from(await page.screenshot());
     const base64Screenshot = `data:image/png;base64,${screenshot.toString(

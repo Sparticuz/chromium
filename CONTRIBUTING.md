@@ -44,7 +44,7 @@ don't touch the build system, skip to [Development Workflow](#development-workfl
 
 - AWS account with permissions to create IAM users, roles, and S3 buckets
 - GitHub repository admin access (for secrets, labels, workflow settings)
-- Node.js >= 22.17.0
+- Node.js 22.17+ within 22.x, 24.x, or 26 and later
 - npm
 - AWS CLI v2 (for local testing and IAM setup)
 
@@ -495,7 +495,7 @@ new Chromium binary, compares them against the previous release's screenshots
 using [odiff](https://github.com/dmtrKovalenko/odiff), and posts a PR comment
 with:
 
-- Side-by-side images (baseline, current, diff) via S3 presigned URLs
+- Inline baseline, current, and available diff images via S3 presigned URLs (valid for 7 days). Same-revision review images are stored separately so they never replace the baseline.
 - SHA-256 hashes for each screenshot
 - Match/changed status
 

@@ -12,6 +12,9 @@ pretest:
 test:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node24
 
+test26:
+	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node26
+
 test22:
 	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
 
@@ -28,7 +31,7 @@ define build-zip
 	npm ci --fund=false
 	npm run build
 	mkdir -p nodejs
-	npm install --prefix nodejs/ modern-tar@0.8.5 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
+	npm install --prefix nodejs/ modern-tar@0.8.6 --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 	cp -R bin/$(1)/* bin
 	npm pack
 	rm -f bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br

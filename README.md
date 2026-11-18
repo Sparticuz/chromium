@@ -65,7 +65,10 @@ test("Check the page title of example.com", async (t) => {
     width: 1920,
   };
   const browser = await puppeteer.launch({
-    args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+    args: await puppeteer.defaultArgs({
+      args: chromium.args,
+      headless: "shell",
+    }),
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: "shell",
@@ -206,7 +209,10 @@ const browser = await puppeteer.launch({
   args:
     process.env.IS_LOCAL ?
       await puppeteer.defaultArgs()
-    : await puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
+    : await puppeteer.defaultArgs({
+        args: chromium.args,
+        headless: headlessType,
+      }),
   defaultViewport: viewport,
   executablePath:
     process.env.IS_LOCAL ?
@@ -501,7 +507,7 @@ The above will create a `chromium.x64.zip` file, which can be uploaded to your L
 ```shell
 bucketName="chromiumUploadBucket" && archType="x64" && versionNumber="v135.0.0" && \
 aws s3 cp chromium.${archType}.zip "s3://${bucketName}/chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" && \
-aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
+aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" "nodejs24.x" "nodejs26.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
 ```
 
 Alternatively, you can also download the layer artifact from one of our [releases](https://github.com/Sparticuz/chromium/releases).

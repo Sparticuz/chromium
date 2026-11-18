@@ -33,21 +33,22 @@ console.log(
 
 // Download arch-specific binaries (chromium.br, swiftshader.tar.br, al2023.tar.br)
 for (const arch of ["x64", "arm64"]) {
-  const dest = resolve(__dirname, `../bin/${arch}`);
-  mkdirSync(dest, { recursive: true });
+  const destination = resolve(__dirname, `../bin/${arch}`);
+  mkdirSync(destination, { recursive: true });
 
-  const src = `s3://${bucket}/${revision}/${arch}/`;
-  console.log(`\nSyncing ${arch}: ${src} → bin/${arch}/`);
+  const source = `s3://${bucket}/${revision}/${arch}/`;
+  console.log(`\nSyncing ${arch}: ${source} → bin/${arch}/`);
 
-  // eslint-disable-next-line sonarjs/os-command -- we trust the S3 paths
-  execSync(`aws s3 sync "${src}" "${dest}/"`, { stdio: "inherit" });
+  execSync(`aws s3 sync "${source}" "${destination}/"`, { stdio: "inherit" });
 }
 
 // Download shared fonts artifact (arch-independent)
-const fontsSrc = `s3://${bucket}/${revision}/fonts.tar.br`;
-const fontsDest = resolve(__dirname, "../bin/fonts.tar.br");
-console.log(`\nDownloading fonts: ${fontsSrc} → bin/fonts.tar.br`);
-// eslint-disable-next-line sonarjs/os-command -- we trust the S3 paths
-execSync(`aws s3 cp "${fontsSrc}" "${fontsDest}"`, { stdio: "inherit" });
+const fontsSource = `s3://${bucket}/${revision}/fonts.tar.br`;
+const fontsDestination = resolve(__dirname, "../bin/fonts.tar.br");
+console.log(`\nDownloading fonts: ${fontsSource} → bin/fonts.tar.br`);
+
+execSync(`aws s3 cp "${fontsSource}" "${fontsDestination}"`, {
+  stdio: "inherit",
+});
 
 console.log("\nBinaries downloaded successfully.");

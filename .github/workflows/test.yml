@@ -178,7 +178,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x64, arm64]
-        function: [node22, node24]
+        function: [node22, node24, node26]
         include:
           - arch: x64
             runner: ubuntu-latest
@@ -188,6 +188,8 @@ jobs:
             label: Node 22.x ESM
           - function: node24
             label: Node 24.x ESM
+          - function: node26
+            label: Node 26.x ESM
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -241,6 +243,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: us-east-1
       S3_BUCKET: ${{ secrets.CHROMIUM_BUILD_S3_BUCKET }}
+      REVIEW_PREFIX: visual-regression/${{ github.run_id }}/${{ github.run_attempt }}/${{ matrix.arch }}
 
     steps:
       - name: Checkout
@@ -326,10 +329,8 @@ jobs:
 
       - name: Run odiff comparison
         if: steps.baseline.outputs.has_baseline == 'true'
-        id: diff
         run: |
           mkdir -p /tmp/screenshots/diff
-          DIFF_RESULTS=""
 
           for PAGE in example.com webgl; do
             BASELINE="/tmp/screenshots/baseline/${PAGE}.png"
@@ -337,38 +338,20 @@ jobs:
             DIFF_OUT="/tmp/screenshots/diff/${PAGE}-diff.png"
 
             if [ ! -f "$BASELINE" ]; then
-              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|no-baseline|0|0\n"
               continue
             fi
 
-            # Run odiff — exit code 0=match, 1=diff, 2=error
-            RESULT=$(npx odiff "$BASELINE" "$CURRENT" "$DIFF_OUT" 2>&1) || true
-            DIFF_COUNT=$(echo "$RESULT" | grep -oP 'diffCount:\s*\K\d+' || echo "0")
-            DIFF_PCT=$(echo "$RESULT" | grep -oP 'diffPercentage:\s*\K[\d.]+' || echo "0")
-
-            # Check if diff image was created (only created if pixels differ)
-            if [ -f "$DIFF_OUT" ]; then
-              mkdir -p /tmp/screenshots/review
-              cp "$CURRENT" "$DIFF_OUT" /tmp/screenshots/review/
-              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|changed|${DIFF_COUNT}|${DIFF_PCT}\n"
-            else
-              DIFF_RESULTS="${DIFF_RESULTS}${PAGE}|match|0|0.00\n"
-            fi
+            npx odiff "$BASELINE" "$CURRENT" "$DIFF_OUT" || true
           done
 
-          echo "results<<EOF" >> "$GITHUB_OUTPUT"
-          printf '%b' "$DIFF_RESULTS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Upload changed screenshot pairs
-        id: screenshots
-        if: contains(steps.diff.outputs.results, '|changed|')
-        uses: actions/upload-artifact@v7
-        with:
-          name: visual-diff-${{ matrix.arch }}-${{ github.run_attempt }}
-          path: /tmp/screenshots/review/*.png
-          if-no-files-found: error
-          retention-days: 7
+      - name: Upload review images without replacing the baseline
+        if: steps.baseline.outputs.revision_changed != 'true'
+        run: |
+          DESTINATION="s3://${S3_BUCKET}/${REVIEW_PREFIX}/"
+          aws s3 sync /tmp/screenshots/current/ "$DESTINATION" --exclude "*" --include "*.png"
+          if [ -d /tmp/screenshots/diff ]; then
+            aws s3 sync /tmp/screenshots/diff/ "$DESTINATION" --exclude "*" --include "*-diff.png"
+          fi
 
       - name: Upload diff images to S3
         if: steps.baseline.outputs.has_baseline == 'true' && steps.baseline.outputs.revision_changed == 'true'
@@ -389,6 +372,10 @@ jobs:
           ARCH="${{ matrix.arch }}"
           URLS=""
           EXPIRES=604800  # 7 days
+          IMAGE_PREFIX="${REVISION}/${ARCH}"
+          if [ "$REVISION_CHANGED" != "true" ]; then
+            IMAGE_PREFIX="$REVIEW_PREFIX"
+          fi
 
           presign() {
             local S3_KEY="$1" VAR_NAME="$2"
@@ -399,16 +386,13 @@ jobs:
           for PAGE in example.com webgl; do
             SAFE="${PAGE//./_}"
 
-            # Current screenshots are only in S3 when revision changed
-            if [ "$REVISION_CHANGED" = "true" ]; then
-              presign "${REVISION}/${ARCH}/${PAGE}.png" "${SAFE}_current" || true
-            fi
+            presign "${IMAGE_PREFIX}/${PAGE}.png" "${SAFE}_current"
 
             if [ "$HAS_BASELINE" = "true" ] && [ -n "$BASELINE_REV" ]; then
               presign "${BASELINE_REV}/${ARCH}/${PAGE}.png" "${SAFE}_baseline" || true
               # Only presign diff if one was actually generated
               if [ -f "/tmp/screenshots/diff/${PAGE}-diff.png" ]; then
-                presign "${REVISION}/${ARCH}/${PAGE}-diff.png" "${SAFE}_diff" || true
+                presign "${IMAGE_PREFIX}/${PAGE}-diff.png" "${SAFE}_diff"
               fi
             fi
           done
@@ -417,7 +401,6 @@ jobs:
 
       - name: Post PR comment
         env:
-          SCREENSHOTS_URL: ${{ steps.screenshots.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
@@ -454,33 +437,18 @@ jobs:
               HEADER="Revision: \`${REVISION}\` (unchanged — comparing code-only changes against S3 baseline)"
             fi
 
-            if [ "$REVISION_CHANGED" = "true" ]; then
-              # Full image comparison: baseline vs current vs diff
-              EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) | ![current](${URL_example_com_current})"
-              if [ -n "${URL_example_com_diff:-}" ]; then
-                EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff})"
-              else
-                EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | (identical)"
-              fi
-              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} |"
-
-              WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) | ![current](${URL_webgl_current})"
-              if [ -n "${URL_webgl_diff:-}" ]; then
-                WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff})"
-              else
-                WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | (identical)"
-              fi
-              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} |"
-
-              IMG_HEADER="| Page | Baseline | Current | Diff |"
-              IMG_SEP="|------|----------|---------|------|"
+            EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) | ![current](${URL_example_com_current})"
+            if [ -n "${URL_example_com_diff:-}" ]; then
+              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | ![diff](${URL_example_com_diff}) |"
             else
-              # Same revision: current screenshots not uploaded, show baseline only
-              EXAMPLE_IMG_ROW="| example.com | ![baseline](${URL_example_com_baseline}) |"
-              WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) |"
+              EXAMPLE_IMG_ROW="${EXAMPLE_IMG_ROW} | — |"
+            fi
 
-              IMG_HEADER="| Page | S3 Baseline |"
-              IMG_SEP="|------|-------------|"
+            WEBGL_IMG_ROW="| WebGL | ![baseline](${URL_webgl_baseline}) | ![current](${URL_webgl_current})"
+            if [ -n "${URL_webgl_diff:-}" ]; then
+              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | ![diff](${URL_webgl_diff}) |"
+            else
+              WEBGL_IMG_ROW="${WEBGL_IMG_ROW} | — |"
             fi
 
             cat > /tmp/screenshots/comment.md <<EOF
@@ -488,8 +456,8 @@ jobs:
 
           ${HEADER}
 
-          ${IMG_HEADER}
-          ${IMG_SEP}
+          | Page | Baseline | Current | Diff |
+          |------|----------|---------|------|
           ${EXAMPLE_IMG_ROW}
           ${WEBGL_IMG_ROW}
 
@@ -510,10 +478,8 @@ jobs:
           </details>
           EOF
           else
-            if [ "$REVISION_CHANGED" = "true" ]; then
-              # Revision changed but no baseline screenshots in S3 for master's revision
-              # Current screenshots were uploaded for this new revision
-              cat > /tmp/screenshots/comment.md <<EOF
+            # No baseline: show current screenshots only.
+            cat > /tmp/screenshots/comment.md <<EOF
           ## Visual Regression (${{ matrix.arch }})
 
           No baseline screenshots found in S3 for master revision \`${BASELINE_REV}\` — showing current only.
@@ -532,23 +498,6 @@ jobs:
 
           </details>
           EOF
-            else
-              # Same revision and no screenshots in S3 — nothing to compare
-              cat > /tmp/screenshots/comment.md <<EOF
-          ## Visual Regression (${{ matrix.arch }})
-
-          No baseline screenshots found in S3 for revision \`${REVISION}\` — skipping comparison.
-
-          | Page | Hash |
-          |------|------|
-          | example.com | \`${EXAMPLE_HASH}\` |
-          | WebGL | \`${WEBGL_HASH}\` |
-          EOF
-            fi
-          fi
-
-          if [ -n "$SCREENSHOTS_URL" ]; then
-            printf '\n[Download current and diff PNGs for changed pages](%s)\n' "$SCREENSHOTS_URL" >> /tmp/screenshots/comment.md
           fi
 
           # Find existing VR comment for this arch and update it, or create new

@@ -4,6 +4,12 @@ Globals:
   Function:
     MemorySize: 2048
     Timeout: 30
+    Architectures:
+      - x86_64
+    Layers:
+      - !Ref layer
+    Handler: handlers/index.handler
+    Tracing: Active
 
 Resources:
   layer:
@@ -15,43 +21,33 @@ Resources:
         - nodejs20.x
         - nodejs22.x
         - nodejs24.x
+        - nodejs26.x
 
   node20:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      Layers:
-        - !Ref layer
-      Handler: handlers/index.handler
       Runtime: nodejs20.x
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
-      Tracing: Active
   node22:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      Layers:
-        - !Ref layer
-      Handler: handlers/index.handler
       Runtime: nodejs22.x
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
-      Tracing: Active
   node24:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      Layers:
-        - !Ref layer
-      Handler: handlers/index.handler
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
-      Tracing: Active
+  node26:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs26.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess

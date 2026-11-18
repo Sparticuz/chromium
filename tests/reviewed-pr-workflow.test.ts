@@ -20,24 +20,25 @@ const workflow = readFileSync(
   "utf8",
 );
 const sha = "a".repeat(40);
-const repo = "Sparticuz/chromium";
+const repository = "Sparticuz/chromium";
 const stepBoundary = /\n(?: {6}- name:| {2}[a-z]+:)/;
-let dir: string;
+let directory: string;
 
 function script(name: string, source = workflow): string {
   const body = source
     .split(`      - name: ${name}\n`)[1]
     ?.split(stepBoundary)[0]
-    ?.split("        run: |\n")[1];
+    ?.split("        run: |\n", 2)[1];
   assert.ok(body, `Missing workflow script: ${name}`);
   return body.replaceAll(/^ {10}/gm, "");
 }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "reviewed-pr-"));
-  writeFileSync(join(dir, "output"), "");
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- Each test gets a fresh directory shared by the helpers and teardown.
+  directory = mkdtempSync(join(tmpdir(), "reviewed-pr-"));
+  writeFileSync(join(directory, "output"), "");
   writeFileSync(
-    join(dir, "gh"),
+    join(directory, "gh"),
     String.raw`#!/usr/bin/env python3
 import json, os, sys
 with open('calls', 'a') as calls:
@@ -51,39 +52,47 @@ print(os.environ.get('GH_RESPONSE', '{}'))
 });
 
 afterEach(() => {
-  rmSync(dir, { force: true, recursive: true });
+  rmSync(directory, { force: true, recursive: true });
 });
 
 function output(): string {
-  return readFileSync(join(dir, "output"), "utf8");
+  return readFileSync(join(directory, "output"), "utf8");
 }
 
 function pullRequest() {
   return {
-    base: { repo: { full_name: repo } },
+    base: { repo: { full_name: repository } },
     head: { repo: { full_name: "contributor/chromium" }, sha },
     number: 59,
     state: "open",
   };
 }
 
-function run(name: string, env: Record<string, string> = {}, source = workflow): string {
-  return execFileSync("bash", ["-euo", "pipefail", "-c", script(name, source)], {
-    cwd: dir,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      GITHUB_OUTPUT: join(dir, "output"),
-      GITHUB_REPOSITORY: repo,
-      GITHUB_RUN_ID: "1234",
-      GITHUB_SERVER_URL: "https://github.com",
-      PATH: `${dir}:${process.env["PATH"] ?? ""}`,
-      PR_NUMBER: "59",
-      REVIEWED_SHA: sha,
-      ...env,
+function run(
+  name: string,
+  env: Record<string, string> = {},
+  source = workflow,
+): string {
+  return execFileSync(
+    "bash",
+    ["-euo", "pipefail", "-c", script(name, source)],
+    {
+      cwd: directory,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: join(directory, "output"),
+        GITHUB_REPOSITORY: repository,
+        GITHUB_RUN_ID: "1234",
+        GITHUB_SERVER_URL: "https://github.com",
+        PATH: `${directory}:${process.env["PATH"] ?? ""}`,
+        PR_NUMBER: "59",
+        REVIEWED_SHA: sha,
+        ...env,
+      },
+      stdio: "pipe",
     },
-    stdio: "pipe",
-  });
+  );
 }
 
 test("only identical revision blobs preserve labels on follow-up pushes", () => {
@@ -91,21 +100,38 @@ test("only identical revision blobs preserve labels on follow-up pushes", () => 
     new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),
     "utf8",
   );
-  writeFileSync(join(dir, "curl"), `#!/bin/sh
+  writeFileSync(
+    join(directory, "curl"),
+    `#!/bin/sh
 [ "$1" = "-sS" ] && [ "$2" = "-H" ] && [ "$3" = "Authorization: Bearer fixture-token" ] || exit 2
 case "$*" in *ref=old) blob=$OLD_BLOB ;; *) blob=$NEW_BLOB ;; esac
 printf '{"type":"file","sha":"%s"}' "$blob" > "$RUNNER_TEMP/revision-meta"
 printf '%s' "$HTTP_CODE"
-`, { mode: 0o755 });
-  const env = { BEFORE: "old", AFTER: "new", OLD_BLOB: sha, NEW_BLOB: sha, RUNNER_TEMP: dir, HTTP_CODE: "200", GH_TOKEN: "fixture-token" };
+`,
+    { mode: 0o755 },
+  );
+  const env = {
+    AFTER: "new",
+    BEFORE: "old",
+    GH_TOKEN: "fixture-token",
+    HTTP_CODE: "200",
+    NEW_BLOB: sha,
+    OLD_BLOB: sha,
+    RUNNER_TEMP: directory,
+  };
   for (const changed of [{ NEW_BLOB: "b".repeat(40) }, { HTTP_CODE: "404" }]) {
     run("Compare the pushed revisions", { ...env, ...changed }, labels);
     assert.equal(output(), "");
   }
-  assert.throws(() => run("Compare the pushed revisions", { ...env, HTTP_CODE: "503" }, labels));
+  assert.throws(() =>
+    run("Compare the pushed revisions", { ...env, HTTP_CODE: "503" }, labels),
+  );
   run("Compare the pushed revisions", env, labels);
   assert.equal(output(), "same=true\n");
-  assert.equal(labels.split("if: steps.push.outputs.same != 'true' &&").length - 1, 2);
+  assert.equal(
+    labels.split("if: steps.push.outputs.same != 'true' &&").length - 1,
+    2,
+  );
 });
 
 test("reusable binaries do not carry verification to the next head", () => {
@@ -114,11 +140,15 @@ test("reusable binaries do not carry verification to the next head", () => {
     "utf8",
   );
   for (const label of ["available", "building", "verified", "testing"]) {
-    writeFileSync(join(dir, "calls"), "");
-    run("Invalidate tests for the previous head", {
-      CURRENT_LABELS: JSON.stringify([`binaries:${label}`]),
-    }, labels);
-    const calls = readFileSync(join(dir, "calls"), "utf8");
+    writeFileSync(join(directory, "calls"), "");
+    run(
+      "Invalidate tests for the previous head",
+      {
+        CURRENT_LABELS: JSON.stringify([`binaries:${label}`]),
+      },
+      labels,
+    );
+    const calls = readFileSync(join(directory, "calls"), "utf8");
     if (label === "verified" || label === "testing") {
       assert.ok(calls.includes(`/labels/binaries:${label}`));
       assert.ok(calls.includes("labels[]=binaries:available"));
@@ -133,7 +163,9 @@ test("changed-file API errors stop labeling before a decision is emitted", () =>
     new URL("../.github/workflows/check-pr-binaries.yml", import.meta.url),
     "utf8",
   );
-  assert.throws(() => run("Check if revision.txt changed", { GH_API_ERROR: "1" }, labels));
+  assert.throws(() =>
+    run("Check if revision.txt changed", { GH_API_ERROR: "1" }, labels),
+  );
   assert.equal(output(), "");
   run("Check if revision.txt changed", { GH_RESPONSE: "" }, labels);
   assert.equal(output(), "revision_changed=false\n");
@@ -215,7 +247,7 @@ test("revision is read as data at the exact SHA and rejects unsafe S3 prefixes",
   });
   assert.equal(output(), "revision=123\n");
   assert.ok(
-    readFileSync(join(dir, "calls"), "utf8").includes(
+    readFileSync(join(directory, "calls"), "utf8").includes(
       `repos/contributor/chromium/contents/_/ec2/revision.txt?ref=${sha}`,
     ),
   );
@@ -248,16 +280,16 @@ test("integrity checks every fixed file, size, hash, and manifest revision fail-
       ([name, data]) => [`arm64/${name}`, data] as const,
     ),
   ] as const;
-  mkdirSync(join(dir, "prepared", "x64"), { recursive: true });
-  mkdirSync(join(dir, "prepared", "arm64"), { recursive: true });
+  mkdirSync(join(directory, "prepared", "x64"), { recursive: true });
+  mkdirSync(join(directory, "prepared", "arm64"), { recursive: true });
   const save = () => {
     writeFileSync(
-      join(dir, "prepared", "manifest.json"),
+      join(directory, "prepared", "manifest.json"),
       JSON.stringify(manifest),
     );
   };
   for (const [name] of entries)
-    writeFileSync(join(dir, "prepared", name), content);
+    writeFileSync(join(directory, "prepared", name), content);
   save();
   assert.ok(
     run("Verify binary integrity", { REVISION: "123" }).includes("all seven"),
@@ -265,7 +297,7 @@ test("integrity checks every fixed file, size, hash, and manifest revision fail-
   assert.throws(() => run("Verify binary integrity", { REVISION: "124" }));
   assert.throws(() => run("Verify binary integrity", { REVISION: "../123" }));
   for (const [name, data] of entries) {
-    const path = join(dir, "prepared", name);
+    const path = join(directory, "prepared", name);
     rmSync(path);
     assert.throws(() => run("Verify binary integrity", { REVISION: "123" }));
     writeFileSync(path, Buffer.alloc(content.length, 0));
@@ -286,13 +318,13 @@ test("integrity checks every fixed file, size, hash, and manifest revision fail-
     Object.assign(data, metadata);
     save();
   }
-  rmSync(join(dir, "prepared", "manifest.json"));
+  rmSync(join(directory, "prepared", "manifest.json"));
   assert.throws(() => run("Verify binary integrity", { REVISION: "123" }));
 });
 
 test("download requests only the eight fixed S3 objects and stops on an unavailable object", () => {
   writeFileSync(
-    join(dir, "aws"),
+    join(directory, "aws"),
     String.raw`#!/usr/bin/env python3
 import json, os, sys
 with open('downloads', 'a') as calls:
@@ -306,7 +338,7 @@ if os.environ.get('MISSING_OBJECT'):
     REVISION: "123",
     S3_BUCKET: "fixture-bucket",
   });
-  const calls: unknown = readFileSync(join(dir, "downloads"), "utf8")
+  const calls: unknown = readFileSync(join(directory, "downloads"), "utf8")
     .trim()
     .split("\n")
     .map((line) => JSON.parse(line) as unknown);
@@ -329,7 +361,7 @@ if os.environ.get('MISSING_OBJECT'):
       "--only-show-errors",
     ]),
   );
-  writeFileSync(join(dir, "downloads"), "");
+  writeFileSync(join(directory, "downloads"), "");
   assert.throws(() =>
     run("Download fixed binaries", {
       MISSING_OBJECT: "true",
@@ -338,7 +370,8 @@ if os.environ.get('MISSING_OBJECT'):
     }),
   );
   assert.equal(
-    readFileSync(join(dir, "downloads"), "utf8").trim().split("\n").length,
+    readFileSync(join(directory, "downloads"), "utf8").trim().split("\n")
+      .length,
     1,
   );
 });
@@ -346,16 +379,16 @@ if os.environ.get('MISSING_OBJECT'):
 test("report only succeeds for successful preparation and the entire test matrix", () => {
   for (const prepare of ["success", "failure", "cancelled", "skipped"]) {
     for (const tests of ["success", "failure", "cancelled", "skipped"]) {
-      writeFileSync(join(dir, "calls"), "");
+      writeFileSync(join(directory, "calls"), "");
       run("Report trusted job conclusions", {
         PREPARE_RESULT: prepare,
         TEST_RESULT: tests,
       });
       const args: unknown = JSON.parse(
-        readFileSync(join(dir, "calls"), "utf8"),
+        readFileSync(join(directory, "calls"), "utf8"),
       );
       assert.ok(Array.isArray(args));
-      assert.equal(args[1], `repos/${repo}/statuses/${sha}`);
+      assert.equal(args[1], `repos/${repository}/statuses/${sha}`);
       assert.ok(args.includes("context=reviewed-pr/host-tests"));
       assert.ok(
         args.includes(
@@ -364,7 +397,7 @@ test("report only succeeds for successful preparation and the entire test matrix
       );
     }
   }
-  const report = workflow.split("  report:")[1];
+  const report = workflow.split("  report:", 2)[1];
   assert.ok(report);
   assert.ok(
     report.includes("if: always() && needs.prepare.outputs.reviewed_sha != ''"),
@@ -381,6 +414,6 @@ test("report only succeeds for successful preparation and the entire test matrix
   assert.deepEqual(workflow.match(/^ *cache-mode:.*$/gm), ["cache-mode: none"]);
   assert.ok(workflow.includes("persist-credentials: false"));
   assert.ok(workflow.includes("fail-fast: false"));
-  assert.ok(workflow.includes("node: [22, 24]"));
+  assert.ok(workflow.includes("node: [22, 24, 26]"));
   assert.ok(workflow.includes("arch: [x64, arm64]"));
 });

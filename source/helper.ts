@@ -24,7 +24,7 @@ export const downloadFile = async (
   url: string,
   outputPath: string,
 ): Promise<void> => {
-  const response = await fetch(url, { redirect: "follow" });
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`Unexpected status code: ${String(response.status)}.`);
@@ -70,12 +70,10 @@ export const isValidUrl = (input: string) => {
   try {
     const url = new URL(input);
     if (url.protocol === "https:") return true;
-    // Allow http:// only for localhost/127.0.0.1 (development/testing)
+    // Allow HTTP only for loopback hosts during development/testing.
     if (
       url.protocol === "http:" &&
-      (url.hostname === "localhost" ||
-        url.hostname === "127.0.0.1" ||
-        url.hostname === "[::1]")
+      ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
     ) {
       return true;
     }
@@ -91,7 +89,7 @@ export const isValidUrl = (input: string) => {
  * AWS_LAMBDA_JS_RUNTIME is for netlify instances
  * CODEBUILD_BUILD_IMAGE is for CodeBuild instances
  * VERCEL is for Vercel Functions (Node 20 or later enables an AL2023-compatible environment).
- * @returns boolean indicating if the running instance is inside a Lambda container with nodejs20
+ * @returns whether the runtime needs the bundled Amazon Linux 2023 libraries
  */
 export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
   const awsExecEnv = process.env["AWS_EXECUTION_ENV"] ?? "";
@@ -103,12 +101,15 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
     awsExecEnv.includes("20.x") ||
     awsExecEnv.includes("22.x") ||
     awsExecEnv.includes("24.x") ||
+    awsExecEnv.includes("26.x") ||
     awsLambdaJsRuntime.includes("20.x") ||
     awsLambdaJsRuntime.includes("22.x") ||
     awsLambdaJsRuntime.includes("24.x") ||
+    awsLambdaJsRuntime.includes("26.x") ||
     codebuildImage.includes("nodejs20") ||
     codebuildImage.includes("nodejs22") ||
-    codebuildImage.includes("nodejs24")
+    codebuildImage.includes("nodejs24") ||
+    codebuildImage.includes("nodejs26")
   ) {
     return true;
   }
@@ -122,10 +123,9 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
 };
 
 export const downloadAndExtract = async (url: string): Promise<string> => {
-  const destDir = join(tmpdir(), "chromium-pack");
+  const destinationDirectory = join(tmpdir(), "chromium-pack");
 
   const response = await fetch(url, {
-    redirect: "follow",
     signal: AbortSignal.timeout(300_000),
   });
 
@@ -142,17 +142,17 @@ export const downloadAndExtract = async (url: string): Promise<string> => {
       Readable.fromWeb(
         response.body as import("node:stream/web").ReadableStream,
       ),
-      unpackTar(destDir, { strict: true }),
+      unpackTar(destinationDirectory, { strict: true }),
     );
   } catch (error) {
     // Clean up partial extraction on failure
     await new Promise<void>((resolve) => {
-      rm(destDir, { force: true, recursive: true }, () => {
+      rm(destinationDirectory, { force: true, recursive: true }, () => {
         resolve();
       });
     });
     throw error;
   }
 
-  return destDir;
+  return destinationDirectory;
 };
