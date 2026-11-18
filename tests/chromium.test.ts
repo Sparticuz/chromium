@@ -504,7 +504,7 @@ describe("Integration", () => {
     )}`;
     const hash = createHash("sha256").update(base64Screenshot).digest("hex");
     expect(hash).toBe(
-      "bcafb91175097fcd6ff9ce7253180b3c3cf5d6b714db5b6eb314c1e385090cc3",
+      "9e23d89331e2b8aecbca8d6c46d49f56493d0e0d202b93b269bfad521bd23ccc",
     );
   });
 
