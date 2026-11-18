@@ -12,7 +12,7 @@ import { inflate } from "./lambdafs.js";
 import { getBinPath } from "./paths.js";
 
 const nodeMajorVersion = Number.parseInt(
-  process.versions.node.split(".")[0] ?? "",
+  process.versions.node.split(".", 1)[0] ?? "",
 );
 
 // Setup the lambda environment

@@ -68,7 +68,7 @@ for (const job of pages) {
 
   if (job.remove) {
     await page.evaluate((selector) => {
-      document.querySelector(`#${selector}`)?.remove();
+      globalThis.document.querySelector(`#${selector}`)?.remove();
     }, job.remove);
   }
 
@@ -90,7 +90,8 @@ await writeFile(
   JSON.stringify(manifest, null, 2),
 );
 
-for (const page of await browser.pages()) {
+const remainingPages = await browser.pages();
+for (const page of remainingPages) {
   await page.close();
 }
 await browser.close();

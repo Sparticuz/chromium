@@ -16,11 +16,11 @@ async function downloadFonts() {
   await mkdir(FONTS_DIR, { recursive: true });
 
   for (const font of FONT_URL) {
-    const res = await fetch(font);
-    if (!res.ok) {
-      throw new Error(`Failed to download font: ${res.status}`);
+    const response = await fetch(font);
+    if (!response.ok) {
+      throw new Error(`Failed to download font: ${response.status}`);
     }
-    const arrayBuffer = await res.arrayBuffer();
+    const arrayBuffer = await response.arrayBuffer();
     const fontFileName = font.split("/").pop();
     const FONT_PATH = join(FONTS_DIR, fontFileName ?? "OpenSans.ttf");
     await writeFile(FONT_PATH, Buffer.from(arrayBuffer));

@@ -65,7 +65,10 @@ test("Check the page title of example.com", async (t) => {
     width: 1920,
   };
   const browser = await puppeteer.launch({
-    args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+    args: await puppeteer.defaultArgs({
+      args: chromium.args,
+      headless: "shell",
+    }),
     defaultViewport: viewport,
     executablePath: await chromium.executablePath(),
     headless: "shell",
@@ -206,7 +209,10 @@ const browser = await puppeteer.launch({
   args:
     process.env.IS_LOCAL ?
       await puppeteer.defaultArgs()
-    : await puppeteer.defaultArgs({ args: chromium.args, headless: headlessType }),
+    : await puppeteer.defaultArgs({
+        args: chromium.args,
+        headless: headlessType,
+      }),
   defaultViewport: viewport,
   executablePath:
     process.env.IS_LOCAL ?

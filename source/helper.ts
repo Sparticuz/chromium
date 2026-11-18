@@ -24,7 +24,7 @@ export const downloadFile = async (
   url: string,
   outputPath: string,
 ): Promise<void> => {
-  const response = await fetch(url, { redirect: "follow" });
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`Unexpected status code: ${String(response.status)}.`);
@@ -70,12 +70,10 @@ export const isValidUrl = (input: string) => {
   try {
     const url = new URL(input);
     if (url.protocol === "https:") return true;
-    // Allow http:// only for localhost/127.0.0.1 (development/testing)
+    // Allow HTTP only for loopback hosts during development/testing.
     if (
       url.protocol === "http:" &&
-      (url.hostname === "localhost" ||
-        url.hostname === "127.0.0.1" ||
-        url.hostname === "[::1]")
+      ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)
     ) {
       return true;
     }
@@ -125,10 +123,9 @@ export const isRunningInAmazonLinux2023 = (nodeMajorVersion: number) => {
 };
 
 export const downloadAndExtract = async (url: string): Promise<string> => {
-  const destDir = join(tmpdir(), "chromium-pack");
+  const destinationDirectory = join(tmpdir(), "chromium-pack");
 
   const response = await fetch(url, {
-    redirect: "follow",
     signal: AbortSignal.timeout(300_000),
   });
 
@@ -145,17 +142,17 @@ export const downloadAndExtract = async (url: string): Promise<string> => {
       Readable.fromWeb(
         response.body as import("node:stream/web").ReadableStream,
       ),
-      unpackTar(destDir, { strict: true }),
+      unpackTar(destinationDirectory, { strict: true }),
     );
   } catch (error) {
     // Clean up partial extraction on failure
     await new Promise<void>((resolve) => {
-      rm(destDir, { force: true, recursive: true }, () => {
+      rm(destinationDirectory, { force: true, recursive: true }, () => {
         resolve();
       });
     });
     throw error;
   }
 
-  return destDir;
+  return destinationDirectory;
 };
