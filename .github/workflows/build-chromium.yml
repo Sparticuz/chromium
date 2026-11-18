@@ -118,6 +118,7 @@ jobs:
 
       - name: Prepare user-data
         id: userdata
+        shell: bash
         env:
           REVISION: ${{ steps.revision.outputs.revision }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -133,6 +134,7 @@ jobs:
           #   1. Set env vars (including the base64 tarball of _/ec2/)
           #   2. Extract the tarball to /opt/chromium-build/
           #   3. Run the orchestrator
+          # cloud-init decompresses gzip user-data before running the script.
           {
             echo '#!/bin/bash'
             echo 'set -euo pipefail'
@@ -163,17 +165,17 @@ jobs:
             else
               echo 'exec /opt/chromium-build/ec2/build-chromium.sh'
             fi
-          } > /tmp/userdata.sh
+          } | gzip -n > /tmp/userdata.sh.gz
 
-          # Verify size (user-data limit is 16 KB)
-          SIZE=$(wc -c < /tmp/userdata.sh)
-          echo "User-data script size: ${SIZE} bytes"
+          # EC2 applies the limit before base64 encoding.
+          SIZE=$(wc -c < /tmp/userdata.sh.gz)
+          echo "Compressed user-data size: ${SIZE} bytes"
           if [ "$SIZE" -gt 16384 ]; then
-            echo "::error::User-data script exceeds 16 KB limit (${SIZE} bytes)"
+            echo "::error::Compressed user-data exceeds 16 KB limit (${SIZE} bytes)"
             exit 1
           fi
 
-          echo "userdata_file=/tmp/userdata.sh" >> "$GITHUB_OUTPUT"
+          echo "userdata_file=/tmp/userdata.sh.gz" >> "$GITHUB_OUTPUT"
 
       - name: Prepare arm64 libs user-data
         id: userdata_arm64
@@ -350,7 +352,7 @@ jobs:
               --subnet-id "${SUBNET_ID}" \
               --associate-public-ip-address \
               --instance-initiated-shutdown-behavior terminate \
-              --user-data "file://${{ steps.userdata.outputs.userdata_file }}" \
+              --user-data "fileb://${{ steps.userdata.outputs.userdata_file }}" \
               --iam-instance-profile Name=chromium-build \
               --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":32,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
               --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=chromium-build},{Key=Revision,Value=${REVISION}},{Key=PR,Value=${{ github.event.pull_request.number }}}]" \
