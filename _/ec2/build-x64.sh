@@ -24,12 +24,14 @@ tar --directory out/Headless/x64 --create --file /srv/build/chromium/swiftshader
 brotli --best --force /srv/build/chromium/swiftshader.tar
 
 # Package AL2023 x64 system libraries
+# Bundle the actual library, not a symlink to a versioned filename.
+cp -L /usr/lib64/libexpat.so.1 /srv/lib/libexpat.so.1
 tar --directory /usr/lib64 --create --file /srv/lib/al2023.tar \
-  --transform='s,^libexpat\.so\.1\.9\.3$,libexpat.so.1,' \
   --transform='s,^,lib/,' \
-  libexpat.so.1.9.3 libfreebl3.so libfreeblpriv3.so libnspr4.so libnss3.so \
+  libfreebl3.so libfreeblpriv3.so libnspr4.so libnss3.so \
   libnssutil3.so libplc4.so libplds4.so libsoftokn3.so libfreebl3.chk \
-  libfreeblpriv3.chk libsoftokn3.chk
+  libfreeblpriv3.chk libsoftokn3.chk \
+  -C /srv/lib libexpat.so.1
 brotli --best --force /srv/lib/al2023.tar
 
 # Upload x64 artifacts to S3
@@ -63,6 +65,6 @@ rm -f /srv/build/chromium/chromium-"${CHROME_VERSION}" \
       /srv/build/chromium/chromium-"${CHROME_VERSION}".br \
       /srv/build/chromium/swiftshader.tar \
       /srv/build/chromium/swiftshader.tar.br
-rm -f /srv/lib/al2023.tar /srv/lib/al2023.tar.br
+rm -f /srv/lib/al2023.tar /srv/lib/al2023.tar.br /srv/lib/libexpat.so.1
 
 echo "x64 build complete"
