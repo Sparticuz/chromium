@@ -337,6 +337,8 @@ This is required for the `check-chromium-update` workflow, which uses
 5. Unit tests: `npm run test:source`
 6. Integration tests: `npm run test:integration` (requires AWS SAM CLI and Docker)
 
+For changes to GitHub Actions workflows, run `npm run test:infrastructure` (requires `jq` and Python 3.11+ for the reviewed-PR fixtures).
+
 ### Updating the Chromium Revision
 
 The `check-chromium-update` workflow runs daily and opens a PR automatically when
