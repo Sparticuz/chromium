@@ -184,7 +184,7 @@ jobs:
           - arch: x64
             runner: ubuntu-latest
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
     steps:
       - name: Download prepared binaries by immutable ID
         uses: actions/download-artifact@v8
@@ -194,7 +194,7 @@ jobs:
           merge-multiple: true
 
       - name: Checkout reviewed SHA
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Sparticuz/chromium
           ref: ${{ needs.prepare.outputs.reviewed_sha }}
@@ -207,7 +207,7 @@ jobs:
           cp -R "${RUNNER_TEMP}/reviewed-pr-binaries/." bin/
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}.x
           package-manager-cache: false

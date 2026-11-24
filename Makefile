@@ -1,3 +1,7 @@
+ifeq ($(MAKECMDGOALS),)
+$(error Specify a target: chromium-layer.x64.zip, chromium-layer.arm64.zip, pack-x64, pack-arm64, or test-lambda)
+endif
+
 .PHONY: test-lambda pack-x64 pack-arm64 FORCE
 
 ARCH ?= $(shell uname -m | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/')
@@ -52,5 +56,3 @@ pack-x64:
 
 pack-arm64:
 	$(call build-pack,arm64)
-
-.DEFAULT_GOAL := chromium.$(ARCH).zip
