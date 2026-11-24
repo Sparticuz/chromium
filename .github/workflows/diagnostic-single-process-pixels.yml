@@ -1,0 +1,62 @@
+name: Diagnostic single-process pixels
+on:
+  push:
+    branches: [diagnostic/single-process-pixels-45420506700]
+permissions:
+  contents: read
+  actions: read
+cache-mode: none
+jobs:
+  capture:
+    name: Capture and diff (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+            artifact: 14933697022
+          - arch: arm64
+            runner: ubuntu-26.04-arm
+            artifact: 14933168477
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45419807759
+          artifact-ids: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/parent-layer
+      - name: Extract only the existing browser assets
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          test "$(< _/ec2/revision.txt)" = 1727472
+          mkdir -p bin
+          for f in chromium.br al2023.tar.br swiftshader.tar.br fonts.tar.br; do
+            unzip -p "$RUNNER_TEMP/parent-layer/chromium.$ARCH.zip" "nodejs/node_modules/@sparticuz/chromium/bin/$f" > "bin/$f"
+            test -s "bin/$f"
+            sha256sum "bin/$f"
+          done
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.3
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts && npm run build
+      - run: node tools/single-process-ab.mjs
+      - name: Compare decoded RGBA pixels
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pixel-venv"
+          "$RUNNER_TEMP/pixel-venv/bin/pip" install Pillow==12.0.0
+          "$RUNNER_TEMP/pixel-venv/bin/python" tools/single-process-pixels.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: single-process-pixels-${{ matrix.arch }}
+          path: ab-results/
+          retention-days: 7
