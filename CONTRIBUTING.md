@@ -339,8 +339,12 @@ label path is for same-repository PRs only.
 2. Create or update tests in [`tests/`](tests/).
 3. Lint: `npm run lint`
 4. Build: `npm run build`
-5. Unit tests: `npm run test:source`
-6. Integration tests: `npm run test:integration` (requires AWS SAM CLI and Docker)
+5. Source and browser tests: `npm run test:source`
+6. Lambda integration tests: `npm run test:integration` (requires AWS SAM CLI and Docker or Finch; defaults to Node.js 26 and the host architecture)
+
+Both test commands expect the local Chromium binaries for your architecture and
+the shared `bin/fonts.tar.br`. To test a different Lambda runtime, run
+`npm run test:integration -- SAM_FUNCTION=node24`.
 
 For changes to GitHub Actions workflows, run `npm run test:infrastructure` (requires `jq` and Python 3.11+ for the reviewed-PR fixtures).
 

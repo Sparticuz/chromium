@@ -477,7 +477,7 @@ SSH key generation, GitHub configuration, and the build/release process.
 2. Create or update tests in [`tests/`](tests/).
 3. Lint: `npm run lint`
 4. Build: `npm run build`
-5. Test: `npm run test:source` (unit) and `npm run test:integration` (requires AWS SAM CLI + Docker).
+5. Test: `npm run test:source` and `npm run test:integration` (requires AWS SAM CLI and Docker or Finch).
 
 **Updating Chromium binaries:**
 
@@ -493,20 +493,17 @@ SSH key generation, GitHub configuration, and the build/release process.
 
 [Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html) are a convenient way to manage common dependencies between different Lambda Functions.
 
-The following set of (Linux) commands will create a layer of this package:
+From a checkout with the matching Chromium binaries already in `bin/x64/` or `bin/arm64/`, build the layer on Linux:
 
 ```shell
-archType="x64" && \
-git clone --depth=1 https://github.com/sparticuz/chromium.git && \
-cd chromium && \
-make chromium.${archType}$.zip
+npm run layer:x64
 ```
 
-The above will create a `chromium.x64.zip` file, which can be uploaded to your Layers console. If you are using `arm64`, replace the value accordingly. You can and should upload using the `aws cli`. (Replace the variables with your own values.)
+This rebuilds `chromium-layer.x64.zip` from the current local binaries. Use `npm run layer:arm64` for `chromium-layer.arm64.zip`. To upload the ZIP with the AWS CLI, replace the variables below with your own values.
 
 ```shell
 bucketName="chromiumUploadBucket" && archType="x64" && versionNumber="v135.0.0" && \
-aws s3 cp chromium.${archType}.zip "s3://${bucketName}/chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" && \
+aws s3 cp "chromium-layer.${archType}.zip" "s3://${bucketName}/chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" && \
 aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" "nodejs24.x" "nodejs26.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
 ```
 

@@ -21,7 +21,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -108,13 +108,13 @@ jobs:
           - arch: x64
             runner: ubuntu-latest
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
     permissions:
       contents: read
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get chromium revision
         id: revision
@@ -138,11 +138,8 @@ jobs:
           # Download fonts
           aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
 
-          # Copy to bin root for tests
-          cp bin/${{ matrix.arch }}/* bin/ 2>/dev/null || true
-
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.x
 
@@ -155,9 +152,6 @@ jobs:
       - name: Report Coverage
         if: matrix.arch == 'x64'
         uses: davelosert/vitest-coverage-report-action@v2
-
-      - name: Compile Typescript
-        run: npm run build
 
       - name: Create Lambda Layer
         run: make chromium.${{ matrix.arch }}.zip
@@ -183,7 +177,7 @@ jobs:
           - arch: x64
             runner: ubuntu-latest
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
           - function: node22
             label: Node 22.x ESM
           - function: node24
@@ -192,15 +186,15 @@ jobs:
             label: Node 26.x ESM
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: 3.13
+          python-version: 3.14
 
       - name: Setup AWS SAM CLI
-        uses: aws-actions/setup-sam@v2
+        uses: aws-actions/setup-sam@v3
 
       - name: Download Layer Artifact
         uses: actions/download-artifact@v8
@@ -213,14 +207,15 @@ jobs:
       - name: Install test dependencies
         run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
-      - name: Patch template for arm64
-        if: matrix.arch == 'arm64'
-        run: sed -i 's/x86_64/arm64/g' _/amazon/template.yml
-
       - name: Invoke Lambda on SAM
+        shell: bash
         env:
           SAM_FUNCTION: ${{ matrix.function }}
-        run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json "$SAM_FUNCTION" 2>&1 | (grep 'Error' && exit 1 || exit 0)
+          SAM_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
+        run: |
+          sam local invoke "$SAM_FUNCTION" --template _/amazon/template.yml \
+            --event _/amazon/events/example.com.json \
+            --parameter-overrides "Architecture=$SAM_ARCH" 2>&1 | (grep 'Error' && exit 1 || exit 0)
 
   visual-regression:
     name: Visual Regression (${{ matrix.arch }})
@@ -234,7 +229,7 @@ jobs:
           - arch: x64
             runner: ubuntu-latest
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
     permissions:
       contents: read
       pull-requests: write
@@ -247,12 +242,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Need origin/master for baseline resolution
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.x
 
@@ -529,10 +524,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.x
 
@@ -770,7 +765,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Update labels and checklist
         env:

@@ -4,9 +4,11 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
   lstatSync,
+  mkdtempSync,
   readFileSync,
   readlinkSync,
   rmSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -514,14 +516,27 @@ describe("Integration", () => {
     process.env["FONTCONFIG_PATH"] = join(tmpdir(), "fonts");
   });
 
-  it("should open a Chromium window", async () => {
+  it("should open a Chromium window", async ({ onTestFinished }) => {
+    const binaryDirectory = mkdtempSync(join(tmpdir(), "chromium-test-"));
+    onTestFinished(() => {
+      rmSync(binaryDirectory, { force: true, recursive: true });
+    });
+    const bin = getBinPath();
+    symlinkSync(
+      join(bin, "fonts.tar.br"),
+      join(binaryDirectory, "fonts.tar.br"),
+    );
+    for (const file of ["al2023.tar.br", "chromium.br", "swiftshader.tar.br"]) {
+      symlinkSync(join(bin, process.arch, file), join(binaryDirectory, file));
+    }
+
     const args = await puppeteer.defaultArgs({
       args: chromium.args,
       headless: "shell",
     });
     // Force the setup of Lambda environment
     setupLambdaEnvironment(join(tmpdir(), "al2023", "lib"));
-    await inflate(join("bin", "al2023.tar.br"));
+    await inflate(join(binaryDirectory, "al2023.tar.br"));
     // Console log the contents of /tmp
 
     browser = await puppeteer.launch({
@@ -534,7 +549,7 @@ describe("Integration", () => {
         isMobile: false,
         width: 1920,
       },
-      executablePath: await chromium.executablePath("./bin/"),
+      executablePath: await chromium.executablePath(binaryDirectory),
       headless: "shell",
     });
     try {
