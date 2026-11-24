@@ -496,15 +496,15 @@ SSH key generation, GitHub configuration, and the build/release process.
 From a checkout with the matching Chromium binaries already in `bin/x64/` or `bin/arm64/`, build the layer on Linux:
 
 ```shell
-npm run layer:x64
+make chromium-layer.x64.zip
 ```
 
-This rebuilds `chromium-layer.x64.zip` from the current local binaries. Use `npm run layer:arm64` for `chromium-layer.arm64.zip`. To upload the ZIP with the AWS CLI, replace the variables below with your own values.
+Use `make chromium-layer.arm64.zip` for arm64. To upload the ZIP with the AWS CLI, replace the variables below with your own values.
 
 ```shell
 bucketName="chromiumUploadBucket" && archType="x64" && versionNumber="v135.0.0" && \
 aws s3 cp "chromium-layer.${archType}.zip" "s3://${bucketName}/chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" && \
-aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs20.x" "nodejs22.x" "nodejs24.x" "nodejs26.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
+aws lambda publish-layer-version --layer-name chromium --description "Chromium v${versionNumber} for ${archType}" --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium-${versionNumber}-layer.${archType}.zip" --compatible-runtimes "nodejs22.x" "nodejs24.x" "nodejs26.x" --compatible-architectures $(if [ "$archType" = "x64" ]; then echo "x86_64"; else echo "$archType"; fi)
 ```
 
 Alternatively, you can also download the layer artifact from one of our [releases](https://github.com/Sparticuz/chromium/releases).
