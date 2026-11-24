@@ -1,31 +1,15 @@
-.PHONY: clean
+.PHONY: test-lambda pack-x64 pack-arm64 FORCE
 
-ARCH = $(shell uname -m | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/')
+ARCH ?= $(shell uname -m | sed 's/x86_64/x64/' | sed 's/aarch64/arm64/')
+SAM_ARCH = $(if $(filter x64,$(ARCH)),x86_64,$(ARCH))
+SAM_FUNCTION ?= node26
 
-clean:
-	rm -rf chromium.zip _/amazon/code/nodejs _/amazon/handlers/node_modules
-
-pretest:
-	unzip chromium.$(ARCH).zip -d _/amazon/code
+test-lambda: chromium.$(ARCH).zip
+	rm -rf _/amazon/code/nodejs
+	unzip "$<" -d _/amazon/code
 	npm install --prefix _/amazon/handlers puppeteer-core@latest --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
-
-test:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node24
-
-test26:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node26
-
-test22:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node22
-
-test20:
-	sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json node20
-
-presource:
-	cp -R bin/$(ARCH)/* bin
-
-postsource:
-	rm -f bin/chromium.br bin/al2023.tar.br bin/swiftshader.tar.br
+	sam local invoke "$(SAM_FUNCTION)" --template _/amazon/template.yml --event _/amazon/events/example.com.json \
+		--parameter-overrides "Architecture=$(SAM_ARCH)"
 
 define build-zip
 	npm ci --fund=false
@@ -40,14 +24,20 @@ define build-zip
 	npx clean-modules --directory nodejs "**/*.d.ts" "**/@types/**" "**/*.@(yaml|yml)" --yes
 	rm sparticuz-chromium-*.tgz
 	mkdir -p $(dir $@)
-	zip -9 --filesync --move --recurse-paths $@ nodejs
+	@set -eu; \
+	tmp=$$(mktemp -d "$(dir $@).chromium-layer.XXXXXX"); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	zip -9 --move --recurse-paths "$$tmp/layer.zip" nodejs; \
+	mv -f "$$tmp/layer.zip" "$@"
 endef
 
-%.x64.zip:
+%.x64.zip: FORCE
 	$(call build-zip,x64)
 
-%.arm64.zip:
+%.arm64.zip: FORCE
 	$(call build-zip,arm64)
+
+FORCE:
 
 define build-pack
 	cd bin/$(1) && \
@@ -63,4 +53,4 @@ pack-x64:
 pack-arm64:
 	$(call build-pack,arm64)
 
-.DEFAULT_GOAL := chromium.x64.zip
+.DEFAULT_GOAL := chromium.$(ARCH).zip

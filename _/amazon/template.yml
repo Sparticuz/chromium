@@ -1,11 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
+Parameters:
+  Architecture:
+    Type: String
+    Default: x86_64
+    AllowedValues: [x86_64, arm64]
 Globals:
   Function:
     MemorySize: 2048
     Timeout: 30
     Architectures:
-      - x86_64
+      - !Ref Architecture
     Layers:
       - !Ref layer
     Handler: handlers/index.handler

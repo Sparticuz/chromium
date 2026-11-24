@@ -138,9 +138,6 @@ jobs:
           # Download fonts
           aws s3 cp "s3://${S3_BUCKET}/${REVISION}/fonts.tar.br" bin/fonts.tar.br || true
 
-          # Copy to bin root for tests
-          cp bin/${{ matrix.arch }}/* bin/ 2>/dev/null || true
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -155,9 +152,6 @@ jobs:
       - name: Report Coverage
         if: matrix.arch == 'x64'
         uses: davelosert/vitest-coverage-report-action@v2
-
-      - name: Compile Typescript
-        run: npm run build
 
       - name: Create Lambda Layer
         run: make chromium.${{ matrix.arch }}.zip
@@ -213,14 +207,15 @@ jobs:
       - name: Install test dependencies
         run: npm install --prefix _/amazon/handlers puppeteer-core --bin-links=false --fund=false --omit=optional --omit=dev --package-lock=false --save=false
 
-      - name: Patch template for arm64
-        if: matrix.arch == 'arm64'
-        run: sed -i 's/x86_64/arm64/g' _/amazon/template.yml
-
       - name: Invoke Lambda on SAM
+        shell: bash
         env:
           SAM_FUNCTION: ${{ matrix.function }}
-        run: sam local invoke --template _/amazon/template.yml --event _/amazon/events/example.com.json "$SAM_FUNCTION" 2>&1 | (grep 'Error' && exit 1 || exit 0)
+          SAM_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
+        run: |
+          sam local invoke "$SAM_FUNCTION" --template _/amazon/template.yml \
+            --event _/amazon/events/example.com.json \
+            --parameter-overrides "Architecture=$SAM_ARCH" 2>&1 | (grep 'Error' && exit 1 || exit 0)
 
   visual-regression:
     name: Visual Regression (${{ matrix.arch }})
